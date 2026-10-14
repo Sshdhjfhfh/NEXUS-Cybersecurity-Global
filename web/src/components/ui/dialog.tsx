@@ -61,12 +61,12 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
-        // 关闭对话框的唯一条件:点击的是遮罩(灰色背景)本身,且此刻没有任何 Radix 弹层
-        // (Select 下拉等)开着。其余"外部交互"一律挡掉(Esc、右上角 ✕ 仍可关):
-        //  · 点弹层里的选项 → target 不是遮罩 → 挡;
-        //  · 弹层开着时点对话框外/遮罩想收起它 → 有弹层开着 → 挡(只收弹层,不关对话框);
-        //  · 弹层收起时焦点移动被 Radix 误判为焦点移出 → target 不是遮罩 → 挡。
-        // (onInteractOutside 在指针/焦点两条路径都会触发。)调用方仍可追加逻辑。
+        // La única condición para cerrar el cuadro de diálogo.:Haga clic en la máscara(fondo gris)él mismo,Y no hay ninguno Radix capa elástica
+        // (Select baja y espera)encendido. el resto"interacción externa"bloquear todo(Esc、esquina superior derecha ✕ todavía se puede apagar):
+        //  · haga clic en opciones en la capa emergente → target No es una máscara → bloquear;
+        //  · haga clic fuera del cuadro de diálogo cuando la capa emergente esté abierta/La máscara quiere cerrarla → Hay una capa elástica abierta. → bloquear(Sólo se recoge la capa elástica,No cerrar el cuadro de diálogo);
+        //  · El movimiento del foco se bloquea cuando se retrae la capa elástica. Radix Mal juzgado cuando el foco se desvió → target No es una máscara → bloquear。
+        // (onInteractOutside en el puntero/Ambas rutas de enfoque se activarán。)La persona que llama aún puede agregar lógica。
         onInteractOutside={(e) => {
           const target = e.detail.originalEvent.target as Element | null
           const onOverlay = !!target?.closest?.("[data-slot='dialog-overlay']")

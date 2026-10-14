@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 import {
   CheckIcon,
@@ -90,7 +92,7 @@ function groupSteps(steps: Activity[], chat: boolean): Group[] {
   for (const s of steps) {
     if (s.kind === "usage") continue; // live token-usage marker — not a rendered step
     if (s.kind === "round") {
-      out.push({ type: "round", key: s.seq, label: s.summary || "新一轮" }); // planner round boundary
+      out.push({ type: "round", key: s.seq, label: s.summary || t("ui.8803ffb208607905") }); // planner round boundary
       continue;
     }
     if (s.kind === "intercept_request") {
@@ -129,7 +131,7 @@ function groupSteps(steps: Activity[], chat: boolean): Group[] {
   return out;
 }
 
-const kindLabel = (k: string) => (k === "thinking" ? "推理" : k === "result" ? "总结" : "说明");
+const kindLabel = (k: string) => (k === "thinking" ? t("ui.cae97656b333525b") : k === "result" ? t("ui.ed7bdc67c84b3ed6") : t("ui.ee00b96fff266fe2"));
 
 function ActivityTime({ ts }: { ts: string }) {
   const date = new Date(ts);
@@ -182,7 +184,7 @@ function toolInputText(tool: string, raw: string): string {
 }
 
 // InterceptCard renders an inline intercept_request approval card. The pending_id
-// is extracted from the summary (format: "工具 X 请求审批 (#N)") so buttons are
+// is extracted from the summary (format: "Herramientas X Solicitar aprobación (#N)") so buttons are
 // available immediately without waiting for the detail load.
 function InterceptCard({
   step,
@@ -191,14 +193,14 @@ function InterceptCard({
   step: Activity;
   getDetail: (seq: number) => Promise<string>;
 }) {
-  // extract pending_id from summary: "工具 Bash 请求审批 (#42)"
+  // extract pending_id from summary: "Herramientas Bash Solicitar aprobación (#42)"
   const pendingId = React.useMemo(() => {
     const m = /\(#(\d+)\)/.exec(step.summary);
     return m ? parseInt(m[1], 10) : null;
   }, [step.summary]);
 
   const toolName = React.useMemo(() => {
-    const m = /工具\s+(\S+)\s+请求/.exec(step.summary);
+    const m = /Herramientas\s+(\S+)\s+Solicitud/.exec(step.summary);
     return m ? m[1] : step.summary;
   }, [step.summary]);
 
@@ -234,7 +236,7 @@ function InterceptCard({
         setStatusError("");
         if (p.status !== "pending") setDecided(p.status as "allowed" | "denied" | "timeout");
       })
-      .catch((error) => { if (live) setStatusError((error as Error).message || "审批详情加载失败"); });
+      .catch((error) => { if (live) setStatusError((error as Error).message || t("ui.d30c2b157b0748f9")); });
     return () => { live = false; };
   }, [pendingId, retry]);
 
@@ -244,7 +246,7 @@ function InterceptCard({
     try {
       await api.interceptDecide(pendingId, decision);
       setDecided(decision);
-      toast.success(decision === "allowed" ? "已允许执行" : "已拒绝执行");
+      toast.success(decision === "allowed" ? t("ui.7285768f2d76b427") : t("ui.48fb1d6a43002cb9"));
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -265,7 +267,7 @@ function InterceptCard({
           <ShieldAlertIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
           <div className="min-w-0 space-y-0.5">
             <div className="flex items-center gap-1.5 font-medium">
-              <span className="text-amber-700 dark:text-amber-400">审批请求</span>
+              <span className="text-amber-700 dark:text-amber-400">{t("ui.26b90771f27e0a94")}</span>
               <code className="rounded bg-amber-100 dark:bg-amber-900/50 px-1 font-mono text-amber-800 dark:text-amber-300">
                 {toolName}
               </code>
@@ -280,7 +282,7 @@ function InterceptCard({
         </div>
 
         {step.inherited ? (
-          <Badge variant="outline">历史记录 · 只读</Badge>
+          <Badge variant="outline">{t("ui.6964882b0eecb314")}</Badge>
         ) : decided ? (
           <span className={
             "shrink-0 rounded px-2 py-0.5 text-[11px] font-medium " +
@@ -290,7 +292,7 @@ function InterceptCard({
                 ? "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
                 : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400")
           }>
-            {decided === "allowed" ? "已允许" : decided === "timeout" ? "已超时" : "已拒绝"}
+            {decided === "allowed" ? t("ui.f3fb44a969080b74") : decided === "timeout" ? "tiempo agotado" : t("ui.71ed92a675af8343")}
           </span>
         ) : (
           <div className="flex shrink-0 gap-1.5">
@@ -301,8 +303,7 @@ function InterceptCard({
               onClick={() => decide("allowed")}
             >
               <CheckIcon className="h-3 w-3" />
-              允许
-            </Button>
+               {t("ui.f3fb44a969080b74")} </Button>
             <Button
               size="sm"
               variant="destructive"
@@ -311,17 +312,16 @@ function InterceptCard({
               onClick={() => decide("denied")}
             >
               <XIcon className="h-3 w-3" />
-              拒绝
-            </Button>
+               {t("ui.2a0515602d315876")} </Button>
           </div>
         )}
       </div>
       {pendingId ? (
         <Collapsible open={expanded} onOpenChange={setExpanded} className="mt-2 min-w-0">
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" aria-label={expanded ? "收起审批详情" : "展开审批详情"}>
+            <Button variant="ghost" size="sm" aria-label={expanded ? t("ui.bdf6733dc7174f71") : t("ui.38764deb4daf0dee")}>
               {expanded ? <ChevronDown data-icon="inline-start" /> : <ChevronRight data-icon="inline-start" />}
-              {expanded ? "收起审批详情" : "展开审批详情"}
+              {expanded ? t("ui.bdf6733dc7174f71") : t("ui.38764deb4daf0dee")}
             </Button>
           </CollapsibleTrigger>
           <CollapsibleContent>
@@ -338,9 +338,9 @@ function InterceptCard({
             ) : statusError ? (
               <div className="flex flex-wrap items-center gap-2 p-3" role="alert">
                 <span>{statusError}</span>
-                <Button variant="outline" size="sm" onClick={() => setRetry((value) => value + 1)}>重试详情</Button>
+                <Button variant="outline" size="sm" onClick={() => setRetry((value) => value + 1)}>{t("ui.d2458900aeda210a")}</Button>
               </div>
-            ) : <p className="p-3 text-muted-foreground">正在加载审批详情…</p>}
+            ) : <p className="p-3 text-muted-foreground">{t("ui.4fd0b760fe6dce8d")}</p>}
           </CollapsibleContent>
         </Collapsible>
       ) : null}
@@ -370,7 +370,7 @@ function ToolBlock({
   // effect below re-fetches — so the output shows up instead of being cached out.
   const loadedKey = React.useRef<string | null>(null);
   const { use, result } = group;
-  const toolName = use?.tool || result?.tool || "工具";
+  const toolName = use?.tool || result?.tool || t("nav.tools");
   const ToolIcon = toolName === "Bash" ? Terminal : Wrench;
   const running = !result;
   const ok = !!result && !result.is_error;
@@ -382,8 +382,8 @@ function ToolBlock({
   const rawCmd =
     use && use.summary.startsWith(toolName) ? use.summary.slice(toolName.length).trimStart() : (use?.summary ?? "");
   const cmd = toolInputText(toolName, rawCmd);
-  // status only — the full result lives behind the expand (【输出】), not previewed inline
-  const statusText = running ? "执行中…" : ok ? "✓" : "✕ 失败";
+  // status only — the full result lives behind the expand (【Salida】), not previewed inline
+  const statusText = running ? t("ui.457239ec50cfc840") : ok ? "✓" : t("ui.144de8cba4c7f036");
 
   // key over the seqs we'd load; changes when the result (or command) arrives.
   const detailKey = `${use?.seq ?? ""}:${result?.seq ?? ""}`;
@@ -391,19 +391,19 @@ function ToolBlock({
     if (!open || loadedKey.current === detailKey) return;
     let live = true;
     const segs: { label: string; seq: number }[] = [];
-    if (use) segs.push({ label: "命令", seq: use.seq });
-    if (result) segs.push({ label: "输出" + (result.is_error ? " ✕" : " ✓"), seq: result.seq });
+    if (use) segs.push({ label: t("nav.commands"), seq: use.seq });
+    if (result) segs.push({ label: t("ui.4df541da95d46474") + (result.is_error ? " ✕" : " ✓"), seq: result.seq });
     void Promise.all(
       segs.map((x) =>
         getDetail(x.seq)
-          .then((d) => d || "（空）")
-          .catch(() => "（加载失败）"),
+          .then((d) => d || t("ui.43a5359157cf2a94"))
+          .catch(() => t("ui.78d98ea54fba1526")),
       ),
     ).then((parts) => {
       if (!live) return;
       setDetail(
         segs
-          .map((x, i) => `【${x.label}】\n${x.label === "命令" ? toolInputText(toolName, parts[i]) : parts[i]}`)
+          .map((x, i) => `【${x.label}】\n${x.label === t("nav.commands") ? toolInputText(toolName, parts[i]) : parts[i]}`)
           .join("\n\n"),
       );
       loadedKey.current = detailKey;
@@ -457,7 +457,7 @@ function ToolBlock({
   return (
     <section
       ref={targetRef}
-      aria-label={focused ? `定位的工具调用 #${use?.seq}` : undefined}
+      aria-label={focused ? `Llamada a herramienta de posicionamiento #${use?.seq}` : undefined}
       className={focused ? "rounded-lg border-2 border-primary bg-primary/5 p-3 text-xs" : "text-xs"}
     >
       <button type="button" onClick={toggle} className="flex w-full items-start gap-2 py-1 text-left hover:bg-muted/40">
@@ -472,7 +472,7 @@ function ToolBlock({
       </button>
       {open && (
         <pre className="ml-7 mb-1 max-h-72 overflow-auto whitespace-pre-wrap break-all rounded bg-muted/50 p-2 font-mono text-[11px] leading-relaxed">
-          {detail ?? "加载中…"}
+          {detail ?? t("ui.205443ee88568e8c")}
         </pre>
       )}
     </section>
@@ -536,12 +536,12 @@ function MessageBlock({
         {showWorker && <span className={chip(group.worker)}>{group.worker}</span>}
         <span className={"min-w-0 flex-1 truncate " + tone}>
           {body}
-          {hasThinking && <span className="ml-1 text-[10px] text-muted-foreground">· 含推理</span>}
+          {hasThinking && <span className="ml-1 text-[10px] text-muted-foreground">{t("ui.0d256f19677f6d8b")}</span>}
         </span>
       </button>
       {open && (
         <pre className="ml-7 mb-1 max-h-72 overflow-auto whitespace-pre-wrap break-all rounded bg-muted/50 p-2 font-mono text-[11px] leading-relaxed">
-          {detail ?? "加载中…"}
+          {detail ?? t("ui.205443ee88568e8c")}
         </pre>
       )}
     </div>
@@ -767,8 +767,7 @@ export function Transcript({
             <span className="size-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:-0.15s]" />
             <span className="size-1.5 animate-bounce rounded-full bg-blue-500" />
           </span>
-          实时流式中…
-        </div>
+           {t("ui.1e139cf9804325bc")} </div>
       )}
     </div>
   );

@@ -12,6 +12,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import spanishCatalog from '../../public/locales/es.json';
 
 // ═══════════════════════════════════════════════════════════════
 // Configuración
@@ -30,7 +31,7 @@ export const RTL_LANGS: Lang[] = ['ar'];
 
 export const LANG_NAMES: Record<Lang, string> = {
   en: 'English',
-  zh: '中文',
+  zh: "chino",
   hi: 'हिन्दी',
   es: 'Español',
   ar: 'العربية',
@@ -48,7 +49,11 @@ export const LANG_NAMES: Record<Lang, string> = {
 const STORAGE_KEY = 'nexus_lang';
 
 let currentLang: Lang = DEFAULT_LANG;
-let translations: Record<string, string> = {};
+const defaultTranslations = flatten(spanishCatalog);
+const normalizedTranslations = Object.fromEntries(
+  Object.entries(defaultTranslations).map(([key, value]) => [key.trim().replace(/\s+/g, " "), value]),
+);
+let translations: Record<string, string> = defaultTranslations;
 let fallbackTranslations: Record<string, string> = {};
 
 function isRTL(lang: Lang): boolean {
@@ -104,9 +109,6 @@ export async function initI18n(): Promise<void> {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored && isValidLang(stored)) {
       lang = stored;
-    } else if (navigator.language) {
-      const nav = navigator.language.split('-')[0];
-      if (isValidLang(nav)) lang = nav;
     }
   }
 
@@ -117,7 +119,7 @@ export async function initI18n(): Promise<void> {
   ]);
 
   currentLang = lang;
-  translations = current;
+  translations = Object.keys(current).length ? current : defaultTranslations;
   fallbackTranslations = fallback;
 
   applyDir(lang);
@@ -144,7 +146,35 @@ function applyDir(lang: Lang): void {
 export function t(key: string): string {
   if (translations[key]) return translations[key];
   if (fallbackTranslations[key]) return fallbackTranslations[key];
+  if (defaultTranslations[key]) return defaultTranslations[key];
   return `[${key}]`;
+}
+
+/** Localize known system copy; leave unknown user data and protocol values intact. */
+export function localizeText(value: string): string {
+  if (currentLang !== 'es') return value;
+  if (defaultTranslations[value] !== undefined) return defaultTranslations[value];
+  const normalized = value.trim().replace(/\s+/g, ' ');
+  if (normalizedTranslations[normalized] !== undefined) return normalizedTranslations[normalized];
+  let result = value;
+  for (const [source, translated] of Object.entries(spanishCatalog.api_fragments)) {
+    result = result.split(source).join(translated);
+  }
+  return result;
+}
+
+/** Translate display fields from system catalogs without changing prompts or rules. */
+export function localizeApiDisplay<T>(value: T, path: string): T {
+  if (!/^\/(agents|tools|intercept|asset-intercept|update)(?:[/?]|$)/.test(path)) return value;
+  function visit(item: unknown): unknown {
+    if (Array.isArray(item)) return item.map(visit);
+    if (!item || typeof item !== 'object') return item;
+    return Object.fromEntries(Object.entries(item).map(([key, field]) => [key,
+      ['name', 'description', 'note', 'error', 'reason'].includes(key) && typeof field === 'string'
+        ? localizeText(field) : typeof field === 'object' ? visit(field) : field,
+    ]));
+  }
+  return visit(value) as T;
 }
 
 /**
@@ -158,7 +188,7 @@ export async function setLang(lang: Lang): Promise<void> {
     : {};
 
   currentLang = lang;
-  translations = current;
+  translations = Object.keys(current).length ? current : defaultTranslations;
   fallbackTranslations = fallback;
 
   if (typeof window !== 'undefined') {

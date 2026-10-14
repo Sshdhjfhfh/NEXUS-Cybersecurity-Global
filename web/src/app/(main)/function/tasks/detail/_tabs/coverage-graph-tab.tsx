@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 import type { Graph as G6Graph } from "@antv/g6";
 import {
@@ -28,7 +30,7 @@ import { api } from "@/lib/api";
 import type { CoverageAssetRef, CoverageAssetRefs, CoverageGraphEdge, CoverageGraphNode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-// 每个父节点下、同一类型的子节点默认展示的数量；超出折叠，"展示更多"每次再拉这么多。
+// el número predeterminado de nodos secundarios del mismo tipo que se muestran debajo de cada nodo principal; supera el plegado，"Mostrar más"tira tanto cada vez。
 const FOLD_LIMIT = 20;
 const FOLD_STEP = 20;
 
@@ -37,18 +39,18 @@ type Kind = CoverageGraphNode["kind"];
 type KindMeta = { label: string; icon: LucideIcon; iconBg: string; hex: string; size: number };
 
 const kindMeta: Record<Kind, KindMeta> = {
-  company: { label: "公司", icon: Building2, iconBg: "bg-slate-500", hex: "#64748b", size: 46 },
-  root_domain: { label: "根域名", icon: Globe, iconBg: "bg-indigo-500", hex: "#6366f1", size: 38 },
-  subdomain: { label: "子域名", icon: Waypoints, iconBg: "bg-blue-500", hex: "#3b82f6", size: 30 },
+  company: { label: t("ui.a4b1ff8ed3a3acf3"), icon: Building2, iconBg: "bg-slate-500", hex: "#64748b", size: 46 },
+  root_domain: { label: "nombre de dominio raíz", icon: Globe, iconBg: "bg-indigo-500", hex: "#6366f1", size: 38 },
+  subdomain: { label: "nombre de subdominio", icon: Waypoints, iconBg: "bg-blue-500", hex: "#3b82f6", size: 30 },
   ip: { label: "IP", icon: Server, iconBg: "bg-cyan-600", hex: "#0891b2", size: 28 },
-  service: { label: "服务", icon: Radio, iconBg: "bg-amber-500", hex: "#f59e0b", size: 26 },
+  service: { label: t("ui.1efa3b455a06245e"), icon: Radio, iconBg: "bg-amber-500", hex: "#f59e0b", size: 26 },
   app: { label: "App", icon: AppWindow, iconBg: "bg-fuchsia-500", hex: "#d946ef", size: 26 },
-  endpoint: { label: "端点", icon: Link2, iconBg: "bg-rose-500", hex: "#f43f5e", size: 20 },
+  endpoint: { label: t("ui.eca76e317424f331"), icon: Link2, iconBg: "bg-rose-500", hex: "#f43f5e", size: 20 },
 };
 
-// G6 节点图标用平台一致的 lucide 图标：把 lucide 的 SVG 路径（v1.22）渲染成白色描边的
-// data URI，作为节点 iconSrc（白色在实色/灰色底上都清晰）。手写内嵌，避免 react-dom/server
-// 在 React19/Next 客户端打包的问题。
+// G6 Los íconos de los nodos son consistentes con la plataforma. lucide Icono: Poner lucide de SVG camino（v1.22）renderizado con trazos blancos
+// data URI，como nodo iconSrc（blanco en color sólido/claro sobre fondo gris). Escritura a mano en línea para evitar react-dom/server
+// en React19/Next problema de empaquetado del cliente。
 function svgUri(inner: string, filled = false): string {
   const attrs = filled
     ? 'fill="#fff" stroke="none"'
@@ -87,7 +89,7 @@ const FOLD_ICON = svgUri(
 );
 
 // ---------------------------------------------------------------------------
-// Folding: full graph → currently-visible node/edge set (自顶向下级联折叠)。
+// Folding: full graph → currently-visible node/edge set (Plegado en cascada de arriba hacia abajo)。
 // ---------------------------------------------------------------------------
 type FoldNode = {
   fold: true;
@@ -175,7 +177,7 @@ function computeVisible(
 }
 
 // ---------------------------------------------------------------------------
-// G6 数据映射。自定义字段放节点顶层（G6 v5 官方 force 示例约定：style/layout 回调直接读 d.<field>）。
+// G6 Mapeo de datos. Coloque campos personalizados en el nivel superior de los nodos（G6 v5 Oficial force convención de ejemplo：style/layout Devolución de llamada para leer directamente d.<field>）。
 // ---------------------------------------------------------------------------
 type G6NodeDatum = {
   id: string;
@@ -191,8 +193,8 @@ function trunc(s: string, n = 26): string {
   return s.length > n ? `${s.slice(0, n - 1)}…` : s;
 }
 
-// 图里的节点文案：服务不显示完整 URL，只显示 端口·标题·状态码；端点只显示 path。
-// 其余类型沿用后端给的 label。
+// Copia del nodo en la imagen: el servicio no se muestra completamente URL，Mostrar solo puerto·Título·código de estado; El punto final solo muestra path。
+// Los tipos restantes siguen los proporcionados por el backend. label。
 function graphLabel(n: CoverageGraphNode): string {
   if (n.kind === "service") {
     const parts: string[] = [];
@@ -205,7 +207,7 @@ function graphLabel(n: CoverageGraphNode): string {
     try {
       return new URL(n.url).pathname || "/";
     } catch {
-      /* 非法 URL：回退到完整 label */
+      /* ilegal URL：volver al máximo label */
     }
   }
   return n.label;
@@ -220,7 +222,7 @@ function toG6Nodes(renderNodes: RenderNode[]): G6NodeDatum[] {
         fold: true,
         tested: false,
         inScope: false,
-        lbl: `还有 ${rn.hidden.length} 个${kindMeta[rn.kind].label}`,
+        lbl: `y ${rn.hidden.length} ${kindMeta[rn.kind].label}`,
         size: 24,
       };
     }
@@ -236,11 +238,11 @@ function toG6Nodes(renderNodes: RenderNode[]): G6NodeDatum[] {
   });
 }
 
-// G6 的类型把自定义字段归在 data 下，但官方 force 示例（及运行时）按顶层读 d.<field>。
-// 回调形参用 unknown 满足 G6 签名，内部用 nd() 强转回我们的顶层结构。
+// G6 El tipo de campo personalizado pertenece a data Abajo, pero oficial force Ejemplo (y tiempo de ejecución) leído por nivel superior d.<field>。
+// para parámetros de devolución de llamada unknown Satisfecho G6 Firma, uso interno nd() Transferencia forzada de regreso a nuestra estructura de nivel superior。
 const nd = (d: unknown) => d as G6NodeDatum;
 
-// 已测=实色高亮；范围内未测=灰；范围外/折叠=更淡的灰 + 虚线描边。
+// Probado=Resaltado de color sólido; no medido dentro del rango=gris; fuera de rango/doblar=gris más claro + trazo discontinuo。
 function nodeFill(d: G6NodeDatum): string {
   if (d.fold) return "#f1f5f9";
   if (!d.inScope) return "#e2e8f0";
@@ -254,7 +256,7 @@ function nodeStroke(d: G6NodeDatum): string {
 }
 
 // ---------------------------------------------------------------------------
-// 抽屉：资产节点看详情；折叠节点看隐藏列表 + "展示更多"。
+// Cajón: Nodo de activo para ver detalles; plegar el nodo para ver la lista oculta + "Mostrar más"。
 // ---------------------------------------------------------------------------
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   if (children === undefined || children === null || children === "") return null;
@@ -284,8 +286,7 @@ function RefList({ title, items }: { title: string; items: CoverageAssetRef[] })
             <span className="min-w-32 flex-1 break-words text-foreground">{r.summary || "—"}</span>
             {r.inherited && r.source_task_id && (
               <Badge variant="outline" className="shrink-0">
-                来源 #{r.source_task_id} · 只读
-              </Badge>
+                 {t("ui.6f57fc1321176015")}{r.source_task_id}  {t("ui.8738f594507804ca")} </Badge>
             )}
           </div>
         ))}
@@ -318,7 +319,7 @@ function AssetSheet({
         if (!cancelled) setRefs(r);
       })
       .catch(() => {
-        /* 无关联或出错：不展示该区块 */
+        /* Sin correlación o error: no mostrar este bloque */
       });
     return () => {
       cancelled = true;
@@ -345,42 +346,42 @@ function AssetSheet({
             <ScrollArea className="min-h-0 flex-1">
               <div className="flex w-full min-w-0 flex-col gap-4 p-4">
                 <section>
-                  <h4 className="text-muted-foreground mb-1 text-xs font-medium">属性</h4>
-                  <DetailRow label="类型">{meta.label}</DetailRow>
-                  <DetailRow label="测试状态">
+                  <h4 className="text-muted-foreground mb-1 text-xs font-medium">{t("ui.2b39361df203deb5")}</h4>
+                  <DetailRow label={t("ui.e103bf13e6d917d3")}>{meta.label}</DetailRow>
+                  <DetailRow label={t("ui.10dd7b30f26dbb45")}>
                     {node.in_scope ? (
                       node.tested ? (
-                        <span className="text-emerald-600 dark:text-emerald-400">已测试</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">{t("ui.c5de813f96ce7814")}</span>
                       ) : (
-                        <span className="text-neutral-500">未测试</span>
+                        <span className="text-neutral-500">{t("ui.985d8ae6e6dc8177")}</span>
                       )
                     ) : (
-                      <span className="text-neutral-400">范围外（连接节点）</span>
+                      <span className="text-neutral-400">{t("ui.0232cb54f15d8a5b")}</span>
                     )}
                   </DetailRow>
-                  <DetailRow label="域名">{node.domain}</DetailRow>
-                  <DetailRow label="根域名">{node.root_domain}</DetailRow>
+                  <DetailRow label={"nombre de dominio"}>{node.domain}</DetailRow>
+                  <DetailRow label={"nombre de dominio raíz"}>{node.root_domain}</DetailRow>
                   <DetailRow label="IP">{node.ip}</DetailRow>
-                  <DetailRow label="端口">{node.port ? node.port : undefined}</DetailRow>
+                  <DetailRow label={"puerto"}>{node.port ? node.port : undefined}</DetailRow>
                   <DetailRow label="URL">
                     {node.url ? <span className="font-mono text-xs break-all">{node.url}</span> : undefined}
                   </DetailRow>
-                  <DetailRow label="标题">{node.page_title}</DetailRow>
-                  <DetailRow label="状态码">{node.status_code ? node.status_code : undefined}</DetailRow>
+                  <DetailRow label={t("ui.4c08a5d5feb22ce2")}>{node.page_title}</DetailRow>
+                  <DetailRow label={"código de estado"}>{node.status_code ? node.status_code : undefined}</DetailRow>
                   <DetailRow label="App">{node.app_name}</DetailRow>
-                  <DetailRow label="资产ID">
+                  <DetailRow label={t("ui.c52c647002c69e5c")}>
                     {node.asset_id ? <span className="font-mono text-xs">{node.asset_id}</span> : undefined}
                   </DetailRow>
                 </section>
                 {refs && (refs.intents.length > 0 || refs.facts.length > 0 || refs.findings.length > 0) && (
                   <section className="flex flex-col gap-3 border-t pt-3">
-                    <RefList title="关联意图" items={refs.intents} />
-                    <RefList title="关联事实" items={refs.facts} />
-                    <RefList title="关联发现" items={refs.findings} />
+                    <RefList title={t("ui.d0d5a7b620d05853")} items={refs.intents} />
+                    <RefList title={t("ui.ab197588d2031f82")} items={refs.facts} />
+                    <RefList title={t("ui.d571a6b006635bf8")} items={refs.findings} />
                   </section>
                 )}
                 <section className="border-t pt-3">
-                  <h4 className="text-muted-foreground mb-1.5 text-xs font-medium">原始数据</h4>
+                  <h4 className="text-muted-foreground mb-1.5 text-xs font-medium">{t("ui.0f284d92e5c09483")}</h4>
                   <pre className="bg-muted/50 text-foreground max-w-full overflow-hidden rounded-md border p-3 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap">
                     {raw}
                   </pre>
@@ -414,9 +415,9 @@ function FoldSheet({
           <>
             <SheetHeader className="border-b p-4">
               <SheetTitle className="text-base">
-                未展示的{meta.label}（{fold.hidden.length}）
+                 {t("ui.154b0cc1a55947de")}{meta.label}（{fold.hidden.length}）
               </SheetTitle>
-              <p className="text-muted-foreground text-xs">已测优先展示。点「展示更多」把下一批拉进图里。</p>
+              <p className="text-muted-foreground text-xs">{t("ui.104f3f044e866311")}</p>
             </SheetHeader>
             <ScrollArea className="min-h-0 flex-1">
               <div className="flex flex-col gap-1 p-3">
@@ -445,7 +446,7 @@ function FoldSheet({
             </ScrollArea>
             <div className="border-t p-3">
               <Button className="w-full" variant="outline" onClick={() => onShowMore(fold.groupId)}>
-                展示更多（+{FOLD_STEP}）
+                 {t("ui.07f5e5698aba6872")}{FOLD_STEP}）
               </Button>
             </div>
           </>
@@ -468,7 +469,7 @@ function GraphInner({ taskId, coverageEnabled = true }: { taskId: string; covera
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const graphRef = React.useRef<G6Graph | null>(null);
-  // click 处理需要最新的 key→RenderNode 映射（G6 事件回调闭包外读 ref）。
+  // click El procesamiento requiere la última versión key→RenderNode Mapeo（G6 Lectura externa de cierre de devolución de llamada de evento ref）。
   const renderMapRef = React.useRef<Map<string, RenderNode>>(new Map());
   const gDataRef = React.useRef<{ nodes: G6NodeDatum[]; edges: { source: string; target: string }[] }>({
     nodes: [],
@@ -480,13 +481,13 @@ function GraphInner({ taskId, coverageEnabled = true }: { taskId: string; covera
     api
       .taskCoverageGraph(taskId)
       .then((g) => {
-        // 资产覆盖度功能关闭(B1)：仍出图(范围内资产/company 关联依旧可见)，但抹平
-        // tested 状态——不显示测试进度、不做已测高亮。
+        // La función de cobertura de activos está desactivada(B1)：Todavía dibujando(Activos dentro del alcance/company La asociación aún es visible.)，Pero suave
+        // tested Estado: no muestra el progreso de la prueba, no resalta los resultados medidos。
         const nodes = coverageEnabled ? (g.nodes ?? []) : (g.nodes ?? []).map((n) => ({ ...n, tested: false }));
         setData({ nodes, edges: g.edges ?? [] });
       })
       .catch(() => {
-        /* 保留上一次数据 */
+        /* Mantener los últimos datos */
       })
       .finally(() => setLoading(false));
   }, [taskId, coverageEnabled]);
@@ -503,14 +504,14 @@ function GraphInner({ taskId, coverageEnabled = true }: { taskId: string; covera
     [data, expanded],
   );
 
-  // 结构签名：只在可见节点/边集合变化时重建图 + 重跑布局，避免无谓抖动。
+  // Firma estructural: solo nodos visibles/Reconstruir el gráfico cuando cambia el conjunto de bordes + Vuelva a ejecutar el diseño para evitar fluctuaciones innecesarias。
   const sig = React.useMemo(
     () =>
       `${renderNodes.map((n) => `${n.key}:${n.fold ? "f" : n.node.tested ? "t" : "u"}`).sort().join(",")}|${renderEdges.length}`,
     [renderNodes, renderEdges],
   );
 
-  // 维护 gDataRef + renderMapRef（供事件与图数据应用读取）。
+  // Mantenimiento gDataRef + renderMapRef（Para lectura por aplicaciones de datos de eventos y gráficos）。
   gDataRef.current = {
     nodes: toG6Nodes(renderNodes),
     edges: renderEdges.map((e) => ({ source: e.src, target: e.dst })),
@@ -523,15 +524,15 @@ function GraphInner({ taskId, coverageEnabled = true }: { taskId: string; covera
     const graph = graphRef.current;
     if (!graph || graph.destroyed) return;
     graph.setData(gDataRef.current);
-    // render() 异步跑 d3-force 布局;若组件在布局落地前被卸载/销毁,g6 会在已清空的
-    // context 上访问 transform 抛错(见 runtime/layout transformDataAfterLayout)。这是纯
-    // teardown 竞态,吞掉它,不影响功能;真正的渲染错误(图未销毁)仍打日志。
+    // render() ejecución asincrónica d3-force diseño;Si el componente se descarga antes de implementar el diseño/destruir,g6 estará en el claro
+    // context Acceso en transform Error arrojado(Ver runtime/layout transformDataAfterLayout)。Esto es puro
+    // teardown Competencia,trágalo,No afecta la funcionalidad;error de renderizado verdadero(La imagen no se destruye)todavía registrando。
     void graph.render().catch((err) => {
       if (!graph.destroyed) console.error("[coverage-graph] render:", err);
     });
   }, []);
 
-  // 建图（一次）。动态 import 避开 SSR/静态导出期的 window 依赖。
+  // Construcción de mapas (una vez). Dinámico import evitar SSR/Período de exportación estático window Dependencia。
   React.useEffect(() => {
     let destroyed = false;
     let graph: G6Graph | null = null;
@@ -571,7 +572,7 @@ function GraphInner({ taskId, coverageEnabled = true }: { taskId: string; covera
           collide: { radius: (d: unknown) => (nd(d).size ? nd(d).size : 20) + 8 },
           link: {
             distance: (edge: unknown) => {
-              // 顶层（公司/根域名）离子节点远一点，叶子近一点。edge.source 可能是 id 或已解析节点。
+              // Nivel superior (empresa/nombre de dominio raíz) más lejos del nodo iónico y más cerca de la hoja。edge.source Probablemente id O el nodo ha sido resuelto。
               const s = (edge as { source: string | { id?: string } }).source;
               const srcId = typeof s === "string" ? s : (s?.id ?? "");
               const src = renderMapRef.current.get(srcId);
@@ -598,19 +599,19 @@ function GraphInner({ taskId, coverageEnabled = true }: { taskId: string; covera
     })();
     return () => {
       destroyed = true;
-      // 先停布局再销毁:尽量缩短"布局在飞、context 被清空"的竞态窗口。
+      // Primero detenga el diseño y luego destrúyalo.:Mantenlo lo más corto posible."El diseño está volando.、context vacío"ventana de carrera para。
       try {
         graph?.stopLayout();
       } catch {
-        /* 图可能尚未建成或已无布局上下文 */
+        /* Es posible que el diagrama aún no esté creado o que no tenga contexto de diseño */
       }
       graph?.destroy();
       graphRef.current = null;
     };
   }, [applyData]);
 
-  // 可见集合变化 → 重新灌数据 + 布局。sig 只作为重排触发器（applyData 读 gDataRef）。
-  // biome-ignore lint/correctness/useExhaustiveDependencies: sig 是刻意的重排触发依赖
+  // Cambios visibles en la colección. → datos de recarga + diseño。sig sólo como activador de reorden（applyData leer gDataRef）。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sig El reordenamiento deliberado desencadena dependencias
   React.useEffect(() => {
     applyData();
   }, [sig, applyData]);
@@ -639,24 +640,24 @@ function GraphInner({ taskId, coverageEnabled = true }: { taskId: string; covera
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
 
-      {/* 图例 + 统计 + 刷新（叠加层） */}
+      {/* leyenda + Estadísticas + Actualizar (superposición） */}
       <div className="bg-card/95 pointer-events-auto absolute top-3 left-3 flex max-w-[340px] flex-col gap-2.5 rounded-lg border p-3 text-xs shadow-sm backdrop-blur">
         <div className="flex items-center justify-between gap-3">
           {total > 0 ? (
             <span className="text-muted-foreground">
-              范围内 <span className="text-foreground font-semibold tabular-nums">{inScope}</span>
+               {t("ui.ae24a8cf1cb51ff9")} <span className="text-foreground font-semibold tabular-nums">{inScope}</span>
               {coverageEnabled && (
                 <>
                   {" "}
-                  · 已测{" "}
+                   {t("ui.684573caa3a2f614")}{" "}
                   <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{tested}</span>
                 </>
               )}
             </span>
           ) : (
-            <span className="text-muted-foreground">{loading ? "加载中…" : "暂无范围内资产（先锚定任务范围）"}</span>
+            <span className="text-muted-foreground">{loading ? t("ui.205443ee88568e8c") : t("ui.9e42074476cfbc77")}</span>
           )}
-          <Button variant="ghost" size="icon" className="size-6" onClick={fetchGraph} title="刷新">
+          <Button variant="ghost" size="icon" className="size-6" onClick={fetchGraph} title={t("common.refresh")}>
             <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
           </Button>
         </div>
@@ -678,20 +679,16 @@ function GraphInner({ taskId, coverageEnabled = true }: { taskId: string; covera
           {coverageEnabled && (
             <>
               <span className="inline-flex items-center gap-1.5">
-                <span className="size-3 rounded-full bg-emerald-500" /> 已测（高亮）
-              </span>
+                <span className="size-3 rounded-full bg-emerald-500" />  {t("ui.c63586bf21a2ffb4")} </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="size-3 rounded-full bg-neutral-400" /> 未测
-              </span>
+                <span className="size-3 rounded-full bg-neutral-400" />  {t("ui.985d8ae6e6dc8177")} </span>
             </>
           )}
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-3 rounded-full border border-dashed border-neutral-400 bg-neutral-200" /> 范围外
-          </span>
+            <span className="size-3 rounded-full border border-dashed border-neutral-400 bg-neutral-200" />  {t("ui.0d4ec7cfdf17afab")} </span>
         </div>
         <p className="text-muted-foreground/80 border-border/60 border-t pt-2 leading-relaxed">
-          力导向布局，可拖拽节点、滚轮缩放；灰色「⋯」是折叠节点，点开可展开更多。
-        </p>
+           {t("ui.161cbd0e17508a88")} </p>
       </div>
 
       <AssetSheet node={selectedAsset} taskId={taskId} onOpenChange={(o) => !o && setSelectedAsset(null)} />

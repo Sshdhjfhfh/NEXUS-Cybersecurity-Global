@@ -1,3 +1,3 @@
-// Mock 开关。构建期注入的公开变量（NEXT_PUBLIC_ 前缀才在浏览器可读）。
-// Vercel 上设 NEXT_PUBLIC_MOCK=1 即整站走 mock、无需后端。
+// Mock interruptor. Variables públicas inyectadas durante el tiempo de construcción.（NEXT_PUBLIC_ el prefijo solo es legible por el navegador）。
+// Vercel conjunto superior NEXT_PUBLIC_MOCK=1 Recorre toda la estación. mock、No se requiere backend。
 export const MOCK = process.env.NEXT_PUBLIC_MOCK === "1";

@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 import {
   RadioIcon,
@@ -76,7 +78,7 @@ function tryFormatJSON(s: string): string {
   }
 }
 
-// 复制当前框内文本的小按钮。复制成功后短暂显示对勾。text 为空/仅占位符时禁用。
+// Un pequeño botón que copia el texto en el cuadro actual. Aparecerá una marca de verificación brevemente después de que la copia se realice correctamente.。text vacío/Deshabilitado cuando solo se utiliza marcador de posición。
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = React.useState(false);
   const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,14 +90,14 @@ function CopyButton({ text }: { text: string }) {
     try {
       await navigator.clipboard.writeText(text);
     } catch {
-      // navigator.clipboard 在非安全上下文(如 http 局域网)不可用，回退到 execCommand。
+      // navigator.clipboard En contexto no seguro(si http LAN)No disponible, recurra a execCommand。
       const ta = document.createElement("textarea");
       ta.value = text;
       ta.style.position = "fixed";
       ta.style.opacity = "0";
       document.body.appendChild(ta);
       ta.select();
-      try { document.execCommand("copy"); } catch { /* 忽略：不支持则静默 */ }
+      try { document.execCommand("copy"); } catch { /* Ignorar: silencioso si no es compatible */ }
       document.body.removeChild(ta);
     }
     setCopied(true);
@@ -109,7 +111,7 @@ function CopyButton({ text }: { text: string }) {
       size="icon"
       className="size-5 shrink-0"
       disabled={disabled}
-      title={copied ? "已复制" : "复制内容"}
+      title={copied ? t("ui.d8dd878fb14359e9") : t("ui.8edb20c9f2730699")}
       onClick={copy}
     >
       {copied ? <CheckIcon className="size-3 text-emerald-600" /> : <CopyIcon className="size-3" />}
@@ -139,15 +141,15 @@ export default function LLMRecordsPage() {
   const [selected, setSelected] = React.useState<LLMRecordItem | null>(null);
   const [detail, setDetail] = React.useState<LLMRecordDetail | null>(null);
   const [detailLoading, setDetailLoading] = React.useState(false);
-  // 归一化视图 / HTTP 原文视图。原文是排查 provider 侧问题的唯一依据：归一化视图
-  // 不含工具 schema，响应里也没有 tool_use 块。
+  // vista normalizada / HTTP Vista del texto original. El texto original es una solución de problemas. provider La única base para problemas secundarios: vista normalizada
+  // Herramientas no incluidas schema，Tampoco en la respuesta tool_use Bloquear。
   const [rawView, setRawView] = React.useState(false);
 
   const hasRaw = !!(detail?.raw_request || detail?.raw_response);
-  // 开关保持用户选择，但切到一条无原文的旧记录时自动落回解析视图，而不是显示空白。
+  // El modificador mantiene la selección del usuario, pero al cambiar a un registro antiguo sin texto original, vuelve automáticamente a la vista de análisis en lugar de mostrar un espacio en blanco.。
   const showRaw = rawView && hasRaw;
-  // 原文请求体是 JSON，pretty-print 只改排版不改语义，便于阅读；原文响应是 SSE
-  // 帧，tryFormatJSON 解析失败会原样返回，故两边共用一个函数即可。
+  // El cuerpo de la solicitud original es JSON，pretty-print Solo cambia el formato pero no la semántica, haciéndolo más fácil de leer; la respuesta original es SSE
+  // Marco，tryFormatJSON Si el análisis falla, se devolverá tal cual, para que ambas partes puedan compartir una función.。
   const reqText = showRaw
     ? detail?.raw_request && tryFormatJSON(detail.raw_request)
     : detail?.request_body && tryFormatJSON(detail.request_body);
@@ -260,7 +262,7 @@ export default function LLMRecordsPage() {
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <RadioIcon className="h-5 w-5 text-muted-foreground" />
-          <h1 className="text-xl font-semibold tracking-tight">LLM 录制</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{t("ui.c4340f9f49791ffe")}</h1>
           <Badge variant="secondary">{total}</Badge>
         </div>
       </div>
@@ -270,7 +272,7 @@ export default function LLMRecordsPage() {
         <div className="relative max-w-sm flex-1">
           <SearchIcon className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="搜索 Session ID..."
+            placeholder={t("ui.3540a43a62a9fed3")}
             value={session}
             onChange={(e) => setSession(e.target.value)}
             className="h-8 pl-8"
@@ -284,13 +286,12 @@ export default function LLMRecordsPage() {
         />
         <Select value={pickedTask} onValueChange={setPickedTask}>
           <SelectTrigger size="sm" className="w-56">
-            <SelectValue placeholder="选择任务…" />
+            <SelectValue placeholder={t("ui.ada1ec0d37f70e13")} />
           </SelectTrigger>
           <SelectContent>
             {tasks.length === 0 ? (
               <SelectItem value="__none__" disabled>
-                暂无任务记录
-              </SelectItem>
+                 {t("ui.6fe4cf2b5420d1fa")} </SelectItem>
             ) : (
               tasks.map((t) => (
                 <SelectItem key={t.task_id} value={t.task_id}>
@@ -306,12 +307,11 @@ export default function LLMRecordsPage() {
           size="sm"
           className="h-8"
           disabled={!pickedTask || deleting}
-          title={pickedTask ? undefined : "先在上方选择任务"}
+          title={pickedTask ? undefined : t("ui.22736755a6c02f4d")}
           onClick={() => setDeleteOpen(true)}
         >
           <Trash2Icon className="size-3.5" />
-          删除任务对话
-        </Button>
+           {t("ui.33fb871169298192")} </Button>
         <Select value={String(size)} onValueChange={(v) => setSize(Number(v))}>
           <SelectTrigger size="sm" className="w-28">
             <SelectValue />
@@ -319,8 +319,7 @@ export default function LLMRecordsPage() {
           <SelectContent>
             {PAGE_SIZES.map((n) => (
               <SelectItem key={n} value={String(n)}>
-                {n} / 页
-              </SelectItem>
+                {n}  {t("ui.cbb0b04cc92f5cb7")} </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -341,7 +340,7 @@ export default function LLMRecordsPage() {
               recEnabled ? "text-foreground" : "text-muted-foreground",
             )}
           >
-            {recEnabled ? "录制中" : "已关闭"}
+            {recEnabled ? t("ui.5d9f3dd657d0519e") : t("ui.e53ed75c1535ffcd")}
           </label>
         </div>
 
@@ -380,14 +379,14 @@ export default function LLMRecordsPage() {
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-card">
                 <TableRow>
-                  <TableHead className="w-[130px]">时间</TableHead>
-                  <TableHead className="w-[60px]">任务</TableHead>
+                  <TableHead className="w-[130px]">{t("common.time")}</TableHead>
+                  <TableHead className="w-[60px]">{t("nav.tasks")}</TableHead>
                   <TableHead className="w-[90px]">Worker</TableHead>
                   <TableHead className="w-[100px]">Profile</TableHead>
                   <TableHead className="w-[140px]">Model</TableHead>
-                  <TableHead className="w-[70px]">延迟</TableHead>
+                  <TableHead className="w-[70px]">{t("ui.4e3f5cb374020f7c")}</TableHead>
                   <TableHead className="w-[90px]">Tokens</TableHead>
-                  <TableHead className="w-[60px]">状态</TableHead>
+                  <TableHead className="w-[60px]">{t("common.status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -400,8 +399,7 @@ export default function LLMRecordsPage() {
                 ) : records.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="py-12 text-center text-sm text-muted-foreground">
-                      暂无 LLM 调用记录
-                    </TableCell>
+                       {t("ui.e35c50d2285051fc")} </TableCell>
                   </TableRow>
                 ) : (
                   records.map((rec) => (
@@ -444,7 +442,7 @@ export default function LLMRecordsPage() {
                         {rec.status === "ok" ? (
                           <Badge variant="secondary" className="text-xs text-emerald-600">OK</Badge>
                         ) : (
-                          <Badge variant="destructive" className="text-xs">Error</Badge>
+                          <Badge variant="destructive" className="text-xs">{t("ui.54a0e8c17ebb21a1")}</Badge>
                         )}
                       </TableCell>
                     </TableRow>
@@ -471,7 +469,7 @@ export default function LLMRecordsPage() {
               </Badge>
               {selected.task_id && (
                 <Badge variant="outline" className="text-xs font-mono">
-                  任务 #{selected.task_id}
+                   {t("ui.5830a8ecca3afa54")}{selected.task_id}
                 </Badge>
               )}
               <span className="text-xs text-muted-foreground">
@@ -483,20 +481,19 @@ export default function LLMRecordsPage() {
               {selected.status === "ok" ? (
                 <Badge variant="secondary" className="text-xs text-emerald-600">OK</Badge>
               ) : (
-                <Badge variant="destructive" className="text-xs">Error</Badge>
+                <Badge variant="destructive" className="text-xs">{t("ui.54a0e8c17ebb21a1")}</Badge>
               )}
-              {/* 原文视图开关。旧记录没有原文，此时禁用而非静默回退，避免看着像
-                  「原文与解析一致」。 */}
+              {/* Cambio de vista de texto original. El registro antiguo no tiene el texto original. En este momento, está deshabilitado en lugar de retroceder silenciosamente para evitar que parezca
+                  「El texto original es consistente con el análisis.」。 */}
               <Button
                 variant={showRaw ? "secondary" : "ghost"}
                 size="sm"
                 className="ml-auto h-7 shrink-0 text-xs"
                 disabled={!hasRaw}
-                title={hasRaw ? "查看与 provider 实际收发的 HTTP 原文" : "该记录录制于此功能上线前，无原文"}
+                title={hasRaw ? t("ui.b9a26fc79f09bfe2") : t("ui.019851ddf261b12c")}
                 onClick={() => setRawView((v) => !v)}
               >
-                原文
-              </Button>
+                 {t("ui.3276d773e20714eb")} </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -510,39 +507,37 @@ export default function LLMRecordsPage() {
             <div className="grid min-h-0 flex-1 grid-cols-2 divide-x">
               <div className="flex min-h-0 min-w-0 flex-col">
                 <div className="flex items-center gap-2 border-b py-0.5 pr-1.5 pl-3 text-[11px] font-medium text-muted-foreground">
-                  <span>Request{showRaw && " · 原文"}</span>
+                  <span>Request{showRaw && t("ui.1528455b3308d61e")}</span>
                   <CopyButton text={reqText || ""} />
                 </div>
                 <div className="min-h-0 flex-1 overflow-auto">
                   {detailLoading ? (
                     <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
                       <Loader2Icon className="size-3.5 animate-spin" />
-                      加载…
-                    </div>
+                       {t("ui.205443ee88568e8c")} </div>
                   ) : (
                     <pre className="p-3 font-mono text-xs break-all whitespace-pre-wrap">
-                      {reqText || "（空）"}
+                      {reqText || t("ui.43a5359157cf2a94")}
                     </pre>
                   )}
                 </div>
               </div>
               <div className="flex min-h-0 min-w-0 flex-col">
                 <div className="flex items-center gap-2 border-b py-0.5 pr-1.5 pl-3 text-[11px] font-medium text-muted-foreground">
-                  <span>Response{showRaw && " · 原文（SSE）"}</span>
+                  <span>Response{showRaw && t("ui.b3f5ec64d752bd79")}</span>
                   <CopyButton text={respText || ""} />
                 </div>
                 <div className="min-h-0 flex-1 overflow-auto">
                   {detailLoading ? (
                     <div className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
                       <Loader2Icon className="size-3.5 animate-spin" />
-                      加载…
-                    </div>
+                       {t("ui.205443ee88568e8c")} </div>
                   ) : (
                     <pre className={cn(
                       "p-3 font-mono text-xs break-all whitespace-pre-wrap",
                       selected.status !== "ok" && "text-red-600 dark:text-red-400",
                     )}>
-                      {respText || "（空）"}
+                      {respText || t("ui.43a5359157cf2a94")}
                     </pre>
                   )}
                 </div>
@@ -555,13 +550,12 @@ export default function LLMRecordsPage() {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>删除任务「{pickedTask}」的全部 LLM 对话？</AlertDialogTitle>
+            <AlertDialogTitle>{t("ui.8b4c60315a5b867f")}{pickedTask}{t("ui.b3a626bb7741d48f")}</AlertDialogTitle>
             <AlertDialogDescription>
-              将永久删除该任务的所有 LLM 调用记录（含请求/响应原文），此操作不可撤销。
-            </AlertDialogDescription>
+               {t("ui.5146dd05258c2944")} </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -570,7 +564,7 @@ export default function LLMRecordsPage() {
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting ? "删除中…" : "确认删除"}
+              {deleting ? t("ui.22f067cf9e0581a7") : t("ui.b4bb6c6db58f7c78")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

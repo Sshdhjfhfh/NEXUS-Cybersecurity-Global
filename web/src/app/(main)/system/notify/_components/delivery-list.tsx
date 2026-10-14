@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import { RefreshCwIcon, RotateCcwIcon } from "lucide-react";
@@ -14,7 +16,7 @@ import { api } from "@/lib/api";
 import { statusMeta, toneClasses } from "@/lib/status";
 import type { NotificationChannel, NotificationDelivery } from "@/lib/types";
 
-// DeliveryList 是投递记录表：可按渠道与状态筛选，失败项可手动重发。
+// DeliveryList Es una tabla de registro de entregas: se puede filtrar por canal y estado, y los artículos fallidos se pueden reenviar manualmente.。
 export function DeliveryList({ channels }: { channels: NotificationChannel[] }) {
   const [rows, setRows] = React.useState<NotificationDelivery[]>([]);
   const [total, setTotal] = React.useState(0);
@@ -32,7 +34,7 @@ export function DeliveryList({ channels }: { channels: NotificationChannel[] }) 
         setRows(r.deliveries);
         setTotal(r.total);
       })
-      .catch((e) => toast.error("读取投递记录失败：" + (e as Error).message))
+      .catch((e) => toast.error(t("ui.ca2e02a3478ad953") + (e as Error).message))
       .finally(() => setLoading(false));
   }, [channelID, state, page]);
   React.useEffect(() => {
@@ -42,10 +44,10 @@ export function DeliveryList({ channels }: { channels: NotificationChannel[] }) 
   async function retry(id: number) {
     try {
       await api.notifyRetryDelivery(id);
-      toast.success("已重新入队");
+      toast.success(t("ui.9ec71268f69de79b"));
       load();
     } catch (e) {
-      toast.error("重发失败：" + (e as Error).message);
+      toast.error(t("ui.6279182a3a647a2f") + (e as Error).message);
     }
   }
 
@@ -62,10 +64,10 @@ export function DeliveryList({ channels }: { channels: NotificationChannel[] }) 
           }}
         >
           <SelectTrigger size="sm" className="w-44">
-            <SelectValue placeholder="全部渠道" />
+            <SelectValue placeholder={t("ui.564476ed1c5389dc")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">全部渠道</SelectItem>
+            <SelectItem value="all">{t("ui.564476ed1c5389dc")}</SelectItem>
             {channels.map((c) => (
               <SelectItem key={c.id} value={String(c.id)}>
                 {c.name}
@@ -81,10 +83,10 @@ export function DeliveryList({ channels }: { channels: NotificationChannel[] }) 
           }}
         >
           <SelectTrigger size="sm" className="w-32">
-            <SelectValue placeholder="全部状态" />
+            <SelectValue placeholder={t("ui.ecda92faab01f5c1")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">全部状态</SelectItem>
+            <SelectItem value="all">{t("ui.ecda92faab01f5c1")}</SelectItem>
             {["pending", "sending", "sent", "failed", "skipped"].map((s) => (
               <SelectItem key={s} value={s}>
                 {statusMeta("delivery", s).label}
@@ -93,21 +95,20 @@ export function DeliveryList({ channels }: { channels: NotificationChannel[] }) 
           </SelectContent>
         </Select>
         <Button size="sm" variant="outline" onClick={load} disabled={loading}>
-          <RefreshCwIcon className={loading ? "animate-spin" : ""} /> 刷新
-        </Button>
-        <span className="text-muted-foreground ml-auto text-xs">共 {total} 条</span>
+          <RefreshCwIcon className={loading ? "animate-spin" : ""} /> Actualizar </Button>
+        <span className="text-muted-foreground ml-auto text-xs">{t("ui.d71d051e49a08ee7")} {total}  {t("ui.a1cb6bd814e4e98b")}</span>
       </div>
 
       <Card className="py-0">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-40">时间</TableHead>
-              <TableHead>漏洞</TableHead>
-              <TableHead className="w-40">渠道</TableHead>
-              <TableHead className="w-24">状态</TableHead>
-              <TableHead className="w-16">尝试</TableHead>
-              <TableHead>错误</TableHead>
+              <TableHead className="w-40">{t("common.time")}</TableHead>
+              <TableHead>{t("nav.findings")}</TableHead>
+              <TableHead className="w-40">{t("ui.1501284e7c8472b9")}</TableHead>
+              <TableHead className="w-24">{t("common.status")}</TableHead>
+              <TableHead className="w-16">{t("ui.712973e31a937c41")}</TableHead>
+              <TableHead>{t("ui.54a0e8c17ebb21a1")}</TableHead>
               <TableHead className="w-20" />
             </TableRow>
           </TableHeader>
@@ -115,7 +116,7 @@ export function DeliveryList({ channels }: { channels: NotificationChannel[] }) 
             {rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-muted-foreground py-8 text-center">
-                  {loading ? "加载中…" : "暂无投递记录"}
+                  {loading ? t("ui.205443ee88568e8c") : t("ui.4ce92e825cb54852")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -129,11 +130,10 @@ export function DeliveryList({ channels }: { channels: NotificationChannel[] }) 
                       <Badge variant="outline" className={toneClasses[statusMeta("severity", d.severity).tone]}>
                         {statusMeta("severity", d.severity).label}
                       </Badge>
-                      <span className="truncate text-sm">{d.title || "（无标题）"}</span>
+                      <span className="truncate text-sm">{d.title || t("ui.eef76f9f8544d827")}</span>
                       {d.event_kind === "finding_status_changed" && (
                         <Badge variant="outline" className="shrink-0">
-                          状态变更
-                        </Badge>
+                           {t("ui.47be210426cf5542")} </Badge>
                       )}
                     </div>
                   </TableCell>
@@ -146,11 +146,10 @@ export function DeliveryList({ channels }: { channels: NotificationChannel[] }) 
                   <TableCell className="text-muted-foreground text-sm">{d.attempts}</TableCell>
                   <TableCell className="text-muted-foreground max-w-md text-xs break-all">{d.last_error}</TableCell>
                   <TableCell>
-                    {/* 只有失败/跳过的才给重发入口：已送达的重发会造成重复推送。 */}
+                    {/* Sólo fallo/Sólo los omitidos recibirán la entrada de reenvío: el reenvío que se ha entregado provocará un envío repetido.。 */}
                     {(d.state === "failed" || d.state === "skipped") && (
                       <Button size="sm" variant="outline" onClick={() => retry(d.id)}>
-                        <RotateCcwIcon /> 重发
-                      </Button>
+                        <RotateCcwIcon />  {t("ui.977abca02388f9fc")} </Button>
                     )}
                   </TableCell>
                 </TableRow>
@@ -163,14 +162,12 @@ export function DeliveryList({ channels }: { channels: NotificationChannel[] }) 
       {maxPage > 1 && (
         <div className="flex items-center justify-end gap-2">
           <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            上一页
-          </Button>
+            página anterior </Button>
           <span className="text-muted-foreground text-sm">
             {page} / {maxPage}
           </span>
           <Button size="sm" variant="outline" disabled={page >= maxPage} onClick={() => setPage((p) => p + 1)}>
-            下一页
-          </Button>
+            página siguiente </Button>
         </div>
       )}
     </div>

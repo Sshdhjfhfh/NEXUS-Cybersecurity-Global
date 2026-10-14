@@ -5,16 +5,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// 抽屉/对话框(Sheet/Dialog)的 onInteractOutside 关闭判定辅助。
+// Cajón/cuadro de diálogo(Sheet/Dialog)de onInteractOutside Desactivar la asistencia de juicio。
 //
-// 背景:抽屉内的 Radix 弹层(Select 下拉、DropdownMenu、Popover 等)会 portal 到抽屉
-// 之外。开着弹层时点遮罩/抽屉外想收起它,这一次 pointerdown 会被 Select 和 Sheet 两个
-// DismissableLayer 同时处理;Select 先关闭且是 discrete 事件、React 会同步 flush,于是
-// 轮到 Sheet 的处理器时弹层的 data-state 早已翻成 closed —— 在"当下"检测弹层是否打开
-// 天然不可靠(实测已验证)。
+// Antecedentes:En el cajón Radix capa elástica(Select tirar hacia abajo、DropdownMenu、Popover espera)Sí portal al cajón
+// Afuera. Haga clic en la máscara cuando la capa elástica esté activada/quiero guardarlo fuera del cajón,esta vez pointerdown será Select y Sheet dos
+// DismissableLayer Procesar simultáneamente;Select Cierra primero y si discrete Evento、React se sincronizará flush,Entonces
+// girar Sheet El procesador es una capa elástica. data-state Ya traducido closed —— en"ahora"Detectar si la capa elástica está abierta
+// Naturalmente poco confiable(Medición real verificada)。
 //
-// 正确做法:Radix 的 pointerdown 监听在冒泡阶段;我们在 capture 阶段(早于它)先把
-// "此刻有没有弹层开着"记录下来,onInteractOutside 再读这个记录值来决定是否放行关闭。
+// enfoque correcto:Radix de pointerdown Escuchando en la etapa burbujeante;somos capture escenario(antes que eso)primero
+// "¿Hay alguna capa elástica abierta en este momento?"grábalo,onInteractOutside lea este valor de registro nuevamente para decidir si liberar el apagado。
 function isRadixOverlayOpenNow(): boolean {
   if (typeof document === "undefined") return false;
   return !!document.querySelector(
@@ -35,26 +35,26 @@ if (typeof document !== "undefined") {
     () => {
       overlayOpenAtLastPointerDown = isRadixOverlayOpenNow();
     },
-    true, // capture:抢在 Radix 冒泡阶段的 pointerdown 处理器之前记录
+    true, // capture:Consíguelo primero Radix En etapa de burbujeo pointerdown Grabado ante el procesador
   );
 }
 
-// radixOverlayWasOpenAtPointerDown 返回"最近一次 pointerdown 发生时是否有 Radix 弹层
-// 开着"。抽屉/对话框据此:开着弹层时点遮罩 → 只收弹层、不关自身。
+// radixOverlayWasOpenAtPointerDown Regreso"más reciente pointerdown Si hay Radix capa elástica
+// abierto"。Cajón/cuadro de diálogo correspondiente:Máscara de puntos cuando la capa elástica está encendida → Sólo se recoge la capa elástica, no ella misma。
 export function radixOverlayWasOpenAtPointerDown(): boolean {
   return overlayOpenAtLastPointerDown;
 }
 
-// copyText 把文本写入剪贴板,返回是否成功。
-// 背景:navigator.clipboard 仅在安全上下文(HTTPS / localhost)可用;通过 IP + HTTP
-// 访问时它为 undefined,此时降级到 execCommand("copy")。
+// copyText escribir texto en el portapapeles,Devolver si tuvo éxito。
+// Antecedentes:navigator.clipboard Sólo en contexto de seguridad(HTTPS / localhost)Disponible;Aprobado IP + HTTP
+// Cuando se accede es undefined,Bajar de categoría a execCommand("copy")。
 export async function copyText(text: string): Promise<boolean> {
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text);
       return true;
     } catch {
-      // 继续走降级方案
+      // Continuar con el plan de degradación
     }
   }
   try {

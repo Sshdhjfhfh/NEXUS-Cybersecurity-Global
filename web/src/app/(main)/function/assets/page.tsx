@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import {
@@ -98,13 +100,13 @@ function statusTone(code: number) {
 const PAGE_SIZES = [25, 50, 100, 200];
 
 const TABS: { key: string; label: string; icon: LucideIcon }[] = [
-  { key: "company", label: "企业", icon: BuildingIcon },
-  { key: "root_domain", label: "根域名", icon: GlobeIcon },
+  { key: "company", label: t("Empresa"), icon: BuildingIcon },
+  { key: "root_domain", label: t("Dominio raíz"), icon: GlobeIcon },
   { key: "ip", label: "IP", icon: NetworkIcon },
-  { key: "subdomain", label: "子域名", icon: GlobeIcon },
-  { key: "app", label: "应用", icon: SmartphoneIcon },
-  { key: "service", label: "服务", icon: LayoutTemplateIcon },
-  { key: "endpoint", label: "接口", icon: LinkIcon },
+  { key: "subdomain", label: t("Subdominio"), icon: GlobeIcon },
+  { key: "app", label: t("Aplicación"), icon: SmartphoneIcon },
+  { key: "service", label: t("Servicio"), icon: LayoutTemplateIcon },
+  { key: "endpoint", label: t("Endpoint"), icon: LinkIcon },
 ];
 
 export default function AssetsPage() {
@@ -123,34 +125,20 @@ export default function AssetsPage() {
   const assetsRequestRef = React.useRef(0);
   const [rowsTab, setRowsTab] = React.useState("");
 
-  // asset selection & delete
   const [selected, setSelected] = React.useState<Set<number>>(new Set());
   const [deleteIds, setDeleteIds] = React.useState<number[]>([]);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
 
-  // company delete
   const [companyDeleteTarget, setCompanyDeleteTarget] = React.useState<Company | null>(null);
   const [companyDeleteAssets, setCompanyDeleteAssets] = React.useState(false);
   const [companyDeleting, setCompanyDeleting] = React.useState(false);
 
-  // Companies + per-type counts (tab badges) — loaded on demand, no background polling.
   const loadMeta = React.useCallback(() => {
-    api
-      .companies()
-      .then(setCompanies)
-      .catch(() => {
-        /* Keep the last successful company snapshot on a transient failure. */
-      });
-    api
-      .assetCounts()
-      .then(setCounts)
-      .catch(() => {
-        /* Keep the last successful counters on a transient failure. */
-      });
+    api.companies().then(setCompanies).catch(() => {});
+    api.assetCounts().then(setCounts).catch(() => {});
   }, []);
 
-  // Manual refresh: reload counts/companies and re-fetch the current page.
   const refresh = React.useCallback(() => {
     loadMeta();
     setRefreshKey((k) => k + 1);
@@ -171,13 +159,9 @@ export default function AssetsPage() {
       const allSelected = ids.every((id) => prev.has(id));
       const next = new Set(prev);
       if (allSelected) {
-        ids.forEach((id) => {
-          next.delete(id);
-        });
+        ids.forEach((id) => { next.delete(id); });
       } else {
-        ids.forEach((id) => {
-          next.add(id);
-        });
+        ids.forEach((id) => { next.add(id); });
       }
       return next;
     });
@@ -192,11 +176,11 @@ export default function AssetsPage() {
     setDeleting(true);
     try {
       const res = await api.deleteAssets(deleteIds);
-      toast.success(`已删除 ${res.deleted} 条资产`);
+      toast.success(`Se eliminaron ${res.deleted} activos`);
       setSelected(new Set());
       refresh();
     } catch (e) {
-      toast.error("删除失败：" + String((e as Error)?.message ?? e));
+      toast.error(t("Error al eliminar: ") + String((e as Error)?.message ?? e));
     } finally {
       setDeleting(false);
       setDeleteOpen(false);
@@ -210,12 +194,12 @@ export default function AssetsPage() {
       const res = await api.deleteCompany(companyDeleteTarget.id, companyDeleteAssets);
       const msg =
         companyDeleteAssets && res.assets_deleted > 0
-          ? `已删除企业，同时删除 ${res.assets_deleted} 条资产`
-          : "已删除企业";
+          ? `Empresa eliminada junto con ${res.assets_deleted} activos`
+          : "Empresa eliminada";
       toast.success(msg);
       refresh();
     } catch (e) {
-      toast.error("删除失败：" + String((e as Error)?.message ?? e));
+      toast.error(t("Error al eliminar: ") + String((e as Error)?.message ?? e));
     } finally {
       setCompanyDeleting(false);
       setCompanyDeleteTarget(null);
@@ -223,20 +207,12 @@ export default function AssetsPage() {
     }
   };
 
-  React.useEffect(() => {
-    loadMeta();
-  }, [loadMeta]);
+  React.useEffect(() => { loadMeta(); }, [loadMeta]);
 
-  // Reset query + page + selection when switching tabs
   // biome-ignore lint/correctness/useExhaustiveDependencies: tab changes intentionally reset tab-local controls.
   React.useEffect(() => {
-    setQuery("");
-    setDslError("");
-    setSelected(new Set());
-    setRows([]);
-    setRowsTab("");
-    setTotal(0);
-    setLoaded(false);
+    setQuery(""); setDslError(""); setSelected(new Set());
+    setRows([]); setRowsTab(""); setTotal(0); setLoaded(false);
   }, [tab]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: these controls intentionally reset server pagination.
@@ -244,7 +220,6 @@ export default function AssetsPage() {
 
   const dslMode = query.trim() !== "";
 
-  // Server-side paginated page loader for the active data tab (company tab excluded).
   // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an explicit manual-reload trigger.
   React.useEffect(() => {
     if (tab === "company") return;
@@ -256,28 +231,17 @@ export default function AssetsPage() {
       try {
         const r = dsl ? await api.searchAssets(dsl, tab, size, offset) : await api.assets(tab, size, offset);
         if (assetsRequestRef.current !== request) return;
-        setRows(r.assets);
-        setRowsTab(tab);
-        setTotal(r.total);
-        setDslError("");
+        setRows(r.assets); setRowsTab(tab); setTotal(r.total); setDslError("");
       } catch (e) {
         if (assetsRequestRef.current !== request) return;
         setDslError(String((e as Error)?.message ?? e));
-        setRows([]);
-        setRowsTab(tab);
-        setTotal(0);
+        setRows([]); setRowsTab(tab); setTotal(0);
       } finally {
-        if (assetsRequestRef.current === request) {
-          setLoading(false);
-          setLoaded(true);
-        }
+        if (assetsRequestRef.current === request) { setLoading(false); setLoaded(true); }
       }
     };
     const tid = setTimeout(run, dsl ? 400 : 0);
-    return () => {
-      clearTimeout(tid);
-      if (assetsRequestRef.current === request) assetsRequestRef.current++;
-    };
+    return () => { clearTimeout(tid); if (assetsRequestRef.current === request) assetsRequestRef.current++; };
   }, [tab, page, size, query, refreshKey]);
 
   React.useEffect(() => {
@@ -293,42 +257,32 @@ export default function AssetsPage() {
   }, [companies]);
 
   const companyName = (id?: number) => (id ? (companyById.get(id) ?? "") : "");
-
   const tabCounts: Record<string, number> = { ...counts, company: companies.length };
   const totalAssets = Object.values(counts).reduce((a, b) => a + b, 0);
-
-  // rows are already the current server-side page.
   const tabData = (type: string): Asset[] => (rowsTab === type ? rows : []);
   const currentRows = tabData(tab);
   const slice = <T,>(list: T[]) => list;
 
   const searchBox = (
-    <AssetDslSearch
-      query={query}
-      onChange={setQuery}
-      loading={loading}
-      error={dslError}
-      count={dslMode ? total : undefined}
-    />
+    <AssetDslSearch query={query} onChange={setQuery} loading={loading} error={dslError} count={dslMode ? total : undefined} />
   );
 
   return (
     <div className="flex h-[calc(100vh-6rem)] min-h-0 flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">资产</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{t("nav.assets")}</h1>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">
-            共 <span className="tabular-nums">{totalAssets}</span> 项资产
-          </span>
+            Total <span className="tabular-nums">{totalAssets}</span>  {t("ui.25baaa016f821a4d")} </span>
           {selected.size > 0 && (
             <Button variant="destructive" size="sm" onClick={() => openDelete(Array.from(selected) as number[])}>
-              <Trash2Icon className="size-3.5" /> 删除已选 ({selected.size})
+              <Trash2Icon className="size-3.5" /> Eliminar seleccionados ({selected.size})
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
-            <RefreshCwIcon className={cn("size-4", loading && "animate-spin")} /> 刷新
+            <RefreshCwIcon className={cn("size-4", loading && "animate-spin")} /> Actualizar
           </Button>
           <CompanyDialog onSaved={refresh} />
         </div>
@@ -347,17 +301,16 @@ export default function AssetsPage() {
           </TabsList>
         </div>
 
-        {/* 企业 */}
         <TabsContent value="company" className="mt-0 flex min-h-0 flex-1 flex-col">
           <Card className="flex min-h-0 flex-1 flex-col overflow-hidden py-0">
             <div className="min-h-0 flex-1 overflow-auto">
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow>
-                    <TableHead>企业</TableHead>
-                    <TableHead className="w-24 text-right">资产数</TableHead>
-                    <TableHead>资产范围</TableHead>
-                    <TableHead className="w-36 text-right">操作</TableHead>
+                    <TableHead>{t("ui.a4b1ff8ed3a3acf3")}</TableHead>
+                    <TableHead className="w-24 text-right">N.º de activos</TableHead>
+                    <TableHead>Alcance de activos</TableHead>
+                    <TableHead className="w-36 text-right">{t("common.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -374,29 +327,20 @@ export default function AssetsPage() {
                         {c.scope?.length ? (
                           <div className="flex flex-wrap gap-1">
                             {c.scope.map((s, i) => (
-                              <Badge key={i} variant="secondary" className="font-mono text-[11px]">
-                                {s.raw}
-                              </Badge>
+                              <Badge key={i} variant="secondary" className="font-mono text-[11px]">{s.raw}</Badge>
                             ))}
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">未设置范围</span>
+                          <span className="text-xs text-muted-foreground">Sin alcance definido</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <EditScopeDialog company={c} onSaved={refresh} />
                           <AppendScopeDialog company={c} onSaved={refresh} />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-7 text-muted-foreground hover:text-destructive"
-                            onClick={() => {
-                              setCompanyDeleteTarget(c);
-                              setCompanyDeleteAssets(false);
-                            }}
-                            aria-label={`删除企业 ${c.name}`}
-                          >
+                          <Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => { setCompanyDeleteTarget(c); setCompanyDeleteAssets(false); }}
+                            aria-label={`Eliminar empresa ${c.name}`}>
                             <Trash2Icon className="size-3.5" />
                           </Button>
                         </div>
@@ -406,7 +350,7 @@ export default function AssetsPage() {
                   {companies.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
-                        还没有企业。点击右上角「新增企业」并填写资产范围，系统会自动认领命中的资产。
+                        No hay empresas. Haz clic en «Nueva empresa» y configura el alcance para que el sistema asigne activos automáticamente.
                       </TableCell>
                     </TableRow>
                   )}
@@ -416,39 +360,17 @@ export default function AssetsPage() {
           </Card>
         </TabsContent>
 
-        {/* 根域名 */}
         <TabsContent value="root_domain" className="mt-0 flex min-h-0 flex-1 flex-col gap-2">
           {searchBox}
-          <AssetCard
-            cols={["", "域名", "ICP 备案", "归属企业", ""]}
-            loaded={loaded}
-            total={total}
-            page={page}
-            size={size}
-            onSize={setSize}
-            onPage={setPage}
-            rows={currentRows}
-            selected={selected}
-            onToggleAll={(ids) => toggleSelectAll(ids)}
-          >
+          <AssetCard cols={["", t("Dominio"), t("ui.9309e7d3b74e02fe"), t("ui.a4b1ff8ed3a3acf3"), ""]} loaded={loaded} total={total} page={page} size={size} onSize={setSize} onPage={setPage} rows={currentRows} selected={selected} onToggleAll={toggleSelectAll}>
             {slice(tabData("root_domain")).map((a) => (
               <TableRow key={a.id} className={selected.has(a.id) ? "bg-muted/40" : undefined}>
-                <TableCell className="w-8 pr-0">
-                  <Checkbox checked={selected.has(a.id)} onCheckedChange={() => toggleSelect(a.id)} />
-                </TableCell>
+                <TableCell className="w-8 pr-0"><Checkbox checked={selected.has(a.id)} onCheckedChange={() => toggleSelect(a.id)} /></TableCell>
                 <TableCell className="font-mono text-xs font-medium">{a.domain}</TableCell>
                 <TableCell className="text-xs">{a.icp || "—"}</TableCell>
-                <TableCell className="text-xs">
-                  {companyName(a.company_id) || <span className="text-muted-foreground">未归属</span>}
-                </TableCell>
+                <TableCell className="text-xs">{companyName(a.company_id) || <span className="text-muted-foreground">Sin asignar</span>}</TableCell>
                 <TableCell className="w-8 pl-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground hover:text-destructive"
-                    onClick={() => openDelete([a.id])}
-                    aria-label={`删除资产 ${a.domain || a.id}`}
-                  >
+                  <Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => openDelete([a.id])} aria-label={`Eliminar activo ${a.domain || a.id}`}>
                     <Trash2Icon className="size-3.5" />
                   </Button>
                 </TableCell>
@@ -457,45 +379,18 @@ export default function AssetsPage() {
           </AssetCard>
         </TabsContent>
 
-        {/* IP */}
         <TabsContent value="ip" className="mt-0 flex min-h-0 flex-1 flex-col gap-2">
           {searchBox}
-          <AssetCard
-            cols={["", "IP", "C段", "绑定域名", "开放端口", ""]}
-            loaded={loaded}
-            total={total}
-            page={page}
-            size={size}
-            onSize={setSize}
-            onPage={setPage}
-            rows={currentRows}
-            selected={selected}
-            onToggleAll={(ids) => toggleSelectAll(ids)}
-          >
+          <AssetCard cols={["", "IP", "Segmento C", "Dominios vinculados", "Puertos abiertos", ""]} loaded={loaded} total={total} page={page} size={size} onSize={setSize} onPage={setPage} rows={currentRows} selected={selected} onToggleAll={toggleSelectAll}>
             {slice(tabData("ip")).map((a) => (
               <TableRow key={a.id} className={selected.has(a.id) ? "bg-muted/40" : undefined}>
-                <TableCell className="w-8 pr-0">
-                  <Checkbox checked={selected.has(a.id)} onCheckedChange={() => toggleSelect(a.id)} />
-                </TableCell>
+                <TableCell className="w-8 pr-0"><Checkbox checked={selected.has(a.id)} onCheckedChange={() => toggleSelect(a.id)} /></TableCell>
                 <TableCell className="font-mono text-xs font-medium">{a.ip}</TableCell>
                 <TableCell className="font-mono text-xs">{a.c_segment || "—"}</TableCell>
-                <TableCell>
-                  <Chips items={a.bound_domains ?? []} mono />
-                </TableCell>
-                <TableCell>
-                  <Chips
-                    items={(a.open_ports ?? []).map((p) => (p.service ? `${p.port}/${p.service}` : String(p.port)))}
-                    mono
-                  />
-                </TableCell>
+                <TableCell><Chips items={a.bound_domains ?? []} mono /></TableCell>
+                <TableCell><Chips items={(a.open_ports ?? []).map((p) => (p.service ? `${p.port}/${p.service}` : String(p.port)))} mono /></TableCell>
                 <TableCell className="w-8 pl-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground hover:text-destructive"
-                    onClick={() => openDelete([a.id])}
-                    aria-label={`删除资产 ${a.ip || a.id}`}
-                  >
+                  <Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => openDelete([a.id])} aria-label={`Eliminar activo ${a.ip || a.id}`}>
                     <Trash2Icon className="size-3.5" />
                   </Button>
                 </TableCell>
@@ -504,40 +399,18 @@ export default function AssetsPage() {
           </AssetCard>
         </TabsContent>
 
-        {/* 子域名 */}
         <TabsContent value="subdomain" className="mt-0 flex min-h-0 flex-1 flex-col gap-2">
           {searchBox}
-          <AssetCard
-            cols={["", "域名", "根域名", "解析类型", "解析值", ""]}
-            loaded={loaded}
-            total={total}
-            page={page}
-            size={size}
-            onSize={setSize}
-            onPage={setPage}
-            rows={currentRows}
-            selected={selected}
-            onToggleAll={(ids) => toggleSelectAll(ids)}
-          >
+          <AssetCard cols={["", t("Dominio"), t("Dominio raíz"), "Tipo de registro", "Valor de registro", ""]} loaded={loaded} total={total} page={page} size={size} onSize={setSize} onPage={setPage} rows={currentRows} selected={selected} onToggleAll={toggleSelectAll}>
             {slice(tabData("subdomain")).map((a) => (
               <TableRow key={a.id} className={selected.has(a.id) ? "bg-muted/40" : undefined}>
-                <TableCell className="w-8 pr-0">
-                  <Checkbox checked={selected.has(a.id)} onCheckedChange={() => toggleSelect(a.id)} />
-                </TableCell>
+                <TableCell className="w-8 pr-0"><Checkbox checked={selected.has(a.id)} onCheckedChange={() => toggleSelect(a.id)} /></TableCell>
                 <TableCell className="font-mono text-xs font-medium">{a.domain}</TableCell>
                 <TableCell className="font-mono text-xs">{a.root_domain || "—"}</TableCell>
                 <TableCell className="text-xs">{a.record_type || "—"}</TableCell>
-                <TableCell className="max-w-xs truncate font-mono text-xs">
-                  {(Array.isArray(a.record_value) ? a.record_value.join(", ") : a.record_value) || "—"}
-                </TableCell>
+                <TableCell className="max-w-xs truncate font-mono text-xs">{(Array.isArray(a.record_value) ? a.record_value.join(", ") : a.record_value) || "—"}</TableCell>
                 <TableCell className="w-8 pl-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground hover:text-destructive"
-                    onClick={() => openDelete([a.id])}
-                    aria-label={`删除资产 ${a.domain || a.id}`}
-                  >
+                  <Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => openDelete([a.id])} aria-label={`Eliminar activo ${a.domain || a.id}`}>
                     <Trash2Icon className="size-3.5" />
                   </Button>
                 </TableCell>
@@ -546,38 +419,18 @@ export default function AssetsPage() {
           </AssetCard>
         </TabsContent>
 
-        {/* 应用 */}
         <TabsContent value="app" className="mt-0 flex min-h-0 flex-1 flex-col gap-2">
           {searchBox}
-          <AssetCard
-            cols={["", "应用名", "Bundle ID", "分类", "ICP 备案", ""]}
-            loaded={loaded}
-            total={total}
-            page={page}
-            size={size}
-            onSize={setSize}
-            onPage={setPage}
-            rows={currentRows}
-            selected={selected}
-            onToggleAll={(ids) => toggleSelectAll(ids)}
-          >
+          <AssetCard cols={["", "Nombre de app", "Bundle ID", "Categoría", t("ui.9309e7d3b74e02fe"), ""]} loaded={loaded} total={total} page={page} size={size} onSize={setSize} onPage={setPage} rows={currentRows} selected={selected} onToggleAll={toggleSelectAll}>
             {slice(tabData("app")).map((a) => (
               <TableRow key={a.id} className={selected.has(a.id) ? "bg-muted/40" : undefined}>
-                <TableCell className="w-8 pr-0">
-                  <Checkbox checked={selected.has(a.id)} onCheckedChange={() => toggleSelect(a.id)} />
-                </TableCell>
+                <TableCell className="w-8 pr-0"><Checkbox checked={selected.has(a.id)} onCheckedChange={() => toggleSelect(a.id)} /></TableCell>
                 <TableCell className="text-xs font-medium">{a.app_name || "—"}</TableCell>
                 <TableCell className="font-mono text-xs">{a.bundle_id || "—"}</TableCell>
                 <TableCell className="text-xs">{a.category || "—"}</TableCell>
                 <TableCell className="text-xs">{a.app_icp || "—"}</TableCell>
                 <TableCell className="w-8 pl-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground hover:text-destructive"
-                    onClick={() => openDelete([a.id])}
-                    aria-label={`删除资产 ${a.app_name || a.id}`}
-                  >
+                  <Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => openDelete([a.id])} aria-label={`Eliminar activo ${a.app_name || a.id}`}>
                     <Trash2Icon className="size-3.5" />
                   </Button>
                 </TableCell>
@@ -586,93 +439,37 @@ export default function AssetsPage() {
           </AssetCard>
         </TabsContent>
 
-        {/* 服务 */}
         <TabsContent value="service" className="mt-0 flex min-h-0 flex-1 flex-col gap-2">
           {searchBox}
-          <AssetCard
-            cols={["", "服务", "域名", "IP", "端口", "状态码", "标题", "指纹", "认证", ""]}
-            loaded={loaded}
-            total={total}
-            page={page}
-            size={size}
-            onSize={setSize}
-            onPage={setPage}
-            rows={currentRows}
-            selected={selected}
-            onToggleAll={(ids) => toggleSelectAll(ids)}
-          >
+          <AssetCard cols={["", t("Servicio"), t("Dominio"), "IP", t("Puerto"), t("Cód. estado"), t("Título"), t("Tecnologías"), t("Autenticación"), ""]} loaded={loaded} total={total} page={page} size={size} onSize={setSize} onPage={setPage} rows={currentRows} selected={selected} onToggleAll={toggleSelectAll}>
             {slice(tabData("service")).map((a) => {
               const isHttp = a.service_type === "http";
               const svc = a.service_name || (isHttp ? "http" : "") || a.service_type || "";
               let domainCell: React.ReactNode = "—";
               if (isHttp && a.url) {
-                domainCell = (
-                  <a
-                    href={a.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 hover:underline dark:text-blue-400"
-                  >
-                    {a.domain || a.url}
-                  </a>
-                );
+                domainCell = <a href={a.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline dark:text-blue-400">{a.domain || a.url}</a>;
               } else if (a.domain) {
                 domainCell = a.domain;
               }
               return (
                 <TableRow key={a.id} className={selected.has(a.id) ? "bg-muted/40" : undefined}>
-                  <TableCell className="w-8 pr-0">
-                    <Checkbox checked={selected.has(a.id)} onCheckedChange={() => toggleSelect(a.id)} />
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    <Badge variant={isHttp ? "default" : "secondary"} className="font-mono text-[10px]">
-                      {svc || "—"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="max-w-[14rem] truncate font-mono text-xs" title={a.domain || a.url}>
-                    {domainCell}
-                  </TableCell>
+                  <TableCell className="w-8 pr-0"><Checkbox checked={selected.has(a.id)} onCheckedChange={() => toggleSelect(a.id)} /></TableCell>
+                  <TableCell className="text-xs"><Badge variant={isHttp ? "default" : "secondary"} className="font-mono text-[10px]">{svc || "—"}</Badge></TableCell>
+                  <TableCell className="max-w-[14rem] truncate font-mono text-xs" title={a.domain || a.url}>{domainCell}</TableCell>
                   <TableCell className="font-mono text-xs">{a.ip || "—"}</TableCell>
                   <TableCell className="font-mono text-xs tabular-nums">{a.port || "—"}</TableCell>
+                  <TableCell>{a.status_code != null ? <span className={cn("font-mono text-xs font-semibold tabular-nums", statusTone(a.status_code))}>{a.status_code}</span> : "—"}</TableCell>
+                  <TableCell className="max-w-[12rem] truncate text-xs" title={a.page_title}>{a.page_title || "—"}</TableCell>
+                  <TableCell><Chips items={a.technologies ?? []} /></TableCell>
                   <TableCell>
-                    {a.status_code != null ? (
-                      <span className={cn("font-mono text-xs font-semibold tabular-nums", statusTone(a.status_code))}>
-                        {a.status_code}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell className="max-w-[12rem] truncate text-xs" title={a.page_title}>
-                    {a.page_title || "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Chips items={a.technologies ?? []} />
-                  </TableCell>
-                  <TableCell>
-                    {(a.auth ?? []).length === 0 ? (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    ) : (
-                      (a.auth ?? []).map((authItem, i) => {
-                        const item = authItem as Record<string, string>;
-                        const label = item.type || item.username || "认证";
-                        return (
-                          <span key={i} className="inline-flex items-center gap-1 text-[11px]">
-                            <KeyRoundIcon className="size-3 text-muted-foreground" />
-                            <span className="font-mono">{label}</span>
-                          </span>
-                        );
-                      })
-                    )}
+                    {(a.auth ?? []).length === 0 ? <span className="text-xs text-muted-foreground">—</span> : (a.auth ?? []).map((authItem, i) => {
+                      const item = authItem as Record<string, string>;
+                      const label = item.type || item.username || t("Autenticación");
+                      return <span key={i} className="inline-flex items-center gap-1 text-[11px]"><KeyRoundIcon className="size-3 text-muted-foreground" /><span className="font-mono">{label}</span></span>;
+                    })}
                   </TableCell>
                   <TableCell className="w-8 pl-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7 text-muted-foreground hover:text-destructive"
-                      onClick={() => openDelete([a.id])}
-                      aria-label={`删除资产 ${a.url || a.id}`}
-                    >
+                    <Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => openDelete([a.id])} aria-label={`Eliminar activo ${a.url || a.id}`}>
                       <Trash2Icon className="size-3.5" />
                     </Button>
                   </TableCell>
@@ -682,49 +479,17 @@ export default function AssetsPage() {
           </AssetCard>
         </TabsContent>
 
-        {/* 接口 */}
         <TabsContent value="endpoint" className="mt-0 flex min-h-0 flex-1 flex-col gap-2">
           {searchBox}
-          <AssetCard
-            cols={["", "方法", "完整地址", "参数", ""]}
-            loaded={loaded}
-            total={total}
-            page={page}
-            size={size}
-            onSize={setSize}
-            onPage={setPage}
-            rows={currentRows}
-            selected={selected}
-            onToggleAll={(ids) => toggleSelectAll(ids)}
-          >
+          <AssetCard cols={["", t("Método"), "URL completa", t("ui.2abb703958f5b73d"), ""]} loaded={loaded} total={total} page={page} size={size} onSize={setSize} onPage={setPage} rows={currentRows} selected={selected} onToggleAll={toggleSelectAll}>
             {slice(tabData("endpoint")).map((a) => (
               <TableRow key={a.id} className={selected.has(a.id) ? "bg-muted/40" : undefined}>
-                <TableCell className="w-8 pr-0">
-                  <Checkbox checked={selected.has(a.id)} onCheckedChange={() => toggleSelect(a.id)} />
-                </TableCell>
-                <TableCell className="w-16">
-                  <MethodBadge method={a.method || ""} />
-                </TableCell>
-                <TableCell className="max-w-sm truncate font-mono text-xs" title={a.url}>
-                  {a.url || "—"}
-                </TableCell>
-                <TableCell>
-                  <Chips
-                    items={(a.params ?? []).map((p) => {
-                      const item = p as Record<string, string>;
-                      return item.name ? `${item.name}(${item.location || "?"})` : "?";
-                    })}
-                    mono
-                  />
-                </TableCell>
+                <TableCell className="w-8 pr-0"><Checkbox checked={selected.has(a.id)} onCheckedChange={() => toggleSelect(a.id)} /></TableCell>
+                <TableCell className="w-16"><MethodBadge method={a.method || ""} /></TableCell>
+                <TableCell className="max-w-sm truncate font-mono text-xs" title={a.url}>{a.url || "—"}</TableCell>
+                <TableCell><Chips items={(a.params ?? []).map((p) => { const item = p as Record<string, string>; return item.name ? `${item.name}(${item.location || "?"})` : "?"; })} mono /></TableCell>
                 <TableCell className="w-8 pl-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground hover:text-destructive"
-                    onClick={() => openDelete([a.id])}
-                    aria-label={`删除资产 ${a.url || a.id}`}
-                  >
+                  <Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => openDelete([a.id])} aria-label={`Eliminar activo ${a.url || a.id}`}>
                     <Trash2Icon className="size-3.5" />
                   </Button>
                 </TableCell>
@@ -737,71 +502,41 @@ export default function AssetsPage() {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogTitle>{t("ui.b4bb6c6db58f7c78")}</AlertDialogTitle>
             <AlertDialogDescription>
-              将永久删除 <span className="font-semibold tabular-nums">{deleteIds.length}</span>{" "}
-              条资产记录，此操作不可撤销。
+              Se eliminarán permanentemente <span className="font-semibold tabular-nums">{deleteIds.length}</span> activos. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                void confirmDelete();
-              }}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? "删除中…" : "确认删除"}
+            <AlertDialogCancel disabled={deleting}>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); void confirmDelete(); }} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting ? t("Eliminando…") : t("Confirmar eliminación")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog
-        open={!!companyDeleteTarget}
-        onOpenChange={(o) => {
-          if (!o) {
-            setCompanyDeleteTarget(null);
-            setCompanyDeleteAssets(false);
-          }
-        }}
-      >
+      <AlertDialog open={!!companyDeleteTarget} onOpenChange={(o) => { if (!o) { setCompanyDeleteTarget(null); setCompanyDeleteAssets(false); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>删除企业 · {companyDeleteTarget?.name}</AlertDialogTitle>
+            <AlertDialogTitle>Eliminar empresa · {companyDeleteTarget?.name}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <p>此操作将永久删除该企业及其资产范围配置，不可撤销。</p>
-                <label
-                  htmlFor="delete-assets-opt"
-                  className="flex cursor-pointer items-center gap-2.5 rounded-md border p-3 hover:bg-muted/50"
-                >
-                  <Checkbox
-                    id="delete-assets-opt"
-                    checked={companyDeleteAssets}
-                    onCheckedChange={(v) => setCompanyDeleteAssets(!!v)}
-                  />
+                <p>Esta acción eliminará permanentemente la empresa y su configuración de alcance. No se puede deshacer.</p>
+                <label htmlFor="delete-assets-opt" className="flex cursor-pointer items-center gap-2.5 rounded-md border p-3 hover:bg-muted/50">
+                  <Checkbox id="delete-assets-opt" checked={companyDeleteAssets} onCheckedChange={(v) => setCompanyDeleteAssets(!!v)} />
                   <span className="text-sm leading-snug">
-                    同时删除该企业下的所有资产
-                    <span className="block text-xs text-muted-foreground">不勾选则保留资产，仅取消归属关系</span>
+                    Eliminar también todos los activos de esta empresa
+                    <span className="block text-xs text-muted-foreground">Si no se marca, los activos se conservan pero pierden su asignación</span>
                   </span>
                 </label>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={companyDeleting}>取消</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                void confirmDeleteCompany();
-              }}
-              disabled={companyDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {companyDeleting ? "删除中…" : "确认删除"}
+            <AlertDialogCancel disabled={companyDeleting}>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); void confirmDeleteCompany(); }} disabled={companyDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {companyDeleting ? t("Eliminando…") : t("Confirmar eliminación")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -810,36 +545,15 @@ export default function AssetsPage() {
   );
 }
 
-function AssetCard({
-  cols,
-  loaded,
-  total,
-  page,
-  size,
-  onSize,
-  onPage,
-  rows: dataRows,
-  selected,
-  onToggleAll,
-  children,
-}: {
-  cols: string[];
-  loaded: boolean;
-  total: number;
-  page: number;
-  size: number;
-  onSize: React.Dispatch<React.SetStateAction<number>>;
-  onPage: React.Dispatch<React.SetStateAction<number>>;
-  rows?: Asset[];
-  selected?: Set<number>;
-  onToggleAll?: (ids: number[]) => void;
-  children: React.ReactNode;
+function AssetCard({ cols, loaded, total, page, size, onSize, onPage, rows: dataRows, selected, onToggleAll, children }: {
+  cols: string[]; loaded: boolean; total: number; page: number; size: number;
+  onSize: React.Dispatch<React.SetStateAction<number>>; onPage: React.Dispatch<React.SetStateAction<number>>;
+  rows?: Asset[]; selected?: Set<number>; onToggleAll?: (ids: number[]) => void; children: React.ReactNode;
 }) {
   const childRows = React.Children.toArray(children);
   const pageCount = Math.max(1, Math.ceil(total / size));
   const start = total === 0 ? 0 : page * size + 1;
   const end = page * size + childRows.length;
-
   const pageIds = dataRows?.map((r) => r.id) ?? [];
   const allSelected = pageIds.length > 0 && selected != null && pageIds.every((id) => selected.has(id));
   const someSelected = selected != null && pageIds.some((id) => selected.has(id));
@@ -853,10 +567,7 @@ function AssetCard({
               {cols.map((c, i) =>
                 c === "" && i === 0 && onToggleAll ? (
                   <TableHead key={i} className="w-8 pr-0">
-                    <Checkbox
-                      checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                      onCheckedChange={() => onToggleAll(pageIds)}
-                    />
+                    <Checkbox checked={allSelected ? true : someSelected ? "indeterminate" : false} onCheckedChange={() => onToggleAll(pageIds)} />
                   </TableHead>
                 ) : (
                   <TableHead key={c + i}>{c}</TableHead>
@@ -865,12 +576,10 @@ function AssetCard({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {childRows.length > 0 ? (
-              childRows
-            ) : (
+            {childRows.length > 0 ? childRows : (
               <TableRow>
                 <TableCell colSpan={cols.length} className="py-12 text-center text-sm text-muted-foreground">
-                  {loaded ? "暂无数据。" : "加载中…"}
+                  {loaded ? "Sin datos." : t("Cargando…")}
                 </TableCell>
               </TableRow>
             )}
@@ -880,45 +589,19 @@ function AssetCard({
       {total > 0 && (
         <div className="flex shrink-0 items-center gap-2 border-t px-3 py-1.5 text-xs text-muted-foreground">
           <Select value={String(size)} onValueChange={(v) => onSize(Number(v))}>
-            <SelectTrigger size="sm" className="h-7 w-24">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger size="sm" className="h-7 w-24"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {PAGE_SIZES.map((n) => (
-                  <SelectItem key={n} value={String(n)}>
-                    {n} / 页
-                  </SelectItem>
-                ))}
+                {PAGE_SIZES.map((n) => <SelectItem key={n} value={String(n)}>{n} / pág.</SelectItem>)}
               </SelectGroup>
             </SelectContent>
           </Select>
-          <span className="tabular-nums">
-            {start}–{end} / {total}
-          </span>
+          <span className="tabular-nums">{start}–{end} / {total}</span>
           {pageCount > 1 && (
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-7"
-                disabled={page <= 0}
-                onClick={() => onPage((p) => Math.max(0, p - 1))}
-              >
-                <ChevronLeftIcon />
-              </Button>
-              <span className="tabular-nums">
-                {page + 1} / {pageCount}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-7"
-                disabled={page + 1 >= pageCount}
-                onClick={() => onPage((p) => Math.min(pageCount - 1, p + 1))}
-              >
-                <ChevronRightIcon />
-              </Button>
+              <Button variant="outline" size="icon" className="size-7" disabled={page <= 0} onClick={() => onPage((p) => Math.max(0, p - 1))}><ChevronLeftIcon /></Button>
+              <span className="tabular-nums">{page + 1} / {pageCount}</span>
+              <Button variant="outline" size="icon" className="size-7" disabled={page + 1 >= pageCount} onClick={() => onPage((p) => Math.min(pageCount - 1, p + 1))}><ChevronRightIcon /></Button>
             </div>
           )}
         </div>
@@ -932,11 +615,7 @@ function Chips({ items, mono }: { items: string[]; mono?: boolean }) {
   if (clean.length === 0) return <span className="text-xs text-muted-foreground">—</span>;
   return (
     <div className="flex flex-wrap gap-1">
-      {clean.map((s, i) => (
-        <Badge key={i} variant="outline" className={cn("text-[10px]", mono && "font-mono")}>
-          {s}
-        </Badge>
-      ))}
+      {clean.map((s, i) => <Badge key={i} variant="outline" className={cn("text-[10px]", mono && "font-mono")}>{s}</Badge>)}
     </div>
   );
 }
@@ -951,27 +630,18 @@ function CompanyAvatar({ name, logo }: { name: string; logo?: string }) {
   );
 }
 
-// 后端返回的 warnings 说的是既有数据问题（不是本次提交的行有错），保存本身已经
-// 成功。给更长的停留时间，因为它需要用户去处理具体的资产，扫一眼标题不够。
 function showScopeWarnings(warnings?: string[]) {
-  for (const warning of warnings ?? []) {
-    toast.warning(warning, { duration: 15000 });
-  }
+  for (const warning of warnings ?? []) toast.warning(warning, { duration: 15000 });
 }
 
 function savedScopeRules(company: Company): CompanyScopeRule[] {
-  return (company.scope ?? [])
-    .map((scope) => ({ kind: scope.kind, value: scope.raw.trim() }))
-    .filter((scope) => scope.value);
+  return (company.scope ?? []).map((scope) => ({ kind: scope.kind, value: scope.raw.trim() })).filter((scope) => scope.value);
 }
 
 function savedScopeText(company: Company): string {
-  return savedScopeRules(company)
-    .map((scope) => scope.value)
-    .join("\n");
+  return savedScopeRules(company).map((scope) => scope.value).join("\n");
 }
 
-// 新增企业使用与任务、LLM 编辑一致的右侧抽屉。
 function CompanyDialog({ onSaved }: { onSaved: () => void }) {
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState("");
@@ -979,71 +649,48 @@ function CompanyDialog({ onSaved }: { onSaved: () => void }) {
   const [busy, setBusy] = React.useState(false);
   const parsedScope = React.useMemo(() => parseCompanyScopeText(scopeText), [scopeText]);
 
-  React.useEffect(() => {
-    if (!open) return;
-    setName("");
-    setScopeText("");
-  }, [open]);
+  React.useEffect(() => { if (!open) return; setName(""); setScopeText(""); }, [open]);
 
   const submit = async () => {
-    if (!name.trim()) {
-      toast.error("请填写企业名称");
-      return;
-    }
-    if (parsedScope.errors.length > 0) {
-      toast.error("请修正无效的资产范围");
-      return;
-    }
+    if (!name.trim()) { toast.error("Por favor ingresa el nombre de la empresa"); return; }
+    if (parsedScope.errors.length > 0) { toast.error(t("Por favor corrige el alcance de activos inválido")); return; }
     setBusy(true);
     try {
       const res = await api.createCompany(name.trim(), parsedScope.rules);
-      const added = res.scope_added ?? 0;
-      const invalid = res.scope_invalid ?? 0;
-      if (invalid > 0) toast.warning(`已创建企业，添加 ${added} 条范围；${invalid} 行无效`);
-      else toast.success(`已创建企业，添加 ${added} 条范围`);
-      setOpen(false);
-      onSaved();
+      const added = res.scope_added ?? 0; const invalid = res.scope_invalid ?? 0;
+      if (invalid > 0) toast.warning(`Empresa creada, ${added} alcances añadidos; ${invalid} líneas inválidas`);
+      else toast.success(`Empresa creada, ${added} alcances añadidos`);
+      setOpen(false); onSaved();
     } catch (e) {
       const msg = String((e as Error)?.message ?? e);
-      if (/:\s*409$/.test(msg)) toast.error("企业已存在，请换个名称");
-      else toast.error(`保存失败：${msg}`);
-    } finally {
-      setBusy(false);
-    }
+      if (/:\s*409$/.test(msg)) toast.error("La empresa ya existe, elige otro nombre");
+      else toast.error(`Error al guardar: ${msg}`);
+    } finally { setBusy(false); }
   };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button size="sm">
-          <BuildingIcon data-icon="inline-start" /> 新增企业
-        </Button>
+        <Button size="sm"><BuildingIcon data-icon="inline-start" /> Nueva empresa</Button>
       </SheetTrigger>
       <SheetContent className="w-full! max-w-none! gap-0 p-0 sm:w-[520px]! sm:max-w-[520px]!">
         <SheetHeader className="border-b p-6">
-          <SheetTitle>新增企业</SheetTitle>
-          <SheetDescription>配置企业及其资产范围。关键词只作为 Agent 提示，不会自动归属资产。</SheetDescription>
+          <SheetTitle>Nueva empresa</SheetTitle>
+          <SheetDescription>Configura la empresa y su alcance de activos. Las palabras clave solo sirven como sugerencia para el agente.</SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto p-6">
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="cn-name">企业名称</FieldLabel>
-              <Input
-                id="cn-name"
-                placeholder="如 Acme Corp（名称唯一）"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
+              <FieldLabel htmlFor="cn-name">Nombre de la empresa</FieldLabel>
+              <Input id="cn-name" placeholder="Ej. Acme Corp (nombre único)" value={name} onChange={(e) => setName(e.target.value)} />
             </Field>
             <ScopeTextEditor id="cn-scope" value={scopeText} onValueChange={setScopeText} parsed={parsedScope} />
           </FieldGroup>
         </div>
         <SheetFooter className="flex-row justify-end gap-2 border-t p-4">
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>
-            取消
-          </Button>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>{t("ui.bb9dbb406dcbd524")}</Button>
           <Button onClick={submit} disabled={busy || !name.trim() || parsedScope.errors.length > 0}>
-            {busy ? "保存中…" : "保存"}
+            {busy ? t("Guardando…") : t("common.save")}
           </Button>
         </SheetFooter>
       </SheetContent>
@@ -1051,82 +698,48 @@ function CompanyDialog({ onSaved }: { onSaved: () => void }) {
   );
 }
 
-// 编辑（覆盖）资产范围弹窗
 function EditScopeDialog({ company, onSaved }: { company: Company; onSaved: () => void }) {
   const [open, setOpen] = React.useState(false);
   const [scopeText, setScopeText] = React.useState("");
   const [reason, setReason] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const preservedScopeRules = React.useMemo(() => savedScopeRules(company), [company]);
-  const parsedScope = React.useMemo(
-    () => parseCompanyScopeText(scopeText, { preservedRules: preservedScopeRules }),
-    [preservedScopeRules, scopeText],
-  );
+  const parsedScope = React.useMemo(() => parseCompanyScopeText(scopeText, { preservedRules: preservedScopeRules }), [preservedScopeRules, scopeText]);
 
-  React.useEffect(() => {
-    if (!open) return;
-    setScopeText(savedScopeText(company));
-    setReason("");
-  }, [open, company]);
+  React.useEffect(() => { if (!open) return; setScopeText(savedScopeText(company)); setReason(""); }, [open, company]);
 
   const submit = async () => {
-    if (parsedScope.errors.length > 0) {
-      toast.error("请修正无效的资产范围");
-      return;
-    }
+    if (parsedScope.errors.length > 0) { toast.error(t("Por favor corrige el alcance de activos inválido")); return; }
     setBusy(true);
     try {
       const res = await api.updateCompanyScope(company.id, parsedScope.rules, reason);
       const errCount = res.invalid ?? 0;
-      if (errCount > 0) toast.warning(`已保存；${errCount} 行无效`);
-      else toast.success(`范围已更新，共 ${res.added} 条`);
-      showScopeWarnings(res.warnings);
-      setOpen(false);
-      onSaved();
-    } catch (e) {
-      toast.error(`保存失败：${String((e as Error)?.message ?? e)}`);
-    } finally {
-      setBusy(false);
-    }
+      if (errCount > 0) toast.warning(`Guardado; ${errCount} líneas inválidas`);
+      else toast.success(`Alcance actualizado, ${res.added} entradas en total`);
+      showScopeWarnings(res.warnings); setOpen(false); onSaved();
+    } catch (e) { toast.error(`Error al guardar: ${String((e as Error)?.message ?? e)}`); }
+    finally { setBusy(false); }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-7">
-          编辑
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger asChild><Button variant="outline" size="sm" className="h-7">{t("ui.2eba946b2e1ee4b6")}</Button></DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>编辑资产范围 · {company.name}</DialogTitle>
-          <DialogDescription>
-            编辑后将替换全部现有范围。ICP 精确匹配资产，企业关键词仅作为 Agent 提示。
-          </DialogDescription>
+          <DialogTitle>Editar alcance · {company.name}</DialogTitle>
+          <DialogDescription>Los cambios reemplazarán todo el alcance actual.</DialogDescription>
         </DialogHeader>
         <FieldGroup className="py-2">
-          <ScopeTextEditor
-            id={`edit-company-scope-${company.id}`}
-            value={scopeText}
-            onValueChange={setScopeText}
-            parsed={parsedScope}
-          />
+          <ScopeTextEditor id={`edit-company-scope-${company.id}`} value={scopeText} onValueChange={setScopeText} parsed={parsedScope} />
           <Field>
-            <FieldLabel htmlFor="es-reason">归属依据（可选）</FieldLabel>
-            <Input
-              id="es-reason"
-              placeholder="如 证书 / whois / ASN 佐证"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
+            <FieldLabel htmlFor="es-reason">Motivo de asignación (opcional)</FieldLabel>
+            <Input id="es-reason" placeholder="Ej. certificado / whois / ASN" value={reason} onChange={(e) => setReason(e.target.value)} />
           </Field>
         </FieldGroup>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>
-            取消
-          </Button>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>{t("ui.bb9dbb406dcbd524")}</Button>
           <Button onClick={submit} disabled={busy || parsedScope.errors.length > 0}>
-            {busy ? "保存中…" : "覆盖保存"}
+            {busy ? t("Guardando…") : "Guardar y reemplazar"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1134,7 +747,6 @@ function EditScopeDialog({ company, onSaved }: { company: Company; onSaved: () =
   );
 }
 
-// 追加资产范围弹窗
 function AppendScopeDialog({ company, onSaved }: { company: Company; onSaved: () => void }) {
   const [open, setOpen] = React.useState(false);
   const [scopeText, setScopeText] = React.useState("");
@@ -1142,72 +754,41 @@ function AppendScopeDialog({ company, onSaved }: { company: Company; onSaved: ()
   const [busy, setBusy] = React.useState(false);
   const parsedScope = React.useMemo(() => parseCompanyScopeText(scopeText), [scopeText]);
 
-  React.useEffect(() => {
-    if (!open) return;
-    setScopeText("");
-    setReason("");
-  }, [open]);
+  React.useEffect(() => { if (!open) return; setScopeText(""); setReason(""); }, [open]);
 
   const submit = async () => {
-    if (parsedScope.rules.length === 0) {
-      toast.error("请填写要追加的范围");
-      return;
-    }
-    if (parsedScope.errors.length > 0) {
-      toast.error("请修正无效的资产范围");
-      return;
-    }
+    if (parsedScope.rules.length === 0) { toast.error("Por favor ingresa el alcance a agregar"); return; }
+    if (parsedScope.errors.length > 0) { toast.error(t("Por favor corrige el alcance de activos inválido")); return; }
     setBusy(true);
     try {
       const res = await api.addCompanyScope(company.id, parsedScope.rules, reason);
       const errCount = res.invalid ?? 0;
-      if (errCount > 0) toast.warning(`已保存；${errCount} 行无效`);
-      else toast.success(`已追加 ${res.added} 条范围`);
-      showScopeWarnings(res.warnings);
-      setOpen(false);
-      onSaved();
-    } catch (e) {
-      toast.error(`保存失败：${String((e as Error)?.message ?? e)}`);
-    } finally {
-      setBusy(false);
-    }
+      if (errCount > 0) toast.warning(`Guardado; ${errCount} líneas inválidas`);
+      else toast.success(`Se agregaron ${res.added} alcances`);
+      showScopeWarnings(res.warnings); setOpen(false); onSaved();
+    } catch (e) { toast.error(`Error al guardar: ${String((e as Error)?.message ?? e)}`); }
+    finally { setBusy(false); }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-7">
-          追加
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger asChild><Button variant="outline" size="sm" className="h-7">Agregar</Button></DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>追加资产范围 · {company.name}</DialogTitle>
-          <DialogDescription>新范围会追加到现有范围。ICP 精确匹配资产，企业关键词仅作为 Agent 提示。</DialogDescription>
+          <DialogTitle>Agregar alcance · {company.name}</DialogTitle>
+          <DialogDescription>El nuevo alcance se agregará al existente.</DialogDescription>
         </DialogHeader>
         <FieldGroup className="py-2">
-          <ScopeTextEditor
-            id={`append-company-scope-${company.id}`}
-            value={scopeText}
-            onValueChange={setScopeText}
-            parsed={parsedScope}
-          />
+          <ScopeTextEditor id={`append-company-scope-${company.id}`} value={scopeText} onValueChange={setScopeText} parsed={parsedScope} />
           <Field>
-            <FieldLabel htmlFor="as-reason">归属依据（可选）</FieldLabel>
-            <Input
-              id="as-reason"
-              placeholder="如 证书 / whois / ASN 佐证"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
+            <FieldLabel htmlFor="as-reason">Motivo de asignación (opcional)</FieldLabel>
+            <Input id="as-reason" placeholder="Ej. certificado / whois / ASN" value={reason} onChange={(e) => setReason(e.target.value)} />
           </Field>
         </FieldGroup>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>
-            取消
-          </Button>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>{t("ui.bb9dbb406dcbd524")}</Button>
           <Button onClick={submit} disabled={busy || parsedScope.rules.length === 0 || parsedScope.errors.length > 0}>
-            {busy ? "保存中…" : "追加"}
+            {busy ? t("Guardando…") : "Agregar"}
           </Button>
         </DialogFooter>
       </DialogContent>

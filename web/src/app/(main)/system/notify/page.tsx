@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import { BellIcon, PlusIcon, SendIcon, Trash2Icon } from "lucide-react";
@@ -32,10 +34,10 @@ import { ConfigField, FilterSummary } from "./_components/channel-form";
 import { DeliveryList } from "./_components/delivery-list";
 import { formatBacklog, StatTile } from "./_components/stat-tile";
 
-// 本页只负责编排：加载数据、维护表单状态、调用接口。
-// 字段定义与解析在 _components/channel-fields.ts，控件与过滤摘要在
-// _components/channel-form.tsx，投递记录在 _components/delivery-list.tsx——
-// 拆开是因为它们各自能被单独读懂，而挤在一个文件里时这个页面接近 1100 行。
+// esta página solo es responsable del diseño: cargar datos, mantener el estado del formulario y llamar a las interfaces.。
+// Definición y análisis de campos en _components/channel-fields.ts，Controles y resúmenes de filtros en
+// _components/channel-form.tsx，Entrega registrada en _components/delivery-list.tsx——
+// Dividido porque cada uno de ellos se puede leer por separado y, cuando se comprime en un solo archivo, esta página está cerca de 1100 OK。
 export default function NotifyPage() {
   const [meta, setMeta] = React.useState<NotificationMeta | null>(null);
   const [channels, setChannels] = React.useState<NotificationChannel[]>([]);
@@ -59,13 +61,13 @@ export default function NotifyPage() {
         setBaseURL(m.public_base_url);
         setDigestMin(m.digest_interval_min);
       })
-      .catch((e) => toast.error("读取推送配置失败：" + (e as Error).message));
-    // 渠道列表加载失败要报出来：静默失败会显示成「一个渠道都没有」，
-    // 用户会以为配置丢了，比直接报错更让人慌。
+      .catch((e) => toast.error(t("ui.795be4ac85c7bf15") + (e as Error).message));
+    // Se debe informar la falla al cargar la lista de canales: la falla silenciosa se mostrará como ”Ni un solo canal”.」，
+    // Los usuarios pensarán que la configuración se perdió, lo cual es más alarmante que informar un error directamente.。
     api
       .notifyChannels()
       .then(setChannels)
-      .catch((e) => toast.error("读取渠道列表失败：" + (e as Error).message));
+      .catch((e) => toast.error(t("ui.a6358eaec77c4739") + (e as Error).message));
   }, []);
   React.useEffect(() => {
     load();
@@ -86,7 +88,7 @@ export default function NotifyPage() {
 
   function openEdit(ch: NotificationChannel) {
     setEditing(ch);
-    // filter 在后端是 Go 结构体，永远序列化成对象（不会是 null），所以不需要兜底。
+    // filter En el backend está Go Estructura, siempre serializada en objetos (no null），Entonces no hay necesidad de decir la verdad.。
     const f = ch.filter;
     setForm({
       name: ch.name,
@@ -94,8 +96,8 @@ export default function NotifyPage() {
       mode: ch.mode,
       enabled: ch.enabled,
       ratePerMin: String(ch.rate_per_min),
-      // 后端回显的 config 里凭据是掩码值；原样放进表单，提交时原样送回，
-      // 后端据此保留库中原值。
+      // repetido por el backend config Las credenciales aquí son valores de máscara; póngalos en el formulario tal como están y envíelos de vuelta tal como estaban al enviarlos.，
+      // El backend conserva el valor original en la biblioteca en consecuencia。
       config: { ...ch.config },
       minSeverity: f.min_severity ?? "",
       includeText: (f.vulnclass_include ?? []).join("\n"),
@@ -107,17 +109,17 @@ export default function NotifyPage() {
     setOpen(true);
   }
 
-  // buildConfig 把表单状态转成渠道 config。
+  // buildConfig Convertir estado de formulario a canal config。
   //
-  // 唯一的规则，两类值：
-  //   - 掩码值（"__masked__..."）原样送回 → 后端解读为「这个字段没改，保留库中原值」
-  //   - 其余一律按用户输入提交，空串即「清空该字段」
+  // regla única, dos tipos de valores：
+  //   - valor de máscara（"__masked__..."）Devolver tal cual → El servidor lo interpreta como ”Este campo no se ha modificado y se conserva el valor original en la biblioteca”.」
+  //   - El resto se enviará según la entrada del usuario. Una cadena vacía significa ”borrar este campo”.」
   //
-  // 之所以不特殊照顾凭据字段（比如「凭据留空就跳过」），是因为那会让用户**无法清除**
-  // 一个设错的密钥——界面上没有任何操作能表达「我要把它删掉」。现在的规则下，
-  // 清空输入框就等于清空该字段，语义唯一且用户可控。
-  // 掩码值不会出现在输入框里（见 ConfigField），所以「框里有字」永远等于
-  // 「用户主动填的」。
+  // La razón por la que no prestamos especial atención al campo de credencial (como ”deje la credencial en blanco para omitirla”) es porque eso hará que el usuario**No se puede borrar**
+  // Una clave mal configurada: no hay ninguna acción en la interfaz que diga ”Quiero eliminarla”. Bajo las reglas actuales，
+  // Borrar el cuadro de entrada equivale a borrar el campo. La semántica es única y controlable por el usuario.。
+  // El valor de la máscara no aparecerá en el cuadro de entrada (ver ConfigField），Entonces ”hay palabras en el cuadro” siempre es igual a
+  // 「Completado por el usuario activamente」。
   function buildConfig(): Record<string, unknown> {
     const defs = CHANNEL_FIELDS[form.kind] ?? [];
     const out: Record<string, unknown> = {};
@@ -165,7 +167,7 @@ export default function NotifyPage() {
 
   async function saveForm() {
     if (!form.name.trim()) {
-      toast.error("请填写渠道名称");
+      toast.error(t("ui.5ba6a867f9ef3bc8"));
       return;
     }
     setSaving(true);
@@ -181,16 +183,16 @@ export default function NotifyPage() {
       };
       if (editing) {
         await api.notifyUpdateChannel(editing.id, payload);
-        toast.success("已保存");
+        toast.success(t("ui.3a660ff5fb7c1989"));
         setOpen(false);
       } else {
         await api.notifyCreateChannel(payload);
-        toast.success("已添加渠道");
+        toast.success(t("ui.7dc1f0ece2f2aba3"));
         setOpen(false);
       }
       load();
     } catch (e) {
-      toast.error("保存失败：" + (e as Error).message);
+      toast.error(t("ui.d97c6497d08cd1ab") + (e as Error).message);
     } finally {
       setSaving(false);
     }
@@ -201,10 +203,10 @@ export default function NotifyPage() {
     setTesting(true);
     try {
       const r = await api.notifyTestChannel(editing.id);
-      toast.success(`已发出测试消息（${r.latency_ms} ms），请到群里确认`);
+      toast.success(`Mensaje de prueba enviado (${r.latency_ms}ms), por favor confirmar en el grupo`);
     } catch (e) {
-      // 后端把渠道返回的原始错误如实回传，这是排查配置的唯一线索，原样展示。
-      toast.error("测试失败：" + (e as Error).message, { duration: 12000 });
+      // El backend devuelve el error original devuelto por el canal con sinceridad. Esta es la única pista para solucionar problemas de configuración. Muéstralo tal como es.。
+      toast.error(t("ui.35d6765479f4220c") + (e as Error).message, { duration: 12000 });
     } finally {
       setTesting(false);
     }
@@ -213,11 +215,11 @@ export default function NotifyPage() {
   async function removeChannel(ch: NotificationChannel) {
     try {
       await api.notifyDeleteChannel(ch.id);
-      toast.success(`已删除：${ch.name}`);
+      toast.success(`Eliminado:${ch.name}`);
       setOpen(false);
       load();
     } catch (e) {
-      toast.error("删除失败：" + (e as Error).message);
+      toast.error(t("ui.ac60bde833d4bb98") + (e as Error).message);
     }
   }
 
@@ -226,7 +228,7 @@ export default function NotifyPage() {
       await api.notifyUpdateChannel(ch.id, { enabled: !ch.enabled });
       load();
     } catch (e) {
-      toast.error("操作失败：" + (e as Error).message);
+      toast.error(t("ui.b4fb4e8016ec762e") + (e as Error).message);
     }
   }
 
@@ -235,9 +237,9 @@ export default function NotifyPage() {
     try {
       await api.setSettings({ notify_enabled: on });
       setMeta((m) => (m ? { ...m, enabled: on } : m));
-      toast.success(on ? "推送已开启" : "推送已暂停");
+      toast.success(on ? t("ui.c823ddb1c401ee7c") : t("ui.5a5bfccd96b442da"));
     } catch (e) {
-      toast.error("操作失败：" + (e as Error).message);
+      toast.error(t("ui.b4fb4e8016ec762e") + (e as Error).message);
     } finally {
       setGlobalSaving(false);
     }
@@ -250,10 +252,10 @@ export default function NotifyPage() {
       const n = Number(digestMin);
       if (Number.isFinite(n) && n > 0) patch.notify_digest_interval_min = n;
       await api.setSettings(patch);
-      toast.success("已保存");
+      toast.success(t("ui.3a660ff5fb7c1989"));
       load();
     } catch (e) {
-      toast.error("保存失败：" + (e as Error).message);
+      toast.error(t("ui.d97c6497d08cd1ab") + (e as Error).message);
     } finally {
       setGlobalSaving(false);
     }
@@ -267,21 +269,20 @@ export default function NotifyPage() {
     <div className="flex flex-1 flex-col gap-4 md:gap-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">通知推送</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{t("ui.a27efbf78b65937a")}</h1>
           <p className="text-muted-foreground text-sm">
-            发现漏洞时推送到钉钉 / 飞书 / 企业微信等渠道 · 每个渠道可独立设推送时机与过滤规则
-          </p>
+             {t("ui.d0997eaa2f465cca")} </p>
         </div>
         {meta && (
-          // 用 div 而不是 label：Switch 自带 aria-label，外面再套一层 label
-          // 既关联不到任何原生控件，又会让点击文字看起来应该能切换。
+          // uso div en lugar de label：Switch Trae el tuyo aria-label，Pon otra capa en el exterior. label
+          // No se puede asociar con ningún control nativo y hace que parezca que puedes cambiar haciendo clic en el texto.。
           <div className="flex shrink-0 items-center gap-2 text-sm">
-            <span className="text-muted-foreground">总开关</span>
+            <span className="text-muted-foreground">{t("ui.9cb9e99f61f43e93")}</span>
             <Switch
               checked={meta.enabled}
               disabled={globalSaving}
               onCheckedChange={toggleGlobal}
-              aria-label="推送总开关"
+              aria-label={t("ui.512496db0e4dbd53")}
             />
           </div>
         )}
@@ -289,15 +290,15 @@ export default function NotifyPage() {
 
       {meta && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <StatTile label="渠道" value={`${meta.stats.channels_on} / ${meta.stats.channels}`} hint="启用 / 总数" />
-          <StatTile label="今日送达" value={String(meta.stats.sent_today)} />
-          <StatTile label="待发送" value={String(meta.stats.pending)} />
-          <StatTile label="失败" value={String(meta.stats.failed)} tone={meta.stats.failed > 0 ? "red" : undefined} />
+          <StatTile label={t("ui.1501284e7c8472b9")} value={`${meta.stats.channels_on} / ${meta.stats.channels}`} hint={t("ui.96c8dde1244a5a86")} />
+          <StatTile label={t("ui.07f0ec7c7d15b7fc")} value={String(meta.stats.sent_today)} />
+          <StatTile label={t("ui.eeaca59a2410cd7d")} value={String(meta.stats.pending)} />
+          <StatTile label={t("status.failed")} value={String(meta.stats.failed)} tone={meta.stats.failed > 0 ? "red" : undefined} />
           <StatTile
-            label="最久积压"
+            label={t("ui.9b10f9458b76cdac")}
             value={formatBacklog(meta.stats.backlog_age_ms)}
-            // 积压年龄比积压条数有用得多：积压 3 条可以是从 3 秒到 3 小时。
-            hint={meta.stats.backlog_age_ms > 5 * 60_000 ? "推送可能卡住了" : undefined}
+            // La edad del trabajo pendiente es mucho más útil que el número del trabajo pendiente: Trabajo pendiente 3 Las barras pueden ser de 3 segundos arriba 3 hora。
+            hint={meta.stats.backlog_age_ms > 5 * 60_000 ? t("ui.c2c1ec3b7812ecd7") : undefined}
             tone={meta.stats.backlog_age_ms > 5 * 60_000 ? "red" : undefined}
           />
         </div>
@@ -305,21 +306,21 @@ export default function NotifyPage() {
 
       <Card className="gap-3">
         <CardHeader>
-          <CardTitle className="text-base">全局设置</CardTitle>
+          <CardTitle className="text-base">{t("ui.2c8860f2036e15bd")}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
-            <Label htmlFor="n-base">回链地址</Label>
+            <Label htmlFor="n-base">{t("ui.5010d669653bd676")}</Label>
             <Input
               id="n-base"
-              placeholder="https://artex.example.com"
+              placeholder="https://nexus.example.com"
               value={baseURL}
               onChange={(e) => setBaseURL(e.target.value)}
             />
-            <p className="text-muted-foreground text-xs">消息里「查看详情」按钮指向的地址。留空则不带按钮。</p>
+            <p className="text-muted-foreground text-xs">{t("ui.b7d9ccb4f9f1e297")}</p>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="n-digest">汇总周期（分钟）</Label>
+            <Label htmlFor="n-digest">{t("ui.7f43e33b1e03cc89")}</Label>
             <Input
               id="n-digest"
               type="number"
@@ -329,20 +330,19 @@ export default function NotifyPage() {
               value={digestMin}
               onChange={(e) => setDigestMin(e.target.value)}
             />
-            <p className="text-muted-foreground text-xs">仅对「汇总」模式的渠道生效。</p>
+            <p className="text-muted-foreground text-xs">{t("ui.903e2a22f0208d55")}</p>
           </div>
           <div className="sm:col-span-2">
             <Button onClick={saveGlobal} disabled={globalSaving}>
-              保存全局设置
-            </Button>
+               {t("ui.99fc522df5180369")} </Button>
           </div>
         </CardContent>
       </Card>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as "channels" | "deliveries")} className="flex flex-col gap-4">
         <TabsList>
-          <TabsTrigger value="channels">渠道</TabsTrigger>
-          <TabsTrigger value="deliveries">投递记录</TabsTrigger>
+          <TabsTrigger value="channels">{t("ui.1501284e7c8472b9")}</TabsTrigger>
+          <TabsTrigger value="deliveries">{t("ui.9eefc4935128e9b4")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="channels">
@@ -353,7 +353,7 @@ export default function NotifyPage() {
               className="text-foreground/70 border-foreground/70 hover:bg-muted/60 hover:shadow-sm flex min-h-[130px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed transition"
             >
               <PlusIcon className="size-6" />
-              <span className="text-sm">添加渠道</span>
+              <span className="text-sm">{t("ui.8c2ac66227a00c2d")}</span>
             </button>
 
             {channels.map((ch) => (
@@ -366,25 +366,25 @@ export default function NotifyPage() {
                   <div className="flex items-center gap-2">
                     <BellIcon className="text-muted-foreground size-4 shrink-0" />
                     <CardTitle className="truncate text-base">{ch.name}</CardTitle>
-                    {/* 卡片整体可点（进入编辑），所以这两个控件必须各自吞掉冒泡，
-                        否则开关/删除会顺带触发编辑。把 stopPropagation 挂在控件自己
-                        身上，而不是套一层 div：套 div 会造出一个「看起来可交互但没有
-                        角色」的静态元素，既触发 a11y 告警，语义上也说不通。 */}
+                    {/* Se puede hacer clic en toda la tarjeta (para ingresar a la edición), por lo que estos dos controles deben tragarse las burbujas por separado.，
+                        De lo contrario cambiar/La eliminación provocará la edición incidental. poner stopPropagation Espera el control mismo
+                        Sobre el cuerpo en lugar de una capa div：conjunto div Creará una ”apariencia interactiva pero no
+                        Elemento estático de ”Carácter”, que desencadena a11y Alarma, no tiene sentido semánticamente.。 */}
                     <div className="ml-auto flex items-center gap-2">
                       <Switch
                         checked={ch.enabled}
                         onCheckedChange={() => toggleEnabled(ch)}
                         onClick={(e) => e.stopPropagation()}
-                        aria-label="启用"
+                        aria-label={t("ui.2d7376f810894b02")}
                       />
                       <Button
                         size="icon"
                         variant="outline"
-                        aria-label="删除"
+                        aria-label={t("common.delete")}
                         onClick={(e) => {
                           e.stopPropagation();
-                          // void 显式丢弃 Promise：removeChannel 自己 catch 并 toast，
-                          // 这里不需要 await（onClick 不是 async）。
+                          // void Descartar explícitamente Promise：removeChannel yo mismo catch y toast，
+                          // No es necesario aquí await（onClick No async）。
                           void removeChannel(ch);
                         }}
                       >
@@ -396,8 +396,8 @@ export default function NotifyPage() {
                 <CardContent className="grid gap-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline">{KIND_LABEL[ch.kind] ?? ch.kind}</Badge>
-                    <Badge variant="outline">{ch.mode === "digest" ? "汇总" : "实时"}</Badge>
-                    {!ch.enabled && <Badge variant="outline">已停用</Badge>}
+                    <Badge variant="outline">{ch.mode === "digest" ? t("ui.ed7bdc67c84b3ed6") : t("ui.8863a5170d55d1d1")}</Badge>
+                    {!ch.enabled && <Badge variant="outline">{t("ui.68de79aa60784d31")}</Badge>}
                   </div>
                   <FilterSummary filter={ch.filter} />
                 </CardContent>
@@ -414,21 +414,21 @@ export default function NotifyPage() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="w-full data-[side=right]:sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle>{editing ? editing.name : "添加通知渠道"}</SheetTitle>
+            <SheetTitle>{editing ? editing.name : t("ui.1eeef1555bc67583")}</SheetTitle>
             <SheetDescription>
               {KIND_LABEL[form.kind] ?? form.kind}
-              {defaultRate > 0 ? ` · 默认限流 ${defaultRate} 条/分钟` : " · 不限流"}
+              {defaultRate > 0 ? ` · Límite de corriente predeterminado ${defaultRate}bares/minuto` : t("ui.1b24389f44506fb2")}
             </SheetDescription>
           </SheetHeader>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label>渠道类型</Label>
+                <Label>{t("ui.9411c7c4d3c5802b")}</Label>
                 <Select
                   value={form.kind}
                   onValueChange={(v) => {
-                    // 换类型等于换一套凭据字段，不能把旧配置合并进来。
+                    // Cambiar el tipo equivale a cambiar un conjunto de campos de credenciales y la configuración anterior no se puede fusionar.。
                     setF({ kind: v, config: {} });
                   }}
                   disabled={!!editing}
@@ -446,16 +446,15 @@ export default function NotifyPage() {
                 </Select>
                 {editing && (
                   <p className="text-muted-foreground text-xs">
-                    渠道类型不可修改——改了类型等于换一套凭据，请新建渠道。
-                  </p>
+                     {t("ui.f6a04fa08a08b65c")} </p>
                 )}
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="n-name">渠道名称</Label>
+                <Label htmlFor="n-name">{t("ui.3ead58798d48bff8")}</Label>
                 <Input
                   id="n-name"
-                  placeholder="应急响应群 / 日常播报群"
+                  placeholder={t("ui.aef0e76f38d03b48")}
                   value={form.name}
                   onChange={(e) => setF({ name: e.target.value })}
                 />
@@ -463,8 +462,7 @@ export default function NotifyPage() {
 
               {fields.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  该渠道的表单尚未定义（前端缺 CHANNEL_FIELDS 条目），请补全后再试。
-                </p>
+                   {t("ui.3a8f73daecf84bcb")} </p>
               ) : (
                 fields.map((d) => (
                   <ConfigField
@@ -478,41 +476,39 @@ export default function NotifyPage() {
               )}
 
               <div className="grid gap-2">
-                <Label>推送时机</Label>
+                <Label>{t("ui.d644139601abdde5")}</Label>
                 <Select value={form.mode} onValueChange={(v) => setF({ mode: v as "realtime" | "digest" })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="realtime">实时 · 每条漏洞单独发一条</SelectItem>
-                    <SelectItem value="digest">汇总 · 按周期合并成一条</SelectItem>
+                    <SelectItem value="realtime">{t("ui.7856dca63369a1ba")}</SelectItem>
+                    <SelectItem value="digest">{t("ui.b95889dc6d04b7d7")}</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-muted-foreground text-xs">
-                  想做「高危实时、其余汇总」就建两个渠道：一个实时 + 门槛高危，一个汇总 + 不限级别。
-                </p>
+                   {t("ui.c1c14cb17b9bfa54")} </p>
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="n-rate">限流（条/分钟）</Label>
+                <Label htmlFor="n-rate">{t("ui.f274fddf6448bd00")}</Label>
                 <Input
                   id="n-rate"
                   type="number"
                   min={0}
-                  placeholder={defaultRate > 0 ? String(defaultRate) : "0 = 不限"}
+                  placeholder={defaultRate > 0 ? String(defaultRate) : t("ui.975d03a768f1c563")}
                   value={form.ratePerMin}
                   onChange={(e) => setF({ ratePerMin: e.target.value })}
                 />
                 <p className="text-muted-foreground text-xs">
-                  留空用渠道默认值；0 表示不限流。超限不会丢消息，只会推迟发送。
-                </p>
+                   {t("ui.0d220ebef293cce3")} </p>
               </div>
 
               <div className="border-t pt-4">
-                <p className="mb-3 text-sm font-medium">过滤规则（留空即不过滤）</p>
+                <p className="mb-3 text-sm font-medium">{t("ui.7beab3c8a5d90a73")}</p>
                 <div className="grid gap-4">
                   <div className="grid gap-2">
-                    <Label>最低级别</Label>
+                    <Label>{t("ui.09b39085a2c7b338")}</Label>
                     <Select
                       value={form.minSeverity || "all"}
                       onValueChange={(v) => setF({ minSeverity: v === "all" ? "" : v })}
@@ -530,29 +526,28 @@ export default function NotifyPage() {
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="n-inc">只推这些漏洞类型</Label>
+                    <Label htmlFor="n-inc">{t("ui.86d05d8bc61c0797")}</Label>
                     <Textarea
                       id="n-inc"
-                      placeholder={"SQL注入\n命令执行"}
+                      placeholder={t("ui.783d71e73c5a9ce9")}
                       value={form.includeText}
                       onChange={(e) => setF({ includeText: e.target.value })}
                     />
                     <p className="text-muted-foreground text-xs">
-                      每行一个关键词，大小写不敏感的子串匹配。留空=全部类型。
-                    </p>
+                       {t("ui.eab396abc078c994")} </p>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="n-exc">排除这些漏洞类型</Label>
+                    <Label htmlFor="n-exc">{t("ui.870ce1f2fc4ea66f")}</Label>
                     <Textarea
                       id="n-exc"
-                      placeholder={"信息泄露"}
+                      placeholder={t("ui.58c7fd9c200bb923")}
                       value={form.excludeText}
                       onChange={(e) => setF({ excludeText: e.target.value })}
                     />
-                    <p className="text-muted-foreground text-xs">排除优先于包含：同时命中时会被排除。</p>
+                    <p className="text-muted-foreground text-xs">{t("ui.dad7d3bdbe416e3b")}</p>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="n-tasks">限定任务 ID</Label>
+                    <Label htmlFor="n-tasks">{t("ui.7d9b754c7af35c7a")}</Label>
                     <Input
                       id="n-tasks"
                       placeholder="1, 2, 3"
@@ -561,40 +556,37 @@ export default function NotifyPage() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="n-assets">限定资产 ID</Label>
+                    <Label htmlFor="n-assets">{t("ui.e1729e5067963061")}</Label>
                     <Input
                       id="n-assets"
                       placeholder="10, 11"
                       value={form.assetIDsText}
                       onChange={(e) => setF({ assetIDsText: e.target.value })}
                     />
-                    <p className="text-muted-foreground text-xs">任务/资产留空=不限；填写后要求与漏洞有交集。</p>
+                    <p className="text-muted-foreground text-xs">{t("ui.0f1b2ebd46a72956")}</p>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Switch
                       checked={form.onStatusChange}
                       onCheckedChange={(v) => setF({ onStatusChange: v })}
-                      aria-label="接收状态变更"
+                      aria-label={t("ui.e9362d2fcdd81a1a")}
                     />
-                    漏洞处置状态变更时也推送（仅实时模式）
-                  </div>
+                     {t("ui.b94c463be76638cc")} </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 text-sm">
-                <Switch checked={form.enabled} onCheckedChange={(v) => setF({ enabled: v })} aria-label="启用" />
-                启用该渠道
-              </div>
+                <Switch checked={form.enabled} onCheckedChange={(v) => setF({ enabled: v })} aria-label={t("ui.2d7376f810894b02")} />
+                 {t("ui.2ec3742cc916b48c")} </div>
             </div>
 
             <div className="flex gap-2 pt-2 pb-6">
               <Button onClick={saveForm} disabled={saving}>
-                {editing ? "保存" : "添加"}
+                {editing ? t("common.save") : t("common.add")}
               </Button>
               {editing && (
                 <Button variant="outline" onClick={testChannel} disabled={testing}>
-                  <SendIcon /> 发送测试消息
-                </Button>
+                  <SendIcon />  {t("ui.82da38739ebe99ff")} </Button>
               )}
             </div>
           </div>

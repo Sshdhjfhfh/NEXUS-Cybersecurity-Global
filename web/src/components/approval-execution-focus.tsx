@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
@@ -34,12 +36,12 @@ export function useApprovalFocus({ taskId, conversationId }: { taskId?: string; 
             ? source.conversation_id !== conversationId
             : source.task_id !== taskId || source.conversation_id != null
         ) {
-          throw new Error("审批来源与当前会话不一致");
+          throw new Error(t("ui.a363c4478c440e68"));
         }
         setState({ id, source, loading: false });
       })
       .catch((e) => {
-        if (!cancelled) setState({ id, error: (e as Error).message || "无法定位原始执行", loading: false });
+        if (!cancelled) setState({ id, error: (e as Error).message || t("ui.bc3e3543432953d4"), loading: false });
       });
     return () => {
       cancelled = true;
@@ -78,13 +80,13 @@ export function useApprovalHistory(
         const page = await loadPage(before);
         if (cancelled) return;
         if (!page.items.length || (before > 0 && page.items[0].seq >= before)) {
-          throw new Error("会话中未找到对应工具调用，记录可能已删除");
+          throw new Error(t("ui.66230b24ce2f8ef3"));
         }
         mergePage(page);
         current = page.items;
         before = current[0].seq;
         if (!page.hasMore && !current.some((a) => a.seq === source.seq)) {
-          throw new Error("会话中未找到对应工具调用");
+          throw new Error(t("ui.4aa6f8bf9f710807"));
         }
       }
       if (!cancelled) setResult({ source });
@@ -118,20 +120,18 @@ export function ApprovalExecutionFocus({
     >
       <span className={error ? "text-destructive" : "text-muted-foreground"}>
         {error
-          ? `无法定位：${error}`
+          ? `No se puede localizar:${error}`
           : history.ready
-            ? `已展开审批 #${state.id} 对应的工具调用`
-            : `正在加载审批 #${state.id} 所在的对话位置…`}
+            ? `Se ha iniciado la aprobación #${state.id}llamada a la herramienta correspondiente`
+            : `Cargando aprobación #${state.id}La ubicación de la conversación actual...`}
       </span>
       <div className="flex gap-2">
         {error ? (
           <Button size="sm" variant="outline" onClick={focus.retry}>
-            重试定位
-          </Button>
+             {t("ui.270961fecd2b8a48")} </Button>
         ) : null}
         <Button size="sm" variant="ghost" onClick={focus.close}>
-          取消定位
-        </Button>
+           {t("ui.a1048415bbec1d15")} </Button>
       </div>
     </div>
   );

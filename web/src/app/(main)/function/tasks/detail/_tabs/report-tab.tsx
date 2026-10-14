@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import { CheckIcon, CopyIcon, FileTextIcon } from "lucide-react";
@@ -40,10 +42,10 @@ export function ReportTab({ taskId }: { taskId: string }) {
     const ok = await copyText(report);
     if (ok) {
       setCopied(true);
-      toast.success("已复制 Markdown");
+      toast.success(t("ui.9d91b596d393d076"));
       setTimeout(() => setCopied(false), 1500);
     } else {
-      toast.error("复制失败，请手动选择文本复制");
+      toast.error(t("ui.65dbb2e5ffe4bc8b"));
     }
   }
 
@@ -52,8 +54,7 @@ export function ReportTab({ taskId }: { taskId: string }) {
     content = (
       <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed py-16 text-muted-foreground text-sm">
         <FileTextIcon className="size-8 opacity-40" />
-        加载中…
-      </div>
+         {t("ui.205443ee88568e8c")} </div>
     );
   } else if (report) {
     content = (
@@ -65,8 +66,7 @@ export function ReportTab({ taskId }: { taskId: string }) {
     content = (
       <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed py-16 text-muted-foreground text-sm">
         <FileTextIcon className="size-8 opacity-40" />
-        暂无报告
-      </div>
+         {t("ui.ea2e19f515aa88ca")} </div>
     );
   }
 
@@ -74,13 +74,11 @@ export function ReportTab({ taskId }: { taskId: string }) {
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2 text-sm">
-          <FileTextIcon className="size-4" /> 渗透测试报告（Markdown）
-        </CardTitle>
+          <FileTextIcon className="size-4" />  {t("ui.dbaf08833366d5ef")} </CardTitle>
         <div className="flex gap-2">
           {report && (
             <Button size="sm" variant="outline" onClick={copy}>
-              {copied ? <CheckIcon /> : <CopyIcon />} 复制
-            </Button>
+              {copied ? <CheckIcon /> : <CopyIcon />} copia </Button>
           )}
         </div>
       </CardHeader>

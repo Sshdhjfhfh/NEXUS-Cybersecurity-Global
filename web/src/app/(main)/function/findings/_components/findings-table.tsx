@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import Link from "next/link";
@@ -56,7 +58,7 @@ export const FINDING_STATUSES: FindingStatus[] = [
 
 export const UNASSIGNED_TASK = "__unassigned__";
 
-// 行内编辑缓冲:当前展开行的名称/类别/严重等级。
+// búfer de edición en línea:el nombre de la fila actualmente expandida/categoría/Nivel de gravedad。
 export interface FindingEdit {
   name: string;
   vulnclass: string;
@@ -93,7 +95,7 @@ interface FindingsTableProps {
   selectedIds: Set<string>;
   onToggleSelected: (id: string, checked: boolean) => void;
   onToggleSelectedPage: (ids: string[], checked: boolean) => void;
-  /** 当前展开行的 findingRowKey;null = 全部收起。 */
+  /** la fila actualmente expandida findingRowKey;null = Contraer todo。 */
   expandedKey: string | null;
   onToggleRow: (finding: Finding) => void;
   reports: Record<string, FindingReport>;
@@ -106,12 +108,12 @@ interface FindingsTableProps {
   activeRetests: Record<string, ActiveFindingRetest>;
   onDeepen: (finding: Finding) => void;
   onDelete: (finding: Finding) => void;
-  /** 全选框的无障碍标签,平铺视图与分组视图措辞不同。 */
+  /** Etiqueta de accesibilidad para el cuadro de seleccionar todo,Las vistas en mosaico están redactadas de forma diferente a las vistas agrupadas.。 */
   selectAllLabel?: string;
 }
 
-// FindingsTable 是发现列表的表格主体,平铺视图与按任务分组视图共用同一份行渲染
-// (勾选 / 行内展开 / 行内改名与改状态 / 复测 / 深入 / 删除),差异只在外层容器与分页。
+// FindingsTable es el cuerpo de la tabla de la lista de descubrimiento.,La vista en mosaico y la vista agrupada por tarea comparten la misma representación de fila
+// (comprobar / expansión en línea / Cambio de nombre y cambio de estado en línea / volver a probar / profundizar / eliminar),La diferencia es solo entre contenedor exterior y paginación.。
 export function FindingsTable({
   items,
   selectedIds,
@@ -129,7 +131,7 @@ export function FindingsTable({
   activeRetests,
   onDeepen,
   onDelete,
-  selectAllLabel = "选择当前页全部",
+  selectAllLabel = t("ui.209a848527d73248"),
 }: FindingsTableProps) {
   const selectableIds = items.map((finding) => finding.finding_id).filter((id): id is string => Boolean(id));
   const selectedCount = selectableIds.filter((id) => selectedIds.has(id)).length;
@@ -141,7 +143,7 @@ export function FindingsTable({
   }
 
   return (
-    /* 固定列宽保证展开内容不撑开表格；窄屏只在表格内部横向滚动。 */
+    /* El ancho de columna fijo garantiza que el contenido expandido no alargue la tabla; Las pantallas estrechas solo se desplazan horizontalmente dentro de la tabla.。 */
     <Table className="min-w-[60rem] table-fixed">
       <TableHeader>
         <TableRow>
@@ -153,13 +155,13 @@ export function FindingsTable({
             />
           </TableHead>
           <TableHead className="w-8" />
-          <TableHead className="w-20">严重度</TableHead>
-          <TableHead>漏洞名称</TableHead>
-          <TableHead className="w-44">资产</TableHead>
-          <TableHead className="w-28">状态</TableHead>
-          <TableHead className="w-32">所属任务</TableHead>
-          <TableHead className="w-24">时间</TableHead>
-          <TableHead className="w-48">操作</TableHead>
+          <TableHead className="w-20">{t("ui.30e9826b254070f9")}</TableHead>
+          <TableHead>{t("ui.74c5a7a69013c793")}</TableHead>
+          <TableHead className="w-44">{t("nav.assets")}</TableHead>
+          <TableHead className="w-28">{t("common.status")}</TableHead>
+          <TableHead className="w-32">{t("ui.f84a0ac5151cd0cb")}</TableHead>
+          <TableHead className="w-24">{t("common.time")}</TableHead>
+          <TableHead className="w-48">{t("common.actions")}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -186,7 +188,7 @@ export function FindingsTable({
                     <Checkbox
                       checked={selectedIds.has(f.finding_id)}
                       onCheckedChange={(c) => onToggleSelected(f.finding_id as string, c === true)}
-                      aria-label="选择该漏洞"
+                      aria-label={t("ui.e4c5f86b5d3a7dd2")}
                     />
                   )}
                 </TableCell>
@@ -205,15 +207,15 @@ export function FindingsTable({
                         href={`/function/findings/detail?id=${f.finding_id}`}
                         onClick={(e) => e.stopPropagation()}
                         className="truncate font-medium hover:text-primary hover:underline"
-                        title="查看发现详情"
+                        title={t("ui.530eb048e0f4b601")}
                       >
-                        {f.name || f.vulnclass || "未分类"}
+                        {f.name || f.vulnclass || "Sin categoría"}
                       </Link>
                     ) : (
-                      <span className="truncate font-medium">{f.name || f.vulnclass || "未分类"}</span>
+                      <span className="truncate font-medium">{f.name || f.vulnclass || "Sin categoría"}</span>
                     )}
                     <span className="truncate text-xs text-muted-foreground">{f.summary}</span>
-                    <Badge variant="outline">流量证据 {f.traffic_count ?? 0} 条</Badge>
+                    <Badge variant="outline">{t("ui.e1418d526b55bae9")} {f.traffic_count ?? 0}  {t("ui.a1cb6bd814e4e98b")}</Badge>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -274,23 +276,20 @@ export function FindingsTable({
                   <div className="flex items-center gap-1">
                     {retest ? (
                       <Button asChild size="sm" variant="ghost">
-                        <Link href={`/chat?c=${retest.conversation_id}`} title="查看正在进行的复测会话">
+                        <Link href={`/chat?c=${retest.conversation_id}`} title={t("ui.befc82fbb1138eff")}>
                           <Spinner data-icon="inline-start" />
-                          复测中
-                        </Link>
+                           {t("ui.bd5976292d5f038a")} </Link>
                       </Button>
                     ) : null}
                     {!retest && f.finding_id && !f.inherited ? (
-                      <Button size="sm" variant="ghost" onClick={() => onRetest(f)} title="在独立会话中复测该漏洞">
+                      <Button size="sm" variant="ghost" onClick={() => onRetest(f)} title={t("ui.e63bff9ef6afc7eb")}>
                         <RotateCcwIcon data-icon="inline-start" />
-                        复测
-                      </Button>
+                         {t("ui.2b1dc566bd63833f")} </Button>
                     ) : null}
                     {f.finding_id && f.task_id && (
                       <Button size="sm" variant="ghost" onClick={() => onDeepen(f)}>
                         <FlaskConicalIcon data-icon="inline-start" />
-                        深入
-                      </Button>
+                         {t("ui.ea5b60c83a13055e")} </Button>
                     )}
                     {f.finding_id && (
                       <AlertDialog>
@@ -299,25 +298,24 @@ export function FindingsTable({
                             size="icon"
                             variant="ghost"
                             className="size-7 text-muted-foreground hover:text-destructive"
-                            aria-label="删除漏洞"
+                            aria-label={t("ui.9b5515e14bbcc28e")}
                           >
                             <Trash2Icon className="size-4" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>确认删除该漏洞？</AlertDialogTitle>
+                            <AlertDialogTitle>{t("ui.3789b0b09a794795")}</AlertDialogTitle>
                             <AlertDialogDescription className="break-words">
                               「
                               <span className="break-all">
                                 {f.name || f.vulnclass || f.summary || `#${f.finding_id}`}
                               </span>
-                              」将被永久删除， 同时从发现列表、任务发现 Tab 与探索图中移除，此操作不可撤销。
-                            </AlertDialogDescription>
+                               {t("ui.5c68ca9fd64f0f05")} </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => onDelete(f)}>删除</AlertDialogAction>
+                            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => onDelete(f)}>{t("common.delete")}</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
@@ -327,31 +325,31 @@ export function FindingsTable({
               </TableRow>
               {open && (
                 <TableRow className="hover:bg-transparent">
-                  {/* whitespace-normal 覆盖 TableCell 默认的 nowrap,否则展开区文字
-                      被强制单行、直接溢出单元格。 */}
+                  {/* whitespace-normal portada TableCell predeterminado nowrap,De lo contrario expandir el texto del área
+                      Forzado a una sola fila, desbordando directamente la celda。 */}
                   <TableCell colSpan={COLUMN_COUNT} className="bg-muted/30 whitespace-normal">
                     <div className="flex flex-col gap-2 px-2 py-1">
-                      {/* 行内编辑:名称/类别/严重等级,可改并保存(仅独立 finding 行)。 */}
+                      {/* edición en línea:Nombre/categoría/Nivel de gravedad,Se puede modificar y guardar(Solo independiente finding OK)。 */}
                       {f.finding_id && edit && (
                         <div className="flex flex-wrap items-end gap-3 rounded-md border bg-background px-3 py-2.5">
                           <div className="flex min-w-[12rem] flex-1 flex-col gap-1">
-                            <Label className="text-xs text-muted-foreground">漏洞名称</Label>
+                            <Label className="text-xs text-muted-foreground">{t("ui.74c5a7a69013c793")}</Label>
                             <Input
                               value={edit.name}
                               onChange={(e) => onEditChange((s) => (s ? { ...s, name: e.target.value } : s))}
-                              placeholder="可读标题，留空回退类别"
+                              placeholder={t("ui.3e9c00339838245f")}
                             />
                           </div>
                           <div className="flex min-w-[10rem] flex-col gap-1">
-                            <Label className="text-xs text-muted-foreground">类别</Label>
+                            <Label className="text-xs text-muted-foreground">{t("ui.a50d706a380c6492")}</Label>
                             <Input
                               value={edit.vulnclass}
                               onChange={(e) => onEditChange((s) => (s ? { ...s, vulnclass: e.target.value } : s))}
-                              placeholder="如 SQL Injection"
+                              placeholder={t("ui.065ced192fa36bbe")}
                             />
                           </div>
                           <div className="flex flex-col gap-1">
-                            <Label className="text-xs text-muted-foreground">严重等级</Label>
+                            <Label className="text-xs text-muted-foreground">{t("ui.830e86300b91260e")}</Label>
                             <Select
                               value={edit.severity}
                               onValueChange={(v) => onEditChange((s) => (s ? { ...s, severity: v as Severity } : s))}
@@ -369,24 +367,21 @@ export function FindingsTable({
                             </Select>
                           </div>
                           <Button size="sm" disabled={saving} onClick={() => onSave(f)}>
-                            {saving ? "保存中…" : "保存"}
+                            {saving ? t("ui.3c8dc4dc7a83dd2d") : t("common.save")}
                           </Button>
                         </div>
                       )}
                       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <ShieldAlertIcon className="size-3.5" />
-                        证据
-                        {f.vulnclass && (
+                         {t("ui.d3fb82e539b4c15d")} {f.vulnclass && (
                           <span>
-                            · 类型：
-                            <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{f.vulnclass}</code>
+                             {t("ui.e166cebae2bb3c89")} <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{f.vulnclass}</code>
                           </span>
                         )}
                         {f.param_id && <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{f.param_id}</code>}
                         {f.assets && f.assets.length > 0 && (
                           <span className="flex flex-wrap items-center gap-1">
-                            · 资产：
-                            {f.assets.map((a) => (
+                             {t("ui.5c330c4b6d82a3b0")} {f.assets.map((a) => (
                               <code key={a.id} className="rounded bg-muted px-1.5 py-0.5 font-mono" title={a.type}>
                                 {a.label}
                               </code>
@@ -398,18 +393,17 @@ export function FindingsTable({
                         {f.evidence}
                       </pre>
 
-                      {/* 详细报告(Markdown):展开时按 finding_id 懒加载,免进详情页即可查看。 */}
+                      {/* informe detallado(Markdown):Presione para expandir finding_id carga diferida,Puedes verlo sin ingresar a la página de detalles.。 */}
                       {f.finding_id && (
                         <div className="flex flex-col gap-1.5">
                           <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                             <span className="flex items-center gap-2">
                               <FileTextIcon className="size-3.5" />
-                              详细报告
-                            </span>
+                               {t("ui.566e3c43b7c80d00")} </span>
                             {reports[rowKey]?.status === "done" && reports[rowKey]?.text.trim() && (
                               <CopyButton
                                 text={reports[rowKey]?.text}
-                                successMessage="已复制详细报告"
+                                successMessage={t("ui.ad6bc7f3afd1adec")}
                                 variant="ghost"
                                 className="h-6 px-2 text-xs"
                               />
@@ -418,15 +412,15 @@ export function FindingsTable({
                           {(() => {
                             const rep = reports[rowKey];
                             if (!rep || rep.status === "loading")
-                              return <p className="text-xs text-muted-foreground">加载中…</p>;
+                              return <p className="text-xs text-muted-foreground">{t("ui.205443ee88568e8c")}</p>;
                             if (rep.status === "error")
-                              return <p className="text-xs text-muted-foreground">报告加载失败。</p>;
+                              return <p className="text-xs text-muted-foreground">{t("ui.3a4ea1fec101fcfd")}</p>;
                             if (!rep.text.trim())
-                              return <p className="text-xs text-muted-foreground">暂无详细报告。</p>;
+                              return <p className="text-xs text-muted-foreground">{t("ui.cdccb77cc230fa1b")}</p>;
                             return (
-                              // break-words 会继承到段落/列表,pre 另加
-                              // whitespace-pre-wrap 让代码块也换行——否则长代码行/长 URL
-                              // 会撑宽 colSpan 单元格,把整张表挤出横向滚动条。
+                              // break-words Se heredará al párrafo./Lista,pre más
+                              // whitespace-pre-wrap Hacer que los bloques de código también se ajusten; de lo contrario, líneas de código largas/largo URL
+                              // se estirará colSpan celular,extruya toda la tabla fuera de la barra de desplazamiento horizontal。
                               <div className="min-w-0 break-words rounded-md border bg-background px-3 py-2 [&_pre]:whitespace-pre-wrap">
                                 <Markdown text={rep.text} />
                               </div>
@@ -444,8 +438,7 @@ export function FindingsTable({
         {items.length === 0 && (
           <TableRow>
             <TableCell colSpan={COLUMN_COUNT} className="py-12 text-center text-sm text-muted-foreground">
-              没有匹配的发现。
-            </TableCell>
+               {t("ui.96874d8cd91df9db")} </TableCell>
           </TableRow>
         )}
       </TableBody>

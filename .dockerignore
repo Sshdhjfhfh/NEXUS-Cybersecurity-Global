@@ -46,3 +46,6 @@ logs/
 dist/
 *.tar.gz
 *.zip
+
+# Local translation backup
+web/src.backup/

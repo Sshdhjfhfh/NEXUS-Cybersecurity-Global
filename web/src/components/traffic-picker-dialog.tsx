@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import { toast } from "sonner";
@@ -92,7 +94,7 @@ export function TrafficPickerDialog({
         [...selected].map((traffic_id) => ({ traffic_id })),
         contextTask,
       );
-      toast.success(`已绑定 ${selected.size} 条流量`);
+      toast.success(`Encuadernado ${selected.size}Tráfico`);
       onBound();
       onClose();
     } catch (e) {
@@ -112,18 +114,17 @@ export function TrafficPickerDialog({
       >
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
           <DialogHeader>
-            <DialogTitle>绑定流量</DialogTitle>
+            <DialogTitle>{t("ui.f66bfcc6fce24825")}</DialogTitle>
             <DialogDescription>
-              筛选并多选请求/响应，已选记录会跨页保留。绑定后可设置用途、说明和顺序。
-            </DialogDescription>
+               {t("ui.b4f0e8ade3533958")} </DialogDescription>
           </DialogHeader>
           <FieldGroup className="flex flex-col gap-3 sm:flex-row">
             <Field>
-              <FieldLabel htmlFor="evidence-host">目标 host</FieldLabel>
+              <FieldLabel htmlFor="evidence-host">{t("ui.50c8133dac5fa9b5")}</FieldLabel>
               <Input
                 id="evidence-host"
                 value={host}
-                placeholder="域名或 IP"
+                placeholder={t("ui.06af20d2a64ec7a4")}
                 onChange={(e) => {
                   setHost(e.target.value);
                   setPage(0);
@@ -131,7 +132,7 @@ export function TrafficPickerDialog({
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="evidence-method">请求方法</FieldLabel>
+              <FieldLabel htmlFor="evidence-method">{t("ui.233ce7f3cc0138b8")}</FieldLabel>
               <Select
                 value={method}
                 onValueChange={(v) => {
@@ -144,7 +145,7 @@ export function TrafficPickerDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="all">全部方法</SelectItem>
+                    <SelectItem value="all">{t("ui.3da485057bebf3d7")}</SelectItem>
                     {METHODS.map((m) => (
                       <SelectItem key={m} value={m}>
                         {m}
@@ -155,11 +156,11 @@ export function TrafficPickerDialog({
               </Select>
             </Field>
             <Field>
-              <FieldLabel htmlFor="evidence-query">关键词</FieldLabel>
+              <FieldLabel htmlFor="evidence-query">Palabras clave</FieldLabel>
               <Input
                 id="evidence-query"
                 value={query}
-                placeholder="URL / 正文关键词"
+                placeholder={t("ui.0f6fc6b3c9e04f7e")}
                 onChange={(e) => {
                   setQuery(e.target.value);
                   setPage(0);
@@ -178,7 +179,7 @@ export function TrafficPickerDialog({
                 <TableRow>
                   <TableHead>
                     <Checkbox
-                      aria-label="选择本页未绑定流量"
+                      aria-label={t("ui.42144210defce20f")}
                       disabled={loading || busy || selectable.length === 0}
                       checked={selectable.length > 0 && selectable.every((e) => selected.has(e.id))}
                       onCheckedChange={(checked) =>
@@ -193,10 +194,10 @@ export function TrafficPickerDialog({
                       }
                     />
                   </TableHead>
-                  <TableHead>方法 / URL</TableHead>
-                  <TableHead>时间</TableHead>
-                  <TableHead>状态码</TableHead>
-                  <TableHead>操作</TableHead>
+                  <TableHead>{t("ui.fad0925f42021895")}</TableHead>
+                  <TableHead>{t("common.time")}</TableHead>
+                  <TableHead>código de estado</TableHead>
+                  <TableHead>{t("common.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -204,7 +205,7 @@ export function TrafficPickerDialog({
                   <TableRow key={e.id}>
                     <TableCell>
                       <Checkbox
-                        aria-label={`选择流量 ${e.id}`}
+                        aria-label={`Seleccionar tráfico ${e.id}`}
                         checked={selected.has(e.id) || alreadyBound.has(e.id)}
                         disabled={busy || loading || alreadyBound.has(e.id)}
                         onCheckedChange={(checked) => toggle(e.id, checked === true)}
@@ -214,7 +215,7 @@ export function TrafficPickerDialog({
                       <span className="font-mono text-xs">
                         {e.method} {e.url}
                       </span>
-                      {alreadyBound.has(e.id) ? <Badge variant="secondary">已绑定</Badge> : null}
+                      {alreadyBound.has(e.id) ? <Badge variant="secondary">{t("ui.bfe1df5580a0f59e")}</Badge> : null}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-xs">
                       {new Date(e.ts).toLocaleString("zh-CN")}
@@ -222,15 +223,14 @@ export function TrafficPickerDialog({
                     <TableCell>{e.status}</TableCell>
                     <TableCell>
                       <Button variant="ghost" size="sm" onClick={() => setPreview(e.id)}>
-                        预览
-                      </Button>
+                         {t("ui.a01fec91ffda3318")} </Button>
                     </TableCell>
                   </TableRow>
                 ))}
                 {!rows.length ? (
                   <TableRow>
                     <TableCell colSpan={5} className="py-8 text-center">
-                      {loading ? "加载中…" : "没有匹配的流量"}
+                      {loading ? t("ui.205443ee88568e8c") : t("ui.f906594c801de061")}
                     </TableCell>
                   </TableRow>
                 ) : null}
@@ -239,8 +239,7 @@ export function TrafficPickerDialog({
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm">
-              已选 {selected.size} 条 · 共 {data?.total ?? 0} 条
-            </span>
+               {t("ui.df9a55ed63d1515b")} {selected.size}  {t("ui.fb1ef279d471dec3")} {data?.total ?? 0}  {t("ui.a1cb6bd814e4e98b")} </span>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -248,25 +247,22 @@ export function TrafficPickerDialog({
                 disabled={loading || page === 0}
                 onClick={() => setPage((p) => p - 1)}
               >
-                上一页
-              </Button>
-              <span className="text-xs">第 {page + 1} 页</span>
+                página anterior </Button>
+              <span className="text-xs">{"No."} {page + 1}  {t("ui.8f63f4d7594a823e")}</span>
               <Button
                 variant="outline"
                 size="sm"
                 disabled={loading || (page + 1) * 25 >= (data?.total ?? 0)}
                 onClick={() => setPage((p) => p + 1)}
               >
-                下一页
-              </Button>
+                página siguiente </Button>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" disabled={busy} onClick={onClose}>
-              取消
-            </Button>
+               {t("ui.bb9dbb406dcbd524")} </Button>
             <Button disabled={busy || selected.size === 0} onClick={() => void save()}>
-              {busy ? "保存中…" : `绑定 ${selected.size} 条流量`}
+              {busy ? t("ui.3c8dc4dc7a83dd2d") : `vinculante ${selected.size}Tráfico`}
             </Button>
           </DialogFooter>
         </DialogContent>

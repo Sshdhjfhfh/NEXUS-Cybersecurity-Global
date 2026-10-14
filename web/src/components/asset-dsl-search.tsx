@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import { SearchIcon } from "lucide-react";
@@ -8,173 +10,173 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 // ── DSL autocomplete ──────────────────────────────────────────────────────────
-// Shared by the global asset view (/function/assets) and the per-task 测试资产
+// Shared by the global asset view (/function/assets) and the per-task activos de prueba
 // search, so both search boxes behave and look identical.
 
 const DSL_FIELDS: { name: string; desc: string; ops: { op: string; desc: string }[] }[] = [
   {
     name: "domain",
-    desc: "域名（根域名/子域名/服务域名）",
+    desc: t("ui.66852e48cbd5338b"),
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "coincidencia difusa" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "ip",
-    desc: "IPv4/IPv6 地址",
+    desc: t("ui.a6bf2c6c36518971"),
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "coincidencia difusa" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "url",
-    desc: "完整 URL（服务/接口）",
+    desc: t("ui.1c4d012024bad78c"),
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "coincidencia difusa" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "root_domain",
-    desc: "根域名",
+    desc: "nombre de dominio raíz",
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "coincidencia difusa" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "page_title",
-    desc: "页面标题（HTTP 服务）",
+    desc: t("ui.422cbeae9727df6b"),
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "coincidencia difusa" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "icp",
-    desc: "ICP 备案号",
+    desc: t("ui.c0a188d5694bace3"),
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "coincidencia difusa" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "service_name",
-    desc: "服务名称（非 HTTP 服务）",
+    desc: t("ui.83c39420db9316b4"),
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "coincidencia difusa" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "app_name",
-    desc: "应用名称",
+    desc: t("ui.bcbe6c1ff90d5b1c"),
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "coincidencia difusa" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "bundle_id",
-    desc: "应用 Bundle ID",
+    desc: t("ui.8cb378d0b05d95e5"),
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "coincidencia difusa" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "category",
-    desc: "应用分类",
+    desc: t("ui.2caa570726500c6e"),
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "coincidencia difusa" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "app_icp",
-    desc: "应用 ICP 备案",
+    desc: t("ui.278e73d0a6fe991c"),
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "coincidencia difusa" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "method",
-    desc: "HTTP 方法 GET/POST/PUT/…",
+    desc: t("ui.13ee273031d83fb0"),
     ops: [
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "service_type",
-    desc: "服务类型：http | other",
+    desc: t("ui.07798feb59666574"),
     ops: [
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "record_type",
-    desc: "DNS 解析类型 A/CNAME/MX/…",
+    desc: t("ui.90525a0554920f41"),
     ops: [
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "technology",
-    desc: "技术指纹（数组字段）",
+    desc: t("ui.60e928f8364f423e"),
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "coincidencia difusa" },
+      { op: "==", desc: "coincidencia exacta" },
+      { op: "!=", desc: t("ui.d156b90b66685b7f") },
     ],
   },
   {
     name: "port",
-    desc: "端口号（整数）",
+    desc: t("ui.be9eabbe32ca72d2"),
     ops: [
-      { op: "==", desc: "等于" },
-      { op: "!=", desc: "不等于" },
-      { op: ">", desc: "大于" },
-      { op: ">=", desc: "大于等于" },
-      { op: "<", desc: "小于" },
-      { op: "<=", desc: "小于等于" },
+      { op: "==", desc: "igual a" },
+      { op: "!=", desc: t("ui.4ccbfb5e8cbac2b6") },
+      { op: ">", desc: t("ui.ec79c1e708ab5f95") },
+      { op: ">=", desc: t("ui.059b636a227c7185") },
+      { op: "<", desc: t("ui.05a179b5a9f1fb15") },
+      { op: "<=", desc: t("ui.b804b314ccdf980f") },
     ],
   },
   {
     name: "status_code",
-    desc: "HTTP 状态码（整数）",
+    desc: t("ui.764f8a72380e69bd"),
     ops: [
-      { op: "==", desc: "等于" },
-      { op: "!=", desc: "不等于" },
-      { op: ">", desc: "大于" },
-      { op: ">=", desc: "大于等于" },
-      { op: "<", desc: "小于" },
-      { op: "<=", desc: "小于等于" },
+      { op: "==", desc: "igual a" },
+      { op: "!=", desc: t("ui.4ccbfb5e8cbac2b6") },
+      { op: ">", desc: t("ui.ec79c1e708ab5f95") },
+      { op: ">=", desc: t("ui.059b636a227c7185") },
+      { op: "<", desc: t("ui.05a179b5a9f1fb15") },
+      { op: "<=", desc: t("ui.b804b314ccdf980f") },
     ],
   },
-  { name: "company_id", desc: "归属企业 ID（整数）", ops: [{ op: "==", desc: "等于" }] },
-  { name: "task_id", desc: "来源任务 ID（整数）", ops: [{ op: "==", desc: "等于" }] },
+  { name: "company_id", desc: t("ui.0571e163933be8ab"), ops: [{ op: "==", desc: "igual a" }] },
+  { name: "task_id", desc: t("ui.2279f8143d44fa70"), ops: [{ op: "==", desc: "igual a" }] },
 ];
 
 const LOGIC_OPS = [
-  { label: "AND", desc: "且（两个条件都满足）" },
-  { label: "OR", desc: "或（满足其中之一）" },
+  { label: "AND", desc: t("ui.5ee8be366ceac55c") },
+  { label: "OR", desc: t("ui.5144cabd14490e56") },
 ];
 
 interface DslSuggestion {
@@ -261,7 +263,7 @@ const KIND_STYLE: Record<string, string> = {
 };
 
 // AssetDslSearch is the shared DSL search box: a monospace input with a
-// field/operator/logic autocomplete popover and a status line ("找到 N 条" /
+// field/operator/logic autocomplete popover and a status line ("encontrado N artículo" /
 // error / loading). Used by both the global asset view and the per-task view.
 export function AssetDslSearch({
   query,
@@ -341,7 +343,7 @@ export function AssetDslSearch({
         <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           ref={inputRef}
-          placeholder="DSL 搜索：domain=example AND status_code>=400"
+          placeholder="Búsqueda DSL: dominio=ejemplo Y código_estado&gt;=400"
           value={query}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
@@ -375,7 +377,7 @@ export function AssetDslSearch({
       </div>
       {query.trim() && !open && (
         <p className="pl-1 text-[11px] text-muted-foreground">
-          {loading ? "搜索中…" : error ? <span className="text-destructive">{error}</span> : `找到 ${count ?? 0} 条`}
+          {loading ? t("ui.82d69149e2c13287") : error ? <span className="text-destructive">{error}</span> : `encontrado ${count ?? 0}artículo`}
         </p>
       )}
     </div>

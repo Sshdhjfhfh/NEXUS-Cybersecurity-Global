@@ -75,3 +75,6 @@ jwt.key
 # ═══════════════════════════════════════════════════════════════
 config.json
 Makefile.bak
+
+# Local translation backup
+web/src.backup/

@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import { toast } from "sonner";
@@ -71,9 +73,9 @@ export function TrafficEvidenceViewer({
     >
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
-          <DialogTitle>流量证据 #{bindingId}</DialogTitle>
+          <DialogTitle>{t("ui.8672b6b19c4f938b")}{bindingId}</DialogTitle>
           <DialogDescription className="break-all">
-            {detail?.binding.snapshot.url ?? "查看绑定时保存的请求与响应"}
+            {detail?.binding.snapshot.url ?? t("ui.1b162ce4f4cbfeda")}
           </DialogDescription>
         </DialogHeader>
         {error ? (
@@ -83,14 +85,14 @@ export function TrafficEvidenceViewer({
         ) : detail ? (
           <Tabs defaultValue="request">
             <TabsList>
-              <TabsTrigger value="request">请求 Request</TabsTrigger>
-              <TabsTrigger value="response">响应 Response</TabsTrigger>
+              <TabsTrigger value="request">{t("ui.213b026e9aa4917b")}</TabsTrigger>
+              <TabsTrigger value="response">{t("ui.eda96518d54f845d")}</TabsTrigger>
             </TabsList>
             {(["request", "response"] as const).map((side) => (
               <TabsContent key={side} value={side}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs text-muted-foreground">
-                    正文 {detail[side].total.toLocaleString()} 字节{detail[side].truncated ? " · 当前为预览" : ""}
+                     {t("ui.6df3d6661c095ce7")} {detail[side].total.toLocaleString()}  {t("ui.1c31626f568a075d")}{detail[side].truncated ? t("ui.f7d572b19c6d099b") : ""}
                   </span>
                   <Button
                     variant="outline"
@@ -101,16 +103,14 @@ export function TrafficEvidenceViewer({
                         .catch((e: Error) => toast.error(e.message))
                     }
                   >
-                    下载完整{side === "request" ? "请求" : "响应"}正文
-                  </Button>
+                     {t("ui.341aaadbe053ce1a")}{side === "request" ? t("ui.213b026e9aa4917b") : t("ui.9853528a46d3fc97")}{t("ui.6df3d6661c095ce7")} </Button>
                 </div>
                 <HttpCodeBlock
                   raw={`${(side === "request" ? detail.binding.snapshot.req_head : detail.binding.snapshot.resp_head)?.trimEnd() ?? ""}\n\n${detail[side].content}`}
                 />
                 {detail[side].truncated && !detail[side].binary ? (
                   <Button variant="outline" size="sm" disabled={busy} onClick={() => void more(side)}>
-                    加载更多正文
-                  </Button>
+                     {t("ui.a9f6f7ea5eb2f3ba")} </Button>
                 ) : null}
               </TabsContent>
             ))}
@@ -152,8 +152,8 @@ export function CapturedTrafficViewer({ id, onClose }: { id: string | null; onCl
     >
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
-          <DialogTitle>预览流量</DialogTitle>
-          <DialogDescription>流量 ID：{id}。绑定时会保存完整正文。</DialogDescription>
+          <DialogTitle>{t("ui.068979bc50e49692")}</DialogTitle>
+          <DialogDescription>{t("ui.761769671f58dc73")}{id}{t("ui.86edcbc21b407940")}</DialogDescription>
         </DialogHeader>
         {error ? (
           <Alert variant="destructive">
@@ -162,8 +162,8 @@ export function CapturedTrafficViewer({ id, onClose }: { id: string | null; onCl
         ) : detail ? (
           <Tabs defaultValue="request">
             <TabsList>
-              <TabsTrigger value="request">请求 Request</TabsTrigger>
-              <TabsTrigger value="response">响应 Response</TabsTrigger>
+              <TabsTrigger value="request">{t("ui.213b026e9aa4917b")}</TabsTrigger>
+              <TabsTrigger value="response">{t("ui.eda96518d54f845d")}</TabsTrigger>
             </TabsList>
             <TabsContent value="request">
               <HttpCodeBlock raw={detail.req} />

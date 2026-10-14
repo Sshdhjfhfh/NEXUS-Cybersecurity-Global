@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import { useState } from "react";
 
 import { Check, KeyRound, LogOut } from "lucide-react";
@@ -80,12 +82,10 @@ export function AccountSwitcher({
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setPwOpen(true)}>
             <KeyRound />
-            修改密码
-          </DropdownMenuItem>
+             {t("ui.bb49d47524670e38")} </DropdownMenuItem>
           <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
             <LogOut />
-            退出登录
-          </DropdownMenuItem>
+             {t("ui.82d3f7afebcec54f")} </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <ChangePasswordDialog open={pwOpen} onOpenChange={setPwOpen} />

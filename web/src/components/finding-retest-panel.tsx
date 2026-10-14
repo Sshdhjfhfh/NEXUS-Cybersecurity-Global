@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import Link from "next/link";
@@ -19,13 +21,13 @@ import { api } from "@/lib/api";
 import type { FindingRetest } from "@/lib/types";
 
 const statusLabels = {
-  pending: "等待启动",
-  running: "复测中",
-  completed: "已完成",
-  failed: "复测失败",
-  stopped: "已停止",
+  pending: t("ui.3717681c03eccad9"),
+  running: t("ui.bd5976292d5f038a"),
+  completed: t("status.completed"),
+  failed: t("ui.aaa75a644bc24534"),
+  stopped: t("status.stopped"),
 };
-const verdictLabels = { reproduced: "仍可复现", fixed: "已修复", inconclusive: "无法确认" };
+const verdictLabels = { reproduced: t("ui.43401213bd8ef7ed"), fixed: t("finding.fixed"), inconclusive: t("ui.0c4287de8eda5706") };
 
 function active(r: FindingRetest) {
   return r.status === "pending" || r.status === "running";
@@ -84,32 +86,29 @@ export function FindingRetestPanel({
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1.5">
-          <CardTitle>漏洞复测</CardTitle>
-          <CardDescription>在独立会话中验证当前状态，保留每次复测的结论与证据。</CardDescription>
+          <CardTitle>{t("ui.8a700689a82e1eaf")}</CardTitle>
+          <CardDescription>{t("ui.357b80407aea3893")}</CardDescription>
         </div>
         {running?.conversation_id != null ? (
           <Button asChild variant="outline" size="sm">
-            <Link href={`/chat?c=${running.conversation_id}`} title="查看正在进行的复测会话">
+            <Link href={`/chat?c=${running.conversation_id}`} title={t("ui.befc82fbb1138eff")}>
               <Spinner data-icon="inline-start" aria-hidden="true" />
-              复测中
-            </Link>
+               {t("ui.bd5976292d5f038a")} </Link>
           </Button>
         ) : null}
         {!running && !readOnly ? (
           <Button size="sm" onClick={() => setOpen(true)} disabled={items === null || !!error}>
             <RotateCcwIcon data-icon="inline-start" />
-            发起复测
-          </Button>
+             {t("ui.6433bd01a6fcea84")} </Button>
         ) : null}
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>
-              加载复测记录失败：{error}
+               {t("ui.38e14403ebcc44c9")}{error}
               <Button variant="outline" size="sm" onClick={() => void load()}>
-                重试
-              </Button>
+                 {t("ui.10636a10bc8b7ea1")} </Button>
             </AlertDescription>
           </Alert>
         ) : null}
@@ -117,8 +116,8 @@ export function FindingRetestPanel({
         {!error && items?.length === 0 ? (
           <Empty>
             <EmptyHeader>
-              <EmptyTitle>暂无复测记录</EmptyTitle>
-              <EmptyDescription>修复部署完成后，可发起复测并比较新旧证据。</EmptyDescription>
+              <EmptyTitle>{t("ui.0830c619d88fb135")}</EmptyTitle>
+              <EmptyDescription>{t("ui.6e45dc76a25a1bf9")}</EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : null}
@@ -138,10 +137,10 @@ export function FindingRetestPanel({
                   </span>
                   {item.conversation_id != null ? (
                     <Button asChild variant="ghost" size="sm" className="ml-auto">
-                      <Link href={`/chat?c=${item.conversation_id}`}>查看会话</Link>
+                      <Link href={`/chat?c=${item.conversation_id}`}>{t("ui.ad5ae18ded6c5bf9")}</Link>
                     </Button>
                   ) : (
-                    <span className="text-muted-foreground text-xs">会话已删除</span>
+                    <span className="text-muted-foreground text-xs">{t("ui.7670864ae2820384")}</span>
                   )}
                 </div>
                 {item.status === "completed" && item.summary ? (
@@ -152,12 +151,12 @@ export function FindingRetestPanel({
                 ) : null}
                 {item.notes ? (
                   <p className="whitespace-pre-wrap break-words text-muted-foreground text-xs">
-                    补充说明：{item.notes}
+                     {t("ui.27859e5147cd64e0")}{item.notes}
                   </p>
                 ) : null}
                 {item.status === "completed" && item.evidence ? (
                   <details className="min-w-0">
-                    <summary className="cursor-pointer text-sm">复测证据</summary>
+                    <summary className="cursor-pointer text-sm">{t("ui.66e61f5d4d41056c")}</summary>
                     <div className="mt-3 overflow-x-auto">
                       <Markdown text={item.evidence} />
                     </div>

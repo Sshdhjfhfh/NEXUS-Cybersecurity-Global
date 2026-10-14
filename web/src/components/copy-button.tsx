@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import { CheckIcon, CopyIcon } from "lucide-react";
@@ -9,9 +11,9 @@ import { Button } from "@/components/ui/button";
 import { cn, copyText } from "@/lib/utils";
 
 type CopyButtonProps = {
-  // 要复制的文本;为空则按钮禁用。
+  // Texto a copiar;Si está vacío, el botón está deshabilitado。
   text: string | null | undefined;
-  // 复制成功后的 toast 文案,默认「已复制」。
+  // Después de una copia exitosa toast redacción publicitaria,”Copiado” predeterminado」。
   successMessage?: string;
   label?: React.ReactNode;
   size?: React.ComponentProps<typeof Button>["size"];
@@ -19,12 +21,12 @@ type CopyButtonProps = {
   className?: string;
 };
 
-// CopyButton 统一的「复制到剪贴板」按钮:内置成功/失败反馈,并在 HTTP 非安全上下文
-// 下自动降级(见 copyText)。
+// CopyButton Botón unificado ”Copiar al portapapeles”:Incorporación exitosa/retroalimentación de falla,y en HTTP contexto no relacionado con la seguridad
+// Bajar de categoría automáticamente(Ver copyText)。
 export function CopyButton({
   text,
-  successMessage = "已复制",
-  label = "复制",
+  successMessage = t("ui.d8dd878fb14359e9"),
+  label = "copia",
   size = "sm",
   variant = "outline",
   className,
@@ -47,7 +49,7 @@ export function CopyButton({
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => setCopied(false), 1500);
     } else {
-      toast.error("复制失败，请手动选择文本复制");
+      toast.error(t("ui.65dbb2e5ffe4bc8b"));
     }
   }
 

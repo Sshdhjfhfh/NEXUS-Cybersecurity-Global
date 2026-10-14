@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import { EllipsisVertical, KeyRound, LogOut } from "lucide-react";
@@ -33,8 +35,8 @@ export function NavUser({
 
   function handleLogout() {
     auth.clearToken();
-    // 硬跳转：让浏览器用已清除的 cookie 发起全新请求，
-    // middleware 才能正确读到空 token 并放行 /login
+    // Salto duro: deja que el navegador use el borrado cookie Iniciar una nueva solicitud，
+    // middleware Para leer correctamente vacío token y liberado /login
     window.location.href = "/login";
   }
 
@@ -79,13 +81,11 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setPwOpen(true)}>
               <KeyRound />
-              修改密码
-            </DropdownMenuItem>
+               {t("ui.bb49d47524670e38")} </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
               <LogOut />
-              退出登录
-            </DropdownMenuItem>
+               {t("ui.82d3f7afebcec54f")} </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

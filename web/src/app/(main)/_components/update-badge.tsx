@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import Link from "next/link";
@@ -9,14 +11,14 @@ import { ArrowUpCircleIcon } from "lucide-react";
 import { api } from "@/lib/api";
 
 /**
- * 顶栏的"有新版本"提示：整页加载时查一次，有更新就在版本号旁边亮出来，
- * 点击直达系统配置页的「版本与更新」卡片。
+ * barra superior"Hay una nueva versión."Consejo: Verifique una vez cuando esté cargada la página completa. Si hay actualizaciones, aparecerán junto al número de versión.，
+ * Haga clic en la tarjeta ”Versión y actualizaciones” para ir directamente a la página de configuración del sistema。
  *
- * 后端对 GitHub 的查询结果有 30 分钟缓存，所以这里每次挂载都查一次是安全的
- * ——未认证的 GitHub API 只有 60 次/小时/IP，没有那层缓存的话，多开几个标签页
- * 就会把配额耗光，之后真想更新反而查不动。
+ * par de servidores GitHub Los resultados de la consulta son 30 Caché de minutos, por lo que es seguro comprobarlo cada vez que se monta.
+ * ——no certificado GitHub API solo 60 veces/hora/IP，Si no existe dicha capa de caché, abra algunas pestañas más
+ * La cuota se agotará y luego tengo muchas ganas de actualizar pero no puedo encontrarla.。
  *
- * 查询失败一律静默：顶栏不是报错的地方，用户进设置页点「检查更新」会看到原因。
+ * Si la consulta falla, quedará en silencio: la barra superior no es el lugar para informar errores. El usuario verá el motivo yendo a la página de configuración y haciendo clic en ”Buscar actualizaciones”.。
  */
 export function UpdateBadge() {
   const [latest, setLatest] = React.useState("");
@@ -26,11 +28,11 @@ export function UpdateBadge() {
     api
       .checkUpdate()
       .then((r) => {
-        // has_update 已经包含了"版本号可比较"的判断，开发构建不会亮这个提示。
+        // has_update Ya incluido"los números de versión son comparables"Según el criterio, la versión de desarrollo no mostrará este mensaje.。
         if (alive && r.has_update && r.latest) setLatest(r.latest.replace(/^v(?=\d)/, ""));
       })
       .catch(() => {
-        // 静默：没网 / GitHub 限流都不该在顶栏弹错误。
+        // Silencioso: Sin red / GitHub El error no debería aparecer en la barra superior incluso si la corriente es limitada.。
       });
     return () => {
       alive = false;
@@ -42,17 +44,17 @@ export function UpdateBadge() {
   return (
     <Link
       href="/system/settings"
-      title={`发现新版本 ${latest}，点击前往更新`}
+      title={`Nueva versión encontrada ${latest}, haga clic para actualizar`}
       className="inline-flex items-center gap-1.5 rounded-full bg-primary px-2.5 py-1 font-medium text-primary-foreground text-xs transition-opacity hover:opacity-90"
     >
-      {/* 呼吸点：顶栏元素很多，纯文字容易被忽略，动效让它一眼可见。 */}
+      {/* Punto de respiro: hay muchos elementos en la barra superior y es fácil ignorar el texto puro. La animación lo hace visible de un vistazo.。 */}
       <span className="relative flex size-1.5">
         <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary-foreground opacity-75" />
         <span className="relative inline-flex size-1.5 rounded-full bg-primary-foreground" />
       </span>
       <ArrowUpCircleIcon className="size-3.5" />
-      <span className="hidden sm:inline">新版本 {latest}</span>
-      <span className="sm:hidden">新版本</span>
+      <span className="hidden sm:inline">{t("ui.88c9bb2d67e09616")} {latest}</span>
+      <span className="sm:hidden">{t("ui.88c9bb2d67e09616")}</span>
     </Link>
   );
 }

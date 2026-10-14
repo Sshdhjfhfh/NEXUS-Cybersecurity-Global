@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 import { toast } from "sonner";
 import { EyeIcon, GitCompareIcon, InfoIcon, PencilIcon, RotateCcwIcon, SaveIcon, Trash2Icon, XIcon } from "lucide-react";
@@ -28,12 +30,12 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { Agent, AgentDetail, AgentTrigger, MCPServer, PromptVar, PromptVersion, Settings, SkillItem, Tool } from "@/lib/types";
 
-// Traffic tools are host tools gated by the global 流量捕获 switch: bindable, but
+// Traffic tools are host tools gated by the global captura de tráfico switch: bindable, but
 // only usable when capture is on. Keep this list in sync with traffic.SeedToolMetas.
 const TRAFFIC_TOOL_KEYS = new Set(["traffic_search", "traffic_get"]);
 
 // AgentEditor is the tabbed editor for one agent, used inside the agents-page
-// drawer (and reused full-page for deep links). Tabs: 配置与提示词 / MCP / Skill /
+// drawer (and reused full-page for deep links). Tabs: Configuración y palabras de aviso / MCP / Skill /
 // Tools. Config + prompt save as before; visibility + tool bindings toggle live.
 export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?: () => void }) {
   const [detail, setDetail] = React.useState<AgentDetail | null>(null);
@@ -52,7 +54,7 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
   const [preview, setPreview] = React.useState("");
   const [maxTurns, setMaxTurns] = React.useState("0");
   const [runSecs, setRunSecs] = React.useState("600");
-  // "" = 跟随(未绑定)；否则为 profile id 字符串
+  // "" = seguir(no vinculado)；De lo contrario profile id cadena
   const [llmProfileId, setLlmProfileId] = React.useState("");
   const [llmProfiles, setLlmProfiles] = React.useState<NonNullable<AgentDetail["llm_profiles"]>>([]);
   const [webSearch, setWebSearch] = React.useState(false);
@@ -61,7 +63,7 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
   const [wrapupDefault, setWrapupDefault] = React.useState("");
   const [wrapupTurns, setWrapupTurns] = React.useState("0");
   const [wrapupTurnsDefault, setWrapupTurnsDefault] = React.useState(5);
-  // 任务级超时收尾词(仅 worker/planner)
+  // Palabra final de tiempo de espera a nivel de tarea(solo worker/planner)
   const [ttSupported, setTtSupported] = React.useState(false);
   const [ttWrapup, setTtWrapup] = React.useState("");
   const [ttWrapupDefault, setTtWrapupDefault] = React.useState("");
@@ -75,7 +77,7 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
     api.tools().then(setTools).catch(() => {});
     api.settings().then(setSettings).catch(() => {});
   }, []);
-  // global gates: traffic tools need 流量捕获, web search needs the master switch.
+  // global gates: traffic tools need captura de tráfico, web search needs the master switch.
   const captureOn = !!settings?.traffic_capture;
   const webSearchGlobalOn = !!settings?.web_search_enabled;
 
@@ -115,71 +117,71 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
   async function doPreview() {
     try {
       const r = await api.previewAgentPrompt(agentKey, prompt);
-      setPreview(r.error ? "渲染错误：" + r.error : r.rendered);
+      setPreview(r.error ? t("ui.01699728b45ef3ac") + r.error : r.rendered);
     } catch (e) {
-      setPreview("预览失败：" + (e as Error).message);
+      setPreview(t("ui.37acbe69270661e9") + (e as Error).message);
     }
   }
   async function savePrompt() {
     try {
       const r = await api.saveAgentPrompt(agentKey, prompt);
-      toast.success(`已保存为版本 v${r.version}`);
+      toast.success(`Guardado como versión v${r.version}`);
       reload();
       onSaved?.();
     } catch (e) {
-      toast.error("保存失败：" + (e as Error).message);
+      toast.error(t("ui.d97c6497d08cd1ab") + (e as Error).message);
     }
   }
   async function resetPrompt() {
     try {
       const r = await api.resetAgentPrompt(agentKey);
-      toast.success(`已恢复为内置默认（v${r.version}）`);
+      toast.success(`Restaurado al valor predeterminado incorporado (v${r.version}）`);
       reload();
     } catch (e) {
-      toast.error("恢复失败：" + (e as Error).message);
+      toast.error(t("ui.e144eee698dc30eb") + (e as Error).message);
     }
   }
   async function saveWrapup() {
     try {
       const turns = Math.max(0, Math.floor(Number(wrapupTurns) || 0));
       await api.saveAgentWrapup(agentKey, wrapup, turns);
-      toast.success(wrapup.trim() || turns > 0 ? "收尾配置已保存（下次运行生效）" : "已清空，将使用内置默认");
+      toast.success(wrapup.trim() || turns > 0 ? t("ui.6b1237127c50a675") : t("ui.35621fd92d3a47f9"));
       reload();
     } catch (e) {
-      toast.error("保存失败：" + (e as Error).message);
+      toast.error(t("ui.d97c6497d08cd1ab") + (e as Error).message);
     }
   }
   async function resetWrapup() {
     try {
       await api.resetAgentWrapup(agentKey);
-      toast.success("已恢复为内置默认");
+      toast.success(t("ui.023b09446077d427"));
       reload();
     } catch (e) {
-      toast.error("恢复失败：" + (e as Error).message);
+      toast.error(t("ui.e144eee698dc30eb") + (e as Error).message);
     }
   }
   async function saveTaskTimeoutWrapup() {
     try {
       const turns = Math.max(0, Math.floor(Number(ttTurns) || 0));
       await api.saveAgentTaskTimeoutWrapup(agentKey, ttWrapup, turns);
-      toast.success("任务超时收尾配置已保存（下次运行生效）");
+      toast.success(t("ui.140c990aace7efde"));
       reload();
     } catch (e) {
-      toast.error("保存失败：" + (e as Error).message);
+      toast.error(t("ui.d97c6497d08cd1ab") + (e as Error).message);
     }
   }
   async function resetTaskTimeoutWrapup() {
     try {
       await api.resetAgentTaskTimeoutWrapup(agentKey);
-      toast.success("已恢复为内置默认");
+      toast.success(t("ui.023b09446077d427"));
       reload();
     } catch (e) {
-      toast.error("恢复失败：" + (e as Error).message);
+      toast.error(t("ui.e144eee698dc30eb") + (e as Error).message);
     }
   }
   async function saveConfig() {
     try {
-      // 只提交本 agent 实际展示的字段，避免把未显示项(如 goals 的 max_turns)覆盖成默认。
+      // Enviar sólo esto agent campos mostrados reales, evitar elementos no mostrados(si goals de max_turns)sobrescribir el valor predeterminado。
       const patch: Parameters<typeof api.saveAgentConfig>[1] = {
         llm_profile_id: llmProfileId === "" ? null : Number(llmProfileId),
       };
@@ -190,10 +192,10 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
       if (showWebSearch) patch.web_search = webSearch;
       if (showInteractiveShell) patch.interactive_shell = interactiveShell;
       await api.saveAgentConfig(agentKey, patch);
-      toast.success("已保存运行配置（立即生效）");
+      toast.success(t("ui.00901a097adacc4d"));
       reload();
     } catch (e) {
-      toast.error("保存失败：" + (e as Error).message);
+      toast.error(t("ui.d97c6497d08cd1ab") + (e as Error).message);
     }
   }
   // applyVis optimistically updates, persists, and toasts success/failure. On
@@ -210,7 +212,7 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
     } catch (e) {
       setMcpVisible(prevMcp);
       setSkillVisible(prevSkill);
-      toast.error("保存失败：" + (e as Error).message);
+      toast.error(t("ui.d97c6497d08cd1ab") + (e as Error).message);
     }
   }
   function toggleMcp(id: number) {
@@ -219,7 +221,7 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
     applyVis(
       on ? mcpVisible.filter((x) => x !== id) : [...mcpVisible, id],
       skillVisible,
-      `${on ? "已取消" : "已开启"} MCP「${name}」可见`,
+      `${on ? t("ui.f407384e2f304cf0") : t("ui.56f90b9199cea3b0")} MCP「${name}"Visible`,
     );
   }
   function toggleSkill(name: string) {
@@ -227,32 +229,32 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
     applyVis(
       mcpVisible,
       on ? skillVisible.filter((x) => x !== name) : [...skillVisible, name],
-      `${on ? "已取消" : "已开启"} Skill「${name}」可见`,
+      `${on ? t("ui.f407384e2f304cf0") : t("ui.56f90b9199cea3b0")} Skill「${name}"Visible`,
     );
   }
-  async function toggleTool(t: Tool) {
-    const on = t.agents.includes(agentKey);
-    const nextAgents = on ? t.agents.filter((k) => k !== agentKey) : [...t.agents, agentKey];
+  async function toggleTool(i18nItem: Tool) {
+    const on = i18nItem.agents.includes(agentKey);
+    const nextAgents = on ? i18nItem.agents.filter((k) => k !== agentKey) : [...i18nItem.agents, agentKey];
     // optimistic update
-    setTools((ts) => ts.map((x) => (x.key === t.key ? { ...x, agents: nextAgents } : x)));
+    setTools((ts) => ts.map((x) => (x.key === i18nItem.key ? { ...x, agents: nextAgents } : x)));
     try {
-      await api.saveTool(t.key, {
-        description: t.description,
-        schema: t.schema,
+      await api.saveTool(i18nItem.key, {
+        description: i18nItem.description,
+        schema: i18nItem.schema,
         agents: nextAgents,
-        enabled: t.enabled,
+        enabled: i18nItem.enabled,
       });
-      toast.success(`${on ? "已解绑" : "已绑定"}工具「${t.key}」`);
-      onSaved?.(); // refresh the list so the card's 工具 count stays in sync
+      toast.success(`${on ? t("ui.78765d041c2b607c") : t("ui.bfe1df5580a0f59e")}Herramientas${i18nItem.key}」`);
+      onSaved?.(); // refresh the list so the card's Herramientas count stays in sync
     } catch (e) {
-      toast.error("保存工具绑定失败：" + (e as Error).message);
+      toast.error(t("ui.9506df170156d591") + (e as Error).message);
       reload();
       api.tools().then(setTools).catch(() => {});
     }
   }
 
   if (loaded && !detail) {
-    return <div className="text-muted-foreground p-6 text-center text-sm">未找到 Agent：{agentKey}</div>;
+    return <div className="text-muted-foreground p-6 text-center text-sm">{t("ui.65cbf0dae8a90f9c")}{agentKey}</div>;
   }
   // config is meaningless for the conversational main agent and the fixed-budget
   // goals decomposer; every other agent (workers, custom assistants) honors it.
@@ -260,9 +262,9 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
   // web search applies to every conversational/executing agent except the one-shot
   // goals decomposer; it's gated by the global master switch.
   const showWebSearch = agentKey !== "goals";
-  // interactive shell (持久 PTY 会话工具族) 同样对除 goals 外的 agent 开放;无全局门控。
+  // interactive shell (duradero PTY familia de herramientas de conversación) Dividir de manera similar goals afuera agent abierto;Sin puerta global。
   const showInteractiveShell = agentKey !== "goals";
-  // 每个 agent(含 goals/mainagent)都跑在某个 LLM 上,故「默认模型」绑定对所有 agent 开放。
+  // cada uno agent(Incluyendo goals/mainagent)Todos corriendo a alguna parte LLM arriba,Por lo tanto, el enlace del ”modelo predeterminado” es para todos agent abierto。
   const showLLM = true;
   // triggers (P3) only attach to custom agents.
   const isCustom = !!detail && !detail.agent?.builtin;
@@ -270,39 +272,38 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
   return (
     <Tabs defaultValue="prompt" className="flex min-h-0 flex-1 flex-col">
       <TabsList className="mx-4 mt-2 w-fit">
-        <TabsTrigger value="prompt">配置与提示词</TabsTrigger>
-        <TabsTrigger value="wrapup">收尾提示词</TabsTrigger>
+        <TabsTrigger value="prompt">{t("ui.01f026d5841760f8")}</TabsTrigger>
+        <TabsTrigger value="wrapup">{t("ui.9d52605842992f5f")}</TabsTrigger>
         <TabsTrigger value="mcp">MCP</TabsTrigger>
         <TabsTrigger value="skill">Skill</TabsTrigger>
         <TabsTrigger value="tools">Tools</TabsTrigger>
-        {isCustom && <TabsTrigger value="triggers">触发</TabsTrigger>}
+        {isCustom && <TabsTrigger value="triggers">{t("ui.b8734b28075b3344")}</TabsTrigger>}
       </TabsList>
 
-      {/* 配置 + 提示词 */}
+      {/* Configuración + palabra rápida */}
       <TabsContent value="prompt" className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <div className="grid gap-4">
           {(showLLM || showConfig || showWebSearch || showInteractiveShell) && (
             <div className="grid gap-3 rounded-md border p-3">
               {showLLM && (
                 <div className="grid gap-1.5">
-                  <Label htmlFor="llm-profile" className="text-xs">默认模型（LLM 配置）</Label>
+                  <Label htmlFor="llm-profile" className="text-xs">{t("ui.da42658d54830f25")}</Label>
                   <div className="flex flex-wrap items-center gap-3">
                     <Select value={llmProfileId || "__follow__"} onValueChange={(v) => setLlmProfileId(v === "__follow__" ? "" : v)}>
                       <SelectTrigger id="llm-profile" className="h-8 w-72">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__follow__">跟随任务 / 全局激活配置</SelectItem>
+                        <SelectItem value="__follow__">{t("ui.70ffcf1646bc70ab")}</SelectItem>
                         {llmProfiles.map((p) => (
                           <SelectItem key={p.id} value={String(p.id)}>
-                            {p.name}（{p.model}）{p.is_default ? " · 默认" : ""}
+                            {p.name}（{p.model}）{p.is_default ? t("ui.d1c51289de8beaa5") : ""}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     <span className="text-muted-foreground max-w-md text-xs">
-                      为该 Agent 绑定固定 LLM 配置（点「保存配置」生效）。优先级：Agent 绑定 &gt; 任务/会话指定 &gt; 全局激活。
-                    </span>
+                      Vincule la configuración fija de LLM al Agente (haga clic en "Guardar configuración" para que surta efecto). Prioridad: Enlace de agente &gt; Especificación de tarea/sesión &gt; Activación global. </span>
                   </div>
                 </div>
               )}
@@ -310,20 +311,19 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
                 {showConfig && (
                   <>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="max-turns" className="text-xs">最大循环次数（0=不限）</Label>
+                      <Label htmlFor="max-turns" className="text-xs">{t("ui.297a9a18bbc9b625")}</Label>
                       <Input id="max-turns" type="number" min={0} className="h-8 w-32"
                         value={maxTurns} onChange={(e) => setMaxTurns(e.target.value)} />
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="run-seconds" className="text-xs">运行时长（秒，0=不限）</Label>
+                      <Label htmlFor="run-seconds" className="text-xs">{t("ui.9a4256e111e36c30")}</Label>
                       <Input id="run-seconds" type="number" min={0} className="h-8 w-32"
                         value={runSecs} onChange={(e) => setRunSecs(e.target.value)} />
                     </div>
                   </>
                 )}
                 <Button size="sm" variant="outline" onClick={saveConfig}>
-                  <SaveIcon /> 保存配置
-                </Button>
+                  <SaveIcon />  {t("ui.c753c07393e625c4")} </Button>
               </div>
               {showWebSearch && (
                 <div className="flex items-center gap-3 border-t pt-3">
@@ -334,11 +334,11 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
                     onCheckedChange={setWebSearch}
                   />
                   <div className="grid gap-0.5">
-                    <Label htmlFor="web-search" className="text-sm">网络搜索</Label>
+                    <Label htmlFor="web-search" className="text-sm">{t("ui.faad93a241392801")}</Label>
                     <span className="text-muted-foreground text-xs">
                       {webSearchGlobalOn
-                        ? "为该 Agent 开启后（点上方保存生效），可用 web_search 联网检索"
-                        : "需先在「系统配置」开启网络搜索并配置后端，才能在此启用"}
+                        ? t("ui.c4ccad0f97c29381")
+                        : t("ui.4444cc733137eb1d")}
                     </span>
                   </div>
                 </div>
@@ -351,10 +351,9 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
                     onCheckedChange={setInteractiveShell}
                   />
                   <div className="grid gap-0.5">
-                    <Label htmlFor="interactive-shell" className="text-sm">交互式 Shell</Label>
+                    <Label htmlFor="interactive-shell" className="text-sm">{t("ui.870afbb3f57f7ef9")}</Label>
                     <span className="text-muted-foreground text-xs">
-                      为该 Agent 开启后（点上方保存生效），可用持久 PTY 会话工具（shell_open/send/read/close/list）驱动 msfconsole/ssh/REPL 等交互程序
-                    </span>
+                       {t("ui.682ef2caf86068b0")} </span>
                   </div>
                 </div>
               )}
@@ -362,7 +361,7 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
           )}
 
           <div className="grid gap-2">
-            <Label className="text-muted-foreground text-xs">变量（点击插入占位符，渲染时由运行时数据替换）</Label>
+            <Label className="text-muted-foreground text-xs">{t("ui.516d331a97accfe4")}</Label>
             <div className="flex flex-wrap gap-2">
               {variables.map((v) => (
                 <Tooltip key={v.name}>
@@ -375,28 +374,27 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
                     <p className="font-medium">{v.description}</p>
-                    <p className="text-muted-foreground mt-1">示例：{v.example}</p>
+                    <p className="text-muted-foreground mt-1">{t("ui.265eadbe8414b0f9")}{v.example}</p>
                   </TooltipContent>
                 </Tooltip>
               ))}
-              {variables.length === 0 && <span className="text-muted-foreground text-xs">（无变量）</span>}
+              {variables.length === 0 && <span className="text-muted-foreground text-xs">{t("ui.cfc0e0abeb9128cb")}</span>}
             </div>
           </div>
 
           <Textarea className="font-mono text-xs" rows={16} value={prompt}
-            placeholder="留空则使用内置默认提示词" onChange={(e) => setPrompt(e.target.value)} />
+            placeholder={t("ui.cd828a364209a241")} onChange={(e) => setPrompt(e.target.value)} />
 
           <div className="flex flex-wrap gap-2">
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" onClick={doPreview}>
-                  <EyeIcon /> 预览渲染
-                </Button>
+                  <EyeIcon />  {t("ui.237a4275ffc28f76")} </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>渲染预览</DialogTitle>
-                  <DialogDescription>所有 {`{{.Var}}`} 已由后端用示例值替换。</DialogDescription>
+                  <DialogTitle>{t("ui.237a4275ffc28f76")}</DialogTitle>
+                  <DialogDescription>{t("ui.c8f7ce276036333f")} {`{{.Var}}`}  {t("ui.33da465f69a1105d")}</DialogDescription>
                 </DialogHeader>
                 <div className="max-h-[60vh] overflow-auto rounded-md border bg-muted/30 p-3">
                   <Markdown text={preview} />
@@ -404,22 +402,20 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
               </DialogContent>
             </Dialog>
             <Button size="sm" onClick={savePrompt}>
-              <SaveIcon /> 保存为新版本
-            </Button>
+              <SaveIcon />  {t("ui.d0120cfe84918955")} </Button>
             <Button variant="outline" size="sm" onClick={resetPrompt}>
-              <RotateCcwIcon /> 恢复默认
-            </Button>
+              <RotateCcwIcon />  {t("ui.c48a43ea113759e3")} </Button>
           </div>
 
 
           <Separator />
           <div className="grid gap-2">
-            <Label className="text-muted-foreground text-xs">版本历史</Label>
+            <Label className="text-muted-foreground text-xs">{t("ui.86bd5274f8c26bbe")}</Label>
             <ul className="grid gap-1">
               {versions.map((ver, i) => (
                 <li key={ver.version} className="flex items-center gap-2 rounded-md px-1 py-0.5 text-xs hover:bg-muted/50">
                   <span className="font-mono shrink-0">v{ver.version}</span>
-                  {i === 0 && <Badge variant="secondary" className="px-1.5 py-0 shrink-0">当前</Badge>}
+                  {i === 0 && <Badge variant="secondary" className="px-1.5 py-0 shrink-0">{t("ui.e5c6fde86910ded7")}</Badge>}
                   <span className="text-muted-foreground truncate flex-1">{ver.note}</span>
                   {ver.ts && (
                     <span className="text-muted-foreground/60 shrink-0 tabular-nums">
@@ -437,23 +433,23 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
                 </li>
               ))}
               {versions.length === 0 && (
-                <li className="text-muted-foreground text-xs">（暂无保存的版本，使用内置默认）</li>
+                <li className="text-muted-foreground text-xs">{t("ui.b4c40b9dd3ee747f")}</li>
               )}
             </ul>
           </div>
 
-          {/* 查看版本 dialog */}
+          {/* Ver versión dialog */}
           <Dialog open={!!viewVer} onOpenChange={(o) => { if (!o) setViewVer(null); }}>
             <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>
                   v{viewVer?.version}
                   {viewVer?.version === versions[0]?.version && (
-                    <Badge variant="secondary" className="ml-2 px-1.5 py-0 align-middle">当前</Badge>
+                    <Badge variant="secondary" className="ml-2 px-1.5 py-0 align-middle">{t("ui.e5c6fde86910ded7")}</Badge>
                   )}
                 </DialogTitle>
                 <DialogDescription>
-                  {viewVer?.note || "（无备注）"}
+                  {viewVer?.note || t("ui.c3ceb515983ee344")}
                   {viewVer?.ts && (
                     <span className="ml-2 text-muted-foreground/60">
                       {new Date(viewVer.ts).toLocaleString("zh-CN")}
@@ -462,34 +458,32 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
                 </DialogDescription>
               </DialogHeader>
               <pre className="bg-muted max-h-[55vh] overflow-auto whitespace-pre-wrap rounded-md p-3 font-mono text-xs">
-                {viewVer?.template_text || "（空）"}
+                {viewVer?.template_text || t("ui.43a5359157cf2a94")}
               </pre>
               <div className="flex gap-2 justify-end">
                 {viewVer && viewVer.version !== versions[0]?.version && (
                   <Button variant="outline" size="sm" onClick={() => {
                     if (viewVer) { setDiffVer(viewVer); setViewVer(null); }
                   }}>
-                    <GitCompareIcon className="mr-1 size-3.5" /> 与当前版本对比
-                  </Button>
+                    <GitCompareIcon className="mr-1 size-3.5" />  {t("ui.6f843474065773ba")} </Button>
                 )}
                 <Button size="sm" onClick={() => {
-                  if (viewVer) { setPrompt(viewVer.template_text); setViewVer(null); toast.success(`已加载 v${viewVer.version} 到编辑器，确认后点「保存为新版本」`); }
+                  if (viewVer) { setPrompt(viewVer.template_text); setViewVer(null); toast.success(`v cargado${viewVer.version}Vaya al editor, confirme y haga clic en "Guardar como nueva versión"`); }
                 }}>
-                  加载到编辑器
-                </Button>
+                   {t("ui.0281d5d04de17049")} </Button>
               </div>
             </DialogContent>
           </Dialog>
 
-          {/* 版本对比 dialog */}
+          {/* comparación de versiones dialog */}
           <Dialog open={!!diffVer} onOpenChange={(o) => { if (!o) setDiffVer(null); }}>
             <DialogContent className="sm:max-w-3xl">
               <DialogHeader>
-                <DialogTitle>版本对比：v{diffVer?.version} → v{versions[0]?.version}（当前）</DialogTitle>
+                <DialogTitle>{t("ui.4013b7abc1609421")}{diffVer?.version} → v{versions[0]?.version}{t("ui.092cb444b688ec21")}</DialogTitle>
                 <DialogDescription>
                   <span className="inline-flex items-center gap-3 text-xs">
-                    <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-red-600 dark:text-red-400">- 删除</span>
-                    <span className="rounded bg-green-500/15 px-1.5 py-0.5 text-green-600 dark:text-green-400">+ 新增</span>
+                    <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-red-600 dark:text-red-400">{t("ui.ae0c6b5d9a48d9ae")}</span>
+                    <span className="rounded bg-green-500/15 px-1.5 py-0.5 text-green-600 dark:text-green-400">{t("ui.7aaf1aab7b562ebe")}</span>
                   </span>
                 </DialogDescription>
               </DialogHeader>
@@ -499,44 +493,41 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
         </div>
       </TabsContent>
 
-      {/* 收尾提示词 */}
+      {/* Palabra de mensaje de cierre */}
       <TabsContent value="wrapup" className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <div className="grid gap-3">
           <p className="text-muted-foreground text-xs leading-relaxed">
-            当此 Agent 因<b>超时</b>或<b>步数耗尽</b>被终止时，系统会注入这段「收尾提示词」跑一轮收尾：
-            先把已识别但未落库的内容写回，再输出一句总结（避免烂尾）。留空则使用内置默认。
-          </p>
+             {t("ui.3dc2ceef23035c18")}<b>{t("ui.be448e0f234d8960")}</b>{"o"}<b>{t("ui.150156354f6ed675")}</b>{t("ui.822c3d319bf37c7c")} </p>
           <div className="flex items-center gap-2">
-            <Label className="text-xs">收尾提示词正文</Label>
+            <Label className="text-xs">{t("ui.00f4d42f9fce6bac")}</Label>
             {wrapup.trim() ? (
-              <Badge variant="secondary" className="px-1.5 py-0">自定义</Badge>
+              <Badge variant="secondary" className="px-1.5 py-0">{t("ui.5f2afd3490042aa8")}</Badge>
             ) : (
-              <Badge variant="outline" className="px-1.5 py-0">使用内置默认</Badge>
+              <Badge variant="outline" className="px-1.5 py-0">{t("ui.c7055d1619dfd6dc")}</Badge>
             )}
           </div>
           <Textarea
             className="font-mono text-xs"
             rows={10}
             value={wrapup}
-            placeholder={wrapupDefault || "留空则使用内置默认收尾提示词"}
+            placeholder={wrapupDefault || t("ui.dc0c82489f439f82")}
             onChange={(e) => setWrapup(e.target.value)}
           />
           <div className="grid gap-1.5">
             <Label htmlFor="wrapup-turns" className="text-xs">
-              收尾轮数（收尾阶段自身最多跑几轮；0=用内置默认 {wrapupTurnsDefault} 轮）
-            </Label>
+               {t("ui.b8b7449cdd6c9e32")} {wrapupTurnsDefault}  {t("ui.4f4659978ac89c7d")} </Label>
             <Input id="wrapup-turns" type="number" min={0} className="h-8 w-32"
               value={wrapupTurns} onChange={(e) => setWrapupTurns(e.target.value)} />
           </div>
           <div className="flex gap-2">
-            <Button size="sm" onClick={saveWrapup}>保存</Button>
-            <Button size="sm" variant="outline" onClick={resetWrapup}>恢复默认</Button>
+            <Button size="sm" onClick={saveWrapup}>{t("common.save")}</Button>
+            <Button size="sm" variant="outline" onClick={resetWrapup}>{t("ui.c48a43ea113759e3")}</Button>
           </div>
           {wrapupDefault && (
             <>
               <Separator />
               <div className="grid gap-1.5">
-                <Label className="text-muted-foreground text-xs">内置默认（只读，供参考）</Label>
+                <Label className="text-muted-foreground text-xs">{t("ui.1e73d4b67658783e")}</Label>
                 <pre className="text-muted-foreground max-h-40 overflow-y-auto rounded-md border bg-muted/30 p-2 text-xs whitespace-pre-wrap">
                   {wrapupDefault}
                 </pre>
@@ -548,38 +539,35 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
             <>
               <Separator className="my-2" />
               <p className="text-muted-foreground text-xs leading-relaxed">
-                <b>任务超时收尾</b>（与上面的 per-run 收尾是<b>两套</b>）：当<b>整个任务</b>到达超时上限、即将结束时注入。
-                与 per-run 语义常相反（如 planner：per-run 说“别停继续规划”，任务超时说“到点停止、做最后判定”）。留空则用内置默认。
-              </p>
+                <b>{t("ui.175358e6a4748e8d")}</b>{t("ui.adb5ef9aeaa01e06")}<b>{t("ui.32b92e1fd0e65732")}</b>{t("ui.dee785ddb58e51d5")}<b>{t("ui.5c4bd4026e925170")}</b>{t("ui.c856584a8eae2c6e")} </p>
               <div className="flex items-center gap-2">
-                <Label className="text-xs">任务超时收尾提示词正文</Label>
+                <Label className="text-xs">{t("ui.1e5df4aa6377d328")}</Label>
                 {ttWrapup.trim() ? (
-                  <Badge variant="secondary" className="px-1.5 py-0">自定义</Badge>
+                  <Badge variant="secondary" className="px-1.5 py-0">{t("ui.5f2afd3490042aa8")}</Badge>
                 ) : (
-                  <Badge variant="outline" className="px-1.5 py-0">使用内置默认</Badge>
+                  <Badge variant="outline" className="px-1.5 py-0">{t("ui.c7055d1619dfd6dc")}</Badge>
                 )}
               </div>
               <Textarea
                 className="font-mono text-xs"
                 rows={10}
                 value={ttWrapup}
-                placeholder={ttWrapupDefault || "留空则使用内置默认任务超时收尾提示词"}
+                placeholder={ttWrapupDefault || t("ui.f4cfc406dfd8047e")}
                 onChange={(e) => setTtWrapup(e.target.value)}
               />
               <div className="grid gap-1.5">
                 <Label htmlFor="tt-turns" className="text-xs">
-                  收尾轮数（0=用内置默认 {ttTurnsDefault} 轮）
-                </Label>
+                   {t("ui.23652c67aac758f2")} {ttTurnsDefault}  {t("ui.4f4659978ac89c7d")} </Label>
                 <Input id="tt-turns" type="number" min={0} className="h-8 w-32"
                   value={ttTurns} onChange={(e) => setTtTurns(e.target.value)} />
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={saveTaskTimeoutWrapup}>保存</Button>
-                <Button size="sm" variant="outline" onClick={resetTaskTimeoutWrapup}>恢复默认</Button>
+                <Button size="sm" onClick={saveTaskTimeoutWrapup}>{t("common.save")}</Button>
+                <Button size="sm" variant="outline" onClick={resetTaskTimeoutWrapup}>{t("ui.c48a43ea113759e3")}</Button>
               </div>
               {ttWrapupDefault && (
                 <div className="grid gap-1.5">
-                  <Label className="text-muted-foreground text-xs">内置默认（只读，供参考）</Label>
+                  <Label className="text-muted-foreground text-xs">{t("ui.1e73d4b67658783e")}</Label>
                   <pre className="text-muted-foreground max-h-40 overflow-y-auto rounded-md border bg-muted/30 p-2 text-xs whitespace-pre-wrap">
                     {ttWrapupDefault}
                   </pre>
@@ -590,9 +578,9 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
         </div>
       </TabsContent>
 
-      {/* MCP 可见性 */}
+      {/* MCP Visibilidad */}
       <TabsContent value="mcp" className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-        <p className="text-muted-foreground mb-3 text-xs">勾选此 Agent 可见的 MCP 服务器。</p>
+        <p className="text-muted-foreground mb-3 text-xs">{t("ui.abae5d3a6be1f8db")}</p>
         <div className="grid gap-2">
           {mcp.map((m) => (
             <label key={m.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
@@ -601,13 +589,13 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
               <span className="text-muted-foreground ml-auto text-xs">{m.transport}</span>
             </label>
           ))}
-          {mcp.length === 0 && <span className="text-muted-foreground text-xs">（暂无 MCP）</span>}
+          {mcp.length === 0 && <span className="text-muted-foreground text-xs">{t("ui.591a6b6cd9662a81")}</span>}
         </div>
       </TabsContent>
 
-      {/* Skill 可见性 */}
+      {/* Skill Visibilidad */}
       <TabsContent value="skill" className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-        <p className="text-muted-foreground mb-3 text-xs">勾选此 Agent 可见的 Skill。</p>
+        <p className="text-muted-foreground mb-3 text-xs">{t("ui.e6c34a6b3e2f54c5")}</p>
         <div className="grid gap-2">
           {skills.map((s) => (
             <label key={s.name} className="flex items-center gap-2 rounded-md border p-2 text-sm">
@@ -616,54 +604,54 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
               {s.description && <span className="text-muted-foreground ml-auto truncate text-xs">{s.description}</span>}
             </label>
           ))}
-          {skills.length === 0 && <span className="text-muted-foreground text-xs">（暂无 Skill）</span>}
+          {skills.length === 0 && <span className="text-muted-foreground text-xs">{t("ui.bfc44de7d9f81c38")}</span>}
         </div>
       </TabsContent>
 
-      {/* Tools 绑定 */}
+      {/* Tools vinculante */}
       <TabsContent value="tools" className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-        <p className="text-muted-foreground mb-3 text-xs">勾选绑定给此 Agent 的内置工具。</p>
+        <p className="text-muted-foreground mb-3 text-xs">{t("ui.4b0fdd25a83ffe08")}</p>
         <div className="grid gap-2">
-          {tools.map((t) => {
-            const isTraffic = TRAFFIC_TOOL_KEYS.has(t.key);
-            const gated = isTraffic && !captureOn; // traffic tools need 流量捕获 on
+          {tools.map((tool) => {
+            const isTraffic = TRAFFIC_TOOL_KEYS.has(tool.key);
+            const gated = isTraffic && !captureOn; // traffic tools need captura de tráfico on
             return (
               <label
-                key={t.key}
+                key={tool.key}
                 className={cn(
                   "flex items-center gap-2 rounded-md border p-2 text-sm",
                   gated && "opacity-60",
                 )}
               >
                 <Checkbox
-                  checked={t.agents.includes(agentKey)}
+                  checked={tool.agents.includes(agentKey)}
                   disabled={gated}
-                  onCheckedChange={() => toggleTool(t)}
+                  onCheckedChange={() => toggleTool(tool)}
                 />
-                <span className="font-mono text-xs">{t.key}</span>
+                <span className="font-mono text-xs">{tool.key}</span>
                 {isTraffic && (
-                  <Badge variant="secondary" className="px-1 py-0 text-[9px]">流量</Badge>
+                  <Badge variant="secondary" className="px-1 py-0 text-[9px]">{t("nav.traffic")}</Badge>
                 )}
-                {!t.enabled && (
-                  <Badge variant="outline" className="text-destructive px-1 py-0 text-[9px]">已停用</Badge>
+                {!tool.enabled && (
+                  <Badge variant="outline" className="text-destructive px-1 py-0 text-[9px]">{t("ui.68de79aa60784d31")}</Badge>
                 )}
                 {gated ? (
-                  <span className="text-muted-foreground ml-auto text-xs">需开启流量捕获</span>
+                  <span className="text-muted-foreground ml-auto text-xs">{t("ui.d9db47f91e456409")}</span>
                 ) : (
-                  t.description && (
+                  tool.description && (
                     <span className="text-muted-foreground ml-auto line-clamp-1 max-w-[55%] text-xs">
-                      {t.description}
+                      {tool.description}
                     </span>
                   )
                 )}
               </label>
             );
           })}
-          {tools.length === 0 && <span className="text-muted-foreground text-xs">（暂无工具）</span>}
+          {tools.length === 0 && <span className="text-muted-foreground text-xs">{t("ui.b527d8feccae77a4")}</span>}
         </div>
       </TabsContent>
 
-      {/* 触发(P3, 仅自定义 agent) */}
+      {/* disparador(P3, Sólo personalizado agent) */}
       {isCustom && (
         <TabsContent value="triggers" className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
           <AgentTriggersTab agentKey={agentKey} agent={detail?.agent} />
@@ -728,12 +716,12 @@ function DiffView({ oldText, newText }: { oldText: string; newText: string }) {
 }
 
 // AgentTriggersTab manages a custom agent's P3 triggers: list + add + delete.
-// Each trigger fires (定时/发现finding/目标达成/任务超时/工具调用，可多选) → a new conversation runs
+// Each trigger fires (tiempo/Descubrimientofinding/Objetivo cumplido/tiempo de espera de la tarea/Llamada de herramienta, múltiples selecciones posibles) → a new conversation runs
 // in parallel with the base user message + auto context appended by the backend.
 function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent }) {
   const [triggers, setTriggers] = React.useState<AgentTrigger[]>([]);
   const [tools, setTools] = React.useState<Tool[]>([]);
-  // 触发后处理策略(每 agent);初值来自 agent detail,改动即保存。
+  // estrategia de procesamiento posterior al disparo(cada agent);El valor inicial proviene de agent detail,guardar cambios。
   const [runMode, setRunMode] = React.useState<"serial" | "parallel">(agent?.trigger_run_mode ?? "serial");
   const [mergeMode, setMergeMode] = React.useState<"by_task" | "all" | "none">(agent?.trigger_merge_mode ?? "all");
   const [maxParallel, setMaxParallel] = React.useState(String(agent?.trigger_max_parallel ?? 5));
@@ -751,7 +739,7 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
     try {
       await api.saveAgentConfig(agentKey, patch);
     } catch (e) {
-      toast.error("保存策略失败：" + (e as Error).message);
+      toast.error(t("ui.a09179782a41a469") + (e as Error).message);
     }
   }
   const [onInterval, setOnInterval] = React.useState(false);
@@ -769,7 +757,7 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
   const [taskCreateMsg, setTaskCreateMsg] = React.useState("");
   const [toolNames, setToolNames] = React.useState<string[]>([]);
   const [saving, setSaving] = React.useState(false);
-  // null = 新增模式；非 null = 正在编辑该 id 的触发器。
+  // null = Nuevo modo; no null = Editando esto id Activador de。
   const [editingId, setEditingId] = React.useState<number | null>(null);
 
   const reload = React.useCallback(() => {
@@ -786,7 +774,7 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
     setToolNames((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
   }
 
-  // resetForm 清空表单并回到「新增」模式。
+  // resetForm Borrar el formulario y volver al modo ”Agregar”。
   function resetForm() {
     setEditingId(null);
     setOnInterval(false);
@@ -805,7 +793,7 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
     setToolNames([]);
   }
 
-  // startEdit 把某条已有触发器灌进表单,进入「编辑」模式。
+  // startEdit complete un activador existente en el formulario,Ingrese al modo ”Editar”。
   function startEdit(t: AgentTrigger) {
     setEditingId(t.id);
     setOnInterval(t.interval_sec > 0);
@@ -824,15 +812,15 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
     setToolNames(t.tool_names ?? []);
   }
 
-  // submit 依 editingId 走「新增」或「保存修改」;编辑时保留该触发器的启用状态。
+  // submit Según editingId Vaya a ”Agregar” o ”Guardar cambios”」;Mantenga este disparador habilitado mientras edita。
   async function submit() {
     const n = onInterval ? Math.max(1, Math.floor(Number(intervalSec) || 0)) : 0;
     if (n === 0 && !onFinding && !onGoalMet && !onTaskTimeout && !onToolCall && !onTaskCreate) {
-      toast.error("至少选择一种触发条件");
+      toast.error(t("ui.5fd88edee77ead85"));
       return;
     }
     if (onToolCall && toolNames.length === 0) {
-      toast.error("工具调用触发至少选择一个工具");
+      toast.error(t("ui.9b9d05f43996691b"));
       return;
     }
     const body = {
@@ -855,40 +843,40 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
       if (editingId != null) {
         const cur = triggers.find((x) => x.id === editingId);
         await api.updateTrigger(editingId, { ...body, enabled: cur?.enabled ?? true });
-        toast.success("已保存修改");
+        toast.success(t("ui.a184979c9c67e174"));
       } else {
         await api.createTrigger(agentKey, { ...body, enabled: true });
-        toast.success("已添加触发器");
+        toast.success(t("ui.5f3d53b81cfcd120"));
       }
       resetForm();
       reload();
     } catch (e) {
-      toast.error((editingId != null ? "保存失败：" : "添加失败：") + (e as Error).message);
+      toast.error((editingId != null ? t("ui.d97c6497d08cd1ab") : t("ui.bc6ac348470494fd")) + (e as Error).message);
     } finally {
       setSaving(false);
     }
   }
-  async function toggleEnabled(t: AgentTrigger) {
+  async function toggleEnabled(i18nItem: AgentTrigger) {
     try {
-      await api.updateTrigger(t.id, {
-        enabled: !t.enabled,
-        interval_sec: t.interval_sec,
-        on_finding: t.on_finding,
-        on_goal_met: t.on_goal_met,
-        on_task_timeout: t.on_task_timeout,
-        on_tool_call: t.on_tool_call,
-        on_task_create: t.on_task_create,
-        interval_message: t.interval_message,
-        finding_message: t.finding_message,
-        goal_message: t.goal_message,
-        task_timeout_message: t.task_timeout_message,
-        tool_call_message: t.tool_call_message,
-        task_create_message: t.task_create_message,
-        tool_names: t.tool_names,
+      await api.updateTrigger(i18nItem.id, {
+        enabled: !i18nItem.enabled,
+        interval_sec: i18nItem.interval_sec,
+        on_finding: i18nItem.on_finding,
+        on_goal_met: i18nItem.on_goal_met,
+        on_task_timeout: i18nItem.on_task_timeout,
+        on_tool_call: i18nItem.on_tool_call,
+        on_task_create: i18nItem.on_task_create,
+        interval_message: i18nItem.interval_message,
+        finding_message: i18nItem.finding_message,
+        goal_message: i18nItem.goal_message,
+        task_timeout_message: i18nItem.task_timeout_message,
+        tool_call_message: i18nItem.tool_call_message,
+        task_create_message: i18nItem.task_create_message,
+        tool_names: i18nItem.tool_names,
       });
       reload();
     } catch (e) {
-      toast.error("保存失败：" + (e as Error).message);
+      toast.error(t("ui.d97c6497d08cd1ab") + (e as Error).message);
     }
   }
   async function del(id: number) {
@@ -897,34 +885,32 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
       if (editingId === id) resetForm();
       reload();
     } catch (e) {
-      toast.error("删除失败：" + (e as Error).message);
+      toast.error(t("ui.ac60bde833d4bb98") + (e as Error).message);
     }
   }
 
-  function condLabel(t: AgentTrigger): string {
+  function condLabel(i18nItem: AgentTrigger): string {
     const parts: string[] = [];
-    if (t.interval_sec > 0) parts.push(`每 ${t.interval_sec}s`);
-    if (t.on_finding) parts.push("发现 finding");
-    if (t.on_goal_met) parts.push("目标达成");
-    if (t.on_task_timeout) parts.push("任务超时");
-    if (t.on_tool_call) parts.push(`工具调用(${t.tool_names.length})`);
-    if (t.on_task_create) parts.push("任务创建");
-    return parts.join(" · ") || "（无条件）";
+    if (i18nItem.interval_sec > 0) parts.push(`cada ${i18nItem.interval_sec}s`);
+    if (i18nItem.on_finding) parts.push(t("ui.fc319b4d0585e6e0"));
+    if (i18nItem.on_goal_met) parts.push(t("ui.8820f5368c27f9ef"));
+    if (i18nItem.on_task_timeout) parts.push(t("ui.b9f6f6c53d77eb8a"));
+    if (i18nItem.on_tool_call) parts.push(`Llamada a herramienta (${i18nItem.tool_names.length})`);
+    if (i18nItem.on_task_create) parts.push(t("ui.a350194c34061de0"));
+    return parts.join(" · ") || t("ui.7102efd66446febc");
   }
 
   return (
     <div className="grid gap-4">
       <p className="text-muted-foreground text-xs">
-        触发器让这个自定义 Agent 自动运行：每次触发都<b>新建一个会话运行</b>（在「对话」页可见）。
-        可多选触发条件；系统会把「本次为何触发 + 相关任务/finding/目标」自动附加到你写的基础消息后面。
-      </p>
+         {t("ui.ea9cd77f2a83b601")}<b>{t("ui.660734655c8e940b")}</b>{t("ui.6d4505310d8bcf77")} </p>
 
-      {/* 触发后处理策略 */}
+      {/* estrategia de procesamiento posterior al disparo */}
       <div className="grid gap-3 rounded-md border p-3">
-        <Label className="text-muted-foreground text-xs">触发后处理策略（决定触发如何排队/合并运行）</Label>
+        <Label className="text-muted-foreground text-xs">{t("ui.643716438b9155d2")}</Label>
         <div className="flex flex-wrap items-center gap-4">
           <div className="grid gap-1">
-            <Label className="text-xs">运行模式</Label>
+            <Label className="text-xs">{t("ui.cf04341b3b7c21de")}</Label>
             <Select
               value={runMode}
               onValueChange={(v) => {
@@ -937,14 +923,14 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper">
-                <SelectItem value="serial">串行（排队，一次一个）</SelectItem>
-                <SelectItem value="parallel">并行（各自并发会话）</SelectItem>
+                <SelectItem value="serial">{t("ui.3427e3b19654ef45")}</SelectItem>
+                <SelectItem value="parallel">{t("ui.1b0a17a1b6624598")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="grid gap-1">
-            <Label className="text-xs">合并模式</Label>
+            <Label className="text-xs">{t("ui.04276fd40efac31e")}</Label>
             <Select
               value={mergeMode}
               disabled={runMode === "parallel"}
@@ -958,16 +944,16 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper">
-                <SelectItem value="by_task">按任务合并</SelectItem>
-                <SelectItem value="all">全部合并成一条</SelectItem>
-                <SelectItem value="none">不合并</SelectItem>
+                <SelectItem value="by_task">{t("ui.0f8994a403aec0f6")}</SelectItem>
+                <SelectItem value="all">{t("ui.e1c79a61d7aa3286")}</SelectItem>
+                <SelectItem value="none">{t("ui.ab6b5708a86f21ed")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {runMode === "parallel" && (
             <div className="grid gap-1">
-              <Label htmlFor="tr-maxpar" className="text-xs">最大并发（0=不限）</Label>
+              <Label htmlFor="tr-maxpar" className="text-xs">{t("ui.9bb927201d3c2866")}</Label>
               <Input
                 id="tr-maxpar"
                 type="number"
@@ -986,38 +972,37 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
         </div>
         <p className="text-muted-foreground text-xs">
           {runMode === "parallel"
-            ? "并行：每次触发立即各开一个会话并发运行，不合并；超过最大并发的触发排队等空位。"
+            ? t("ui.96adf6dfceddc90b")
             : mergeMode === "by_task"
-              ? "串行·按任务合并：同 agent 一次跑一个；排队中同一任务的事件触发合并成一条会话。"
+              ? t("ui.979cdf690dc833cd")
               : mergeMode === "all"
-                ? "串行·全部合并：同 agent 一次跑一个；取队列时把当前排队的所有触发合并成一条会话。"
-                : "串行·不合并：同 agent 一次跑一个；每条触发各自一个会话。"}
+                ? t("ui.57792f153a842cb5")
+                : t("ui.4d0c799dbda3f306")}
         </p>
       </div>
 
-      {/* 新增 / 编辑触发器 */}
+      {/* nuevo / Editar disparador */}
       <div className="grid gap-3 rounded-md border p-3">
         <Label className="text-muted-foreground text-xs">
           {editingId != null
-            ? `编辑触发器 #${editingId}（改完点「保存修改」）`
-            : "新增触发器（每种条件可填各自的用户消息）"}
+            ? `Editar disparador #${editingId}(Haga clic en "Guardar cambios" después de realizar cambios)`
+            : t("ui.dfd5c660b67a5982")}
         </Label>
 
-        {/* 定时 */}
+        {/* tiempo */}
         <div className="grid gap-1.5">
           <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={onInterval} onCheckedChange={(v) => setOnInterval(!!v)} /> 定时触发
-          </label>
+            <Checkbox checked={onInterval} onCheckedChange={(v) => setOnInterval(!!v)} />  {t("ui.eb3856a2d5557371")} </label>
           {onInterval && (
             <div className="grid gap-1.5">
               <div className="flex items-center gap-2">
-                <Label htmlFor="tr-interval" className="text-xs">每</Label>
+                <Label htmlFor="tr-interval" className="text-xs">{t("ui.74767fb71638182a")}</Label>
                 <Input id="tr-interval" type="number" min={1} className="h-8 w-24"
                   value={intervalSec} onChange={(e) => setIntervalSec(e.target.value)} />
-                <span className="text-muted-foreground text-xs">秒</span>
+                <span className="text-muted-foreground text-xs">{t("ui.324ea98f7cd80cd7")}</span>
               </div>
               <Textarea className="text-xs" rows={2} value={intervalMsg}
-                placeholder="定时触发时发给 agent 的话，如：巡检所有任务" onChange={(e) => setIntervalMsg(e.target.value)} />
+                placeholder={t("ui.294f5f9f857da2af")} onChange={(e) => setIntervalMsg(e.target.value)} />
             </div>
           )}
         </div>
@@ -1025,48 +1010,43 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
         {/* finding */}
         <div className="grid gap-1.5">
           <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={onFinding} onCheckedChange={(v) => setOnFinding(!!v)} /> 发现 finding 时触发
-          </label>
+            <Checkbox checked={onFinding} onCheckedChange={(v) => setOnFinding(!!v)} />  {t("ui.744310650cfdb143")} </label>
           {onFinding && (
             <Textarea className="text-xs" rows={2} value={findingMsg}
-              placeholder="发现 finding 时发给 agent 的话（系统会附带任务与 finding 详情）" onChange={(e) => setFindingMsg(e.target.value)} />
+              placeholder={t("ui.c08d29dafd7de9b6")} onChange={(e) => setFindingMsg(e.target.value)} />
           )}
         </div>
 
-        {/* 目标达成 */}
+        {/* Objetivo cumplido */}
         <div className="grid gap-1.5">
           <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={onGoalMet} onCheckedChange={(v) => setOnGoalMet(!!v)} /> 目标达成时触发
-          </label>
+            <Checkbox checked={onGoalMet} onCheckedChange={(v) => setOnGoalMet(!!v)} />  {t("ui.fb7c7b83fefabc9e")} </label>
           {onGoalMet && (
             <Textarea className="text-xs" rows={2} value={goalMsg}
-              placeholder="目标达成时发给 agent 的话（系统会附带任务与达成的目标）" onChange={(e) => setGoalMsg(e.target.value)} />
+              placeholder={t("ui.1a5fb30e3e92f553")} onChange={(e) => setGoalMsg(e.target.value)} />
           )}
         </div>
 
-        {/* 任务超时 */}
+        {/* tiempo de espera de la tarea */}
         <div className="grid gap-1.5">
           <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={onTaskTimeout} onCheckedChange={(v) => setOnTaskTimeout(!!v)} /> 任务超时时触发
-          </label>
+            <Checkbox checked={onTaskTimeout} onCheckedChange={(v) => setOnTaskTimeout(!!v)} />  {t("ui.01e0e6b2f0727904")} </label>
           {onTaskTimeout && (
             <Textarea className="text-xs" rows={2} value={taskTimeoutMsg}
-              placeholder="任务超时时发给 agent 的话（系统会附带任务编号与目标）" onChange={(e) => setTaskTimeoutMsg(e.target.value)} />
+              placeholder={t("ui.b9ae1df43cad9038")} onChange={(e) => setTaskTimeoutMsg(e.target.value)} />
           )}
         </div>
 
-        {/* 工具调用 */}
+        {/* llamada de herramienta */}
         <div className="grid gap-1.5">
           <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={onToolCall} onCheckedChange={(v) => setOnToolCall(!!v)} /> 工具调用时触发
-          </label>
+            <Checkbox checked={onToolCall} onCheckedChange={(v) => setOnToolCall(!!v)} />  {t("ui.b3e8b74fcc976e16")} </label>
           {onToolCall && (
             <div className="grid gap-1.5">
               <div className="text-muted-foreground text-xs">
-                选择要监听的工具（至少一个）；任务执行中这些工具每次<b>调用完成</b>都会触发。已选 {toolNames.length} 个。
-              </div>
+                 {t("ui.214228d4eb94a889")}<b>{t("ui.c308f16d1c5b71bf")}</b>{t("ui.5daaa42d45ea62c5")} {toolNames.length}  {"ud."} </div>
               <div className="max-h-40 overflow-y-auto rounded-md border p-2">
-                {tools.length === 0 && <span className="text-muted-foreground text-xs">（工具列表为空）</span>}
+                {tools.length === 0 && <span className="text-muted-foreground text-xs">{t("ui.ab105594098570a6")}</span>}
                 <div className="grid gap-1">
                   {tools.map((tool) => (
                     <label key={tool.key} className="flex items-start gap-2 text-xs">
@@ -1081,74 +1061,72 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
                 </div>
               </div>
               <Textarea className="text-xs" rows={2} value={toolCallMsg}
-                placeholder="工具被调用时发给 agent 的话（系统会附带任务信息、工具入参与返回内容）" onChange={(e) => setToolCallMsg(e.target.value)} />
+                placeholder={t("ui.2b33f91c7c73523e")} onChange={(e) => setToolCallMsg(e.target.value)} />
             </div>
           )}
         </div>
 
-        {/* 任务创建 */}
+        {/* creación de tarea */}
         <div className="grid gap-1.5">
           <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={onTaskCreate} onCheckedChange={(v) => setOnTaskCreate(!!v)} /> 任务创建时触发
-          </label>
+            <Checkbox checked={onTaskCreate} onCheckedChange={(v) => setOnTaskCreate(!!v)} />  {t("ui.755883c43b32a7fd")} </label>
           {onTaskCreate && (
             <Textarea className="text-xs" rows={2} value={taskCreateMsg}
-              placeholder="任务被创建时发给 agent 的话（系统会附带任务编号与目标）" onChange={(e) => setTaskCreateMsg(e.target.value)} />
+              placeholder={t("ui.639bad272681a45c")} onChange={(e) => setTaskCreateMsg(e.target.value)} />
           )}
         </div>
 
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={submit} disabled={saving}>
-            <SaveIcon /> {editingId != null ? "保存修改" : "添加触发器"}
+            <SaveIcon /> {editingId != null ? "guardar cambios" : t("ui.49f38217a14faa2e")}
           </Button>
           {editingId != null && (
             <Button size="sm" variant="ghost" onClick={resetForm} disabled={saving}>
-              <XIcon /> 取消编辑
-            </Button>
+              <XIcon />  {t("ui.4ccf118d16da15f8")} </Button>
           )}
         </div>
       </div>
 
-      {/* 已有触发器 */}
+      {/* El disparador ya existe */}
       <div className="grid gap-2">
-        <Label className="text-muted-foreground text-xs">已有触发器</Label>
-        {triggers.length === 0 && <span className="text-muted-foreground text-xs">（暂无）</span>}
-        {triggers.map((t) => (
+        <Label className="text-muted-foreground text-xs">{t("ui.85fe85a88001ee3e")}</Label>
+        {triggers.length === 0 && <span className="text-muted-foreground text-xs">{t("ui.26814bfa70c30bf9")}</span>}
+        {triggers.map((trigger) => (
           <div
-            key={t.id}
+            key={trigger.id}
             className={cn(
               "flex items-start gap-2 rounded-md border p-2 text-sm",
-              editingId === t.id && "border-primary bg-primary/5",
+              editingId === trigger.id && "border-primary bg-primary/5",
             )}
           >
-            <Switch checked={t.enabled} onCheckedChange={() => toggleEnabled(t)} className="mt-0.5" />
+            <Switch checked={trigger.enabled} onCheckedChange={() => toggleEnabled(trigger)} className="mt-0.5" />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="font-medium">{condLabel(t)}</span>
-                {!t.enabled && (
-                  <Badge variant="outline" className="text-destructive px-1 py-0 text-[9px]">已停用</Badge>
+                <span className="font-medium">{condLabel(trigger)}</span>
+                {!trigger.enabled && (
+                  <Badge variant="outline" className="text-destructive px-1 py-0 text-[9px]">{t("ui.68de79aa60784d31")}</Badge>
                 )}
               </div>
               <div className="text-muted-foreground grid gap-0.5 text-xs">
-                {t.interval_sec > 0 && t.interval_message && <div className="line-clamp-1">定时：{t.interval_message}</div>}
-                {t.on_finding && t.finding_message && <div className="line-clamp-1">finding：{t.finding_message}</div>}
-                {t.on_goal_met && t.goal_message && <div className="line-clamp-1">目标：{t.goal_message}</div>}
-                {t.on_task_timeout && t.task_timeout_message && <div className="line-clamp-1">超时：{t.task_timeout_message}</div>}
-                {t.on_task_create && t.task_create_message && <div className="line-clamp-1">任务创建：{t.task_create_message}</div>}
-                {t.on_tool_call && (
+                {trigger.interval_sec > 0 && trigger.interval_message && <div className="line-clamp-1">{t("ui.7cffd82d69edbcbb")}{trigger.interval_message}</div>}
+                {trigger.on_finding && trigger.finding_message && <div className="line-clamp-1">finding：{trigger.finding_message}</div>}
+                {trigger.on_goal_met && trigger.goal_message && <div className="line-clamp-1">{t("ui.a75cd602a12543f3")}{trigger.goal_message}</div>}
+                {trigger.on_task_timeout && trigger.task_timeout_message && <div className="line-clamp-1">{t("ui.096cc93952014fe9")}{trigger.task_timeout_message}</div>}
+                {trigger.on_task_create && trigger.task_create_message && <div className="line-clamp-1">{t("ui.3b4d81b92ddfed8b")}{trigger.task_create_message}</div>}
+                {trigger.on_tool_call && (
                   <>
-                    <div className="line-clamp-1">工具：{t.tool_names.join("、") || "（未选）"}</div>
-                    {t.tool_call_message && <div className="line-clamp-1">消息：{t.tool_call_message}</div>}
+                    <div className="line-clamp-1">{t("ui.09049c37cc10515f")}{trigger.tool_names.join("、") || t("ui.d0052c4dd0bcb3b3")}</div>
+                    {trigger.tool_call_message && <div className="line-clamp-1">{t("ui.dfbda3bc77541609")}{trigger.tool_call_message}</div>}
                   </>
                 )}
               </div>
             </div>
             <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-foreground"
-              onClick={() => startEdit(t)} title="编辑">
+              onClick={() => startEdit(trigger)} title={t("common.edit")}>
               <PencilIcon className="size-3.5" />
             </Button>
             <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-destructive"
-              onClick={() => del(t.id)} title="删除">
+              onClick={() => del(trigger.id)} title={t("common.delete")}>
               <Trash2Icon className="size-3.5" />
             </Button>
           </div>

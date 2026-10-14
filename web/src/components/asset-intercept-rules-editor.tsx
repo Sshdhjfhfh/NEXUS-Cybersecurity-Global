@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import { PlusIcon, Trash2Icon } from "lucide-react";
@@ -9,24 +11,24 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import type { AssetInterceptKind, AssetInterceptRuleInput } from "@/lib/types";
 
-// 用 NativeSelect（原生 <select>）而非 shadcn Select：这个编辑器会用在 Sheet 抽屉内，
-// shadcn Select 的下拉 portal 到 body、点击外部会触发抽屉的「点击外部关闭」误关；原生下拉无此问题。
+// uso NativeSelect（nativo <select>）en lugar de shadcn Select：Este editor se utilizará en Sheet Dentro del cajón，
+// shadcn Select desplegable portal llegar body、Al hacer clic afuera, el cajón ”Haga clic afuera para cerrar” se cerrará por error; El menú desplegable nativo no tiene este problema.。
 export const ASSET_INTERCEPT_KIND_OPTIONS: {
   value: AssetInterceptKind;
   label: string;
   placeholder: string;
 }[] = [
-  { value: "exact_domain", label: "域名(全等)", placeholder: "example.gov.cn" },
-  { value: "exact_ip", label: "IP(全等)", placeholder: "203.0.113.10" },
-  { value: "exact_url", label: "URL(全等)", placeholder: "https://example.com/login" },
-  { value: "fuzzy_domain", label: "域名(模糊)", placeholder: ".gov.cn" },
-  { value: "fuzzy_ip", label: "IP(模糊)", placeholder: "203.0.113." },
-  { value: "fuzzy_url", label: "URL(模糊)", placeholder: "/admin" },
-  { value: "cidr", label: "CIDR 网段", placeholder: "192.168.0.0/16" },
+  { value: "exact_domain", label: t("ui.2513c003e3c7f3fa"), placeholder: "example.gov.cn" },
+  { value: "exact_ip", label: t("ui.4dbab2bb62808cdf"), placeholder: "203.0.113.10" },
+  { value: "exact_url", label: t("ui.9982875e2c716850"), placeholder: "https://example.com/login" },
+  { value: "fuzzy_domain", label: t("ui.b7365e9f3d365213"), placeholder: ".gov.cn" },
+  { value: "fuzzy_ip", label: t("ui.e10333ae69a7c1e6"), placeholder: "203.0.113." },
+  { value: "fuzzy_url", label: t("ui.228de89e3cd0f885"), placeholder: "/admin" },
+  { value: "cidr", label: "segmento de red CIDR", placeholder: "192.168.0.0/16" },
 ];
 
-// AssetInterceptRulesEditor 是「拦截/允许规则」的受控多行编辑区（拦截block/允许allow +
-// 类型 + 匹配内容 + 备注），不自带持久化——由父组件决定何时提交。
+// AssetInterceptRulesEditor es ”Interceptar/Área de edición multilínea controlada de ”Permitir regla” (interceptaciónblock/Permitidoallow +
+// tipo + contenido coincidente + Comentarios), no viene con persistencia: el componente principal decide cuándo enviar。
 export function AssetInterceptRulesEditor({
   value,
   onChange,
@@ -48,7 +50,7 @@ export function AssetInterceptRulesEditor({
       {value.map((r, i) => {
         const ph = ASSET_INTERCEPT_KIND_OPTIONS.find((o) => o.value === r.kind)?.placeholder ?? "";
         return (
-          // biome-ignore lint/suspicious/noArrayIndexKey: 行无稳定 id，按索引受控即可
+          // biome-ignore lint/suspicious/noArrayIndexKey: línea inestable id，solo control por índice
           <div key={i} className="flex items-center gap-2">
             <NativeSelect
               size="sm"
@@ -56,8 +58,8 @@ export function AssetInterceptRulesEditor({
               value={r.action}
               onChange={(e) => update(i, { action: e.target.value as "block" | "allow" })}
             >
-              <NativeSelectOption value="block">拦截</NativeSelectOption>
-              <NativeSelectOption value="allow">允许</NativeSelectOption>
+              <NativeSelectOption value="block">{t("nav.intercept")}</NativeSelectOption>
+              <NativeSelectOption value="allow">{t("ui.f3fb44a969080b74")}</NativeSelectOption>
             </NativeSelect>
             <NativeSelect
               size="sm"
@@ -79,7 +81,7 @@ export function AssetInterceptRulesEditor({
             />
             <Input
               className="w-[120px] shrink-0"
-              placeholder="备注(可选)"
+              placeholder={t("ui.ecd7c2ad14b6487f")}
               value={r.note}
               onChange={(e) => update(i, { note: e.target.value })}
             />
@@ -96,8 +98,7 @@ export function AssetInterceptRulesEditor({
         );
       })}
       <Button type="button" size="sm" variant="outline" className="w-fit" onClick={add}>
-        <PlusIcon className="size-4" /> 添加一条
-      </Button>
+        <PlusIcon className="size-4" />  {t("ui.7c595962a1ee20b4")} </Button>
     </div>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -9,11 +11,11 @@ import type { ParsedCompanyScopeText } from "@/lib/company-scope";
 import type { CompanyScopeKind } from "@/lib/types";
 
 const SCOPE_KIND_LABELS: Record<CompanyScopeKind, string> = {
-  domain: "域名",
+  domain: "nombre de dominio",
   ip: "IP",
   cidr: "CIDR",
   icp: "ICP",
-  keyword: "关键词",
+  keyword: "Palabras clave",
 };
 
 export function ScopeTextEditor({
@@ -21,8 +23,8 @@ export function ScopeTextEditor({
   value,
   onValueChange,
   parsed,
-  label = "资产范围",
-  description = "每行一条，自动识别域名、IP、CIDR、ICP 备案和企业关键词。",
+  label = t("ui.3f6e21ff1201fe11"),
+  description = t("ui.a20aaaf32226cd6b"),
 }: {
   id: string;
   value: string;
@@ -46,13 +48,13 @@ export function ScopeTextEditor({
         rows={8}
         value={value}
         aria-invalid={parsed.errors.length > 0}
-        placeholder={"example.com\n203.0.113.10\n198.51.100.0/24\n京ICP备12345678号-1\n企业名称关键词"}
+        placeholder={t("ui.316914332ff203d0")}
         className="min-h-36 resize-y font-mono text-sm"
         onChange={(event) => onValueChange(event.target.value)}
       />
       {parsed.rules.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 text-muted-foreground text-xs">
-          <span>已识别 {parsed.rules.length} 条</span>
+          <span>{t("ui.bd34fe6fb3115d09")} {parsed.rules.length}  {t("ui.a1cb6bd814e4e98b")}</span>
           {Object.entries(SCOPE_KIND_LABELS).map(([kind, kindLabel]) => {
             const count = counts.get(kind as CompanyScopeKind) ?? 0;
             return count > 0 ? (
@@ -67,10 +69,10 @@ export function ScopeTextEditor({
         <FieldError>
           {parsed.errors.slice(0, 5).map((item) => (
             <span key={`${item.line}-${item.error}`} className="block">
-              第 {item.line} 行：{item.error}
+               {"No."} {item.line}  {"OK:"}{item.error}
             </span>
           ))}
-          {parsed.errors.length > 5 && <span className="block">另有 {parsed.errors.length - 5} 行错误</span>}
+          {parsed.errors.length > 5 && <span className="block">{t("ui.20af4511c75c6d7b")} {parsed.errors.length - 5}  {t("ui.1cbf73191deeb56d")}</span>}
         </FieldError>
       )}
     </Field>

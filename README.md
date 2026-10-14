@@ -1,0 +1,56 @@
+# NEXUS IA v6.0
+
+Sistema de investigación adversarial para laboratorios controlados. El backend Go
+sirve la interfaz Next.js desde un único contenedor y utiliza PostgreSQL.
+
+## Ejecutar
+
+```sh
+docker compose build orchestrator
+docker compose up -d
+docker compose ps
+curl http://localhost:8787/api/health
+```
+
+Abrir <http://localhost:8787>. Los servicios `postgres` y `orchestrator` deben
+mostrar `healthy`. La cuenta visible se llama **nexus**; el identificador interno
+heredado de autenticación se conserva para mantener la compatibilidad.
+
+## Traducciones al español
+
+El catálogo canónico es `i18n/locales/es.json`; su copia pública está en
+`web/public/locales/es.json`. El idioma predeterminado es español. Una preferencia
+explícita guardada por el usuario tiene prioridad. El catálogo español se carga
+también durante el build, evitando claves sin resolver en etiquetas estáticas.
+Los demás nueve idiomas conservan sus catálogos existentes; esta entrega no
+certifica su traducción completa.
+
+```sh
+cd web && npm ci && cd ..
+python3 scripts/apply_translations.py --dry-run
+python3 scripts/apply_translations.py --extract /tmp/chinese-strings.json
+python3 scripts/apply_translations.py
+python3 scripts/check_i18n.py
+python3 -m unittest discover -s scripts -p 'test_apply_translations.py' -v
+```
+
+La migración usa el parser de TypeScript para distinguir texto JSX, atributos,
+comentarios, tipos y valores internos. `--dry-run` no modifica ningún archivo;
+`--extract` solo escribe el informe indicado. Los respaldos locales de la
+traducción no forman parte del repositorio ni del contexto de Docker.
+
+## Desarrollo y restricciones
+
+```sh
+go build ./...
+go test ./...
+```
+
+Los logs internos nuevos deben escribirse en inglés. No modificar los módulos
+inmutables: `opsec`, `circuit_breaker`, `watchdog`, `ethical_boundary`,
+`llmjacking_guard`, `oracle_defense`, `abm` y `zero_trust`.
+
+La funcionalidad de laboratorio debe permanecer aislada; ninguna implementación
+nueva debe permitir acciones fuera de su alcance autorizado. Ver
+[la especificación](docs/NEXUS_v6_SPEC.md) y
+[la arquitectura](docs/ARCHITECTURE.md).

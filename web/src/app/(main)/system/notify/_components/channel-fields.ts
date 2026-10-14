@@ -1,26 +1,28 @@
-// 渠道字段表与配置值的解析工具。
+import { t } from '@/lib/i18n';
+
+// Herramienta de análisis para tablas de campos de canales y valores de configuración.。
 //
-// 与页面拆开是因为这一份是**数据**而不是视图：它描述每种渠道有哪些字段、
-// 各自该用什么控件，以及表单文本到配置值（JSON）的双向转换。
-// 单独放一个文件后，新增渠道只需要动这里，页面本身不必改。
-// 渠道类型的展示名与简介。放在前端是因为它只影响文案，后端不需要知道。
+// separado de la página porque ésta es**datos**En lugar de una vista: describe qué campos están disponibles para cada canal、
+// Qué controles se deben utilizar y cómo convertir el texto del formulario en valores de configuración（JSON）Conversión bidireccional de。
+// Después de colocar un archivo separado, solo necesita moverse aquí para agregar un nuevo canal y no es necesario cambiar la página en sí.。
+// El nombre para mostrar y la introducción del tipo de canal. Se coloca en el front-end porque solo afecta la redacción y el back-end no necesita saberlo.。
 export const KIND_LABEL: Record<string, string> = {
-  dingtalk: "钉钉",
-  feishu: "飞书",
-  wecom: "企业微信",
-  webhook: "通用 Webhook",
+  dingtalk: t("ui.02bd6f0992ef54f9"),
+  feishu: t("ui.292225302513e50a"),
+  wecom: t("ui.81b0c96591b7e605"),
+  webhook: t("ui.5e181d7268b22539"),
   telegram: "Telegram",
-  email: "邮件",
+  email: t("ui.5db1fd52d3ea38d0"),
 };
 
-// 各渠道的配置字段定义。
+// Definiciones de campos de configuración para cada canal。
 //
-// 这里刻意保留一份前端字段表，而不是让后端下发 schema：后端只负责
-// Validate（必填/格式），UI 需要的是布局与控件类型，两者关注的不是同一件事。
-// 唯一的耦合点是 secret_keys —— 哪些字段该渲染成密码框由后端给出，
-// 因为只有渠道实现自己清楚哪些值算凭据（企业微信的整个 Webhook 就是凭据，
-// 而钉钉的只是其中一个 secret）。新增渠道时这里少一个条目只会让表单变空白，
-// 不会静默出错（下面的 hasFields 会提示）。
+// Aquí se guarda deliberadamente una tabla de campo de front-end en lugar de enviarla al back-end. schema：El backend solo es responsable de
+// Validate（requerido/Formato），UI Lo que se necesita es diseño y tipo de control. No les preocupa lo mismo.。
+// El único punto de acoplamiento es secret_keys —— El backend proporciona qué campos deben representarse en cuadros de contraseña，
+// Porque solo la implementación del canal sabe qué valores se cuentan como credenciales (toda la empresa WeChat Webhook Sólo las credenciales，
+// Y Dingding es solo uno de ellos. secret）。Al agregar un nuevo canal, una entrada menos aquí solo dejará el formulario en blanco.，
+// No se producirá un error en silencio (a continuación hasFields avisará）。
 export type FieldKind = "text" | "password" | "number" | "select" | "textarea" | "switch" | "kv" | "list";
 export interface FieldDef {
   key: string;
@@ -34,56 +36,56 @@ export const CHANNEL_FIELDS: Record<string, FieldDef[]> = {
   dingtalk: [
     {
       key: "webhook",
-      label: "Webhook 地址",
+      label: "dirección de webhook",
       kind: "text",
       placeholder: "https://oapi.dingtalk.com/robot/send?access_token=...",
     },
     {
       key: "secret",
-      label: "加签密钥",
+      label: t("ui.e6dfce19384904c2"),
       kind: "password",
-      help: "机器人安全设置选「加签」时填写；选「自定义关键词」或未开启安全设置则留空",
+      help: t("ui.1521331e63f17506"),
     },
   ],
   feishu: [
     {
       key: "webhook",
-      label: "Webhook 地址",
+      label: "dirección de webhook",
       kind: "text",
       placeholder: "https://open.feishu.cn/open-apis/bot/v2/hook/...",
     },
-    { key: "secret", label: "签名校验密钥", kind: "password", help: "机器人开启「签名校验」时填写，否则留空" },
+    { key: "secret", label: t("ui.5812f57b4b200bf9"), kind: "password", help: t("ui.37654da6986a6ece") },
   ],
   wecom: [
     {
       key: "webhook",
-      label: "Webhook 地址",
+      label: "dirección de webhook",
       kind: "text",
       placeholder: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...",
     },
   ],
   webhook: [
-    { key: "url", label: "目标 URL", kind: "text", placeholder: "https://your-endpoint.example.com/hook" },
+    { key: "url", label: t("ui.cb0108f07f84c5de"), kind: "text", placeholder: "https://your-endpoint.example.com/hook" },
     {
       key: "method",
-      label: "请求方法",
+      label: t("ui.233ce7f3cc0138b8"),
       kind: "select",
       options: [
-        { value: "POST", label: "POST（带请求体）" },
-        { value: "PUT", label: "PUT（带请求体）" },
-        { value: "PATCH", label: "PATCH（带请求体）" },
-        { value: "GET", label: "GET（不带请求体）" },
+        { value: "POST", label: t("ui.8402a31f7eb488f0") },
+        { value: "PUT", label: t("ui.177da97ed0a391cf") },
+        { value: "PATCH", label: t("ui.98464381dfc7e27f") },
+        { value: "GET", label: t("ui.dde57ae28ade685e") },
       ],
     },
-    { key: "headers", label: "自定义请求头", kind: "kv", help: "每行 KEY=VALUE，例如 Authorization=Bearer xxx" },
+    { key: "headers", label: t("ui.129b9483c00931e8"), kind: "kv", help: t("ui.fa8c5f971877161e") },
     {
       key: "body_template",
-      label: "请求体模板",
+      label: t("ui.c372bfa41dbbe8fc"),
       kind: "textarea",
       help:
-        "留空用内置默认模板。变量：{{.Title}} {{.Batch}} {{.Count}} {{.HomeURL}} {{.SentAt}}，" +
-        "以及 range .Items 下的 .Name/.VulnClass/.Severity/.Summary/.Assets/.DetailURL/.StatusLabel。" +
-        "插入字符串请用 {{json .Xxx}} 而不是 {{.Xxx}}，否则标题里的引号会破坏 JSON。",
+        t("ui.f820a2ac1e1ed02a") +
+        t("ui.7201ba1012c00b2a") +
+        t("ui.e271bd02d5cfed1e"),
     },
   ],
   telegram: [
@@ -91,35 +93,35 @@ export const CHANNEL_FIELDS: Record<string, FieldDef[]> = {
     { key: "chat_id", label: "Chat ID", kind: "text", placeholder: "-1001234567890" },
     {
       key: "base_url",
-      label: "API 地址",
+      label: t("ui.2360d692b10b9445"),
       kind: "text",
       placeholder: "https://api.telegram.org",
-      help: "留空用官方地址；自建 Bot API 反代时填写",
+      help: t("ui.83aa7c5224f8e589"),
     },
   ],
   email: [
-    { key: "host", label: "SMTP 服务器", kind: "text", placeholder: "smtp.example.com" },
+    { key: "host", label: t("ui.edcab84d9a20bfd2"), kind: "text", placeholder: "smtp.example.com" },
     {
       key: "port",
-      label: "端口",
+      label: "puerto",
       kind: "number",
       placeholder: "587",
-      help: "587 走 STARTTLS；465 请把「隐式 TLS」打开",
+      help: t("ui.33c73751b85bdbbb"),
     },
-    { key: "username", label: "账号", kind: "text" },
-    { key: "password", label: "密码 / 授权码", kind: "password" },
-    { key: "from", label: "发件人", kind: "text", placeholder: "artex@example.com" },
-    { key: "to", label: "收件人", kind: "list", help: "多个地址用逗号分隔" },
-    { key: "tls", label: "隐式 TLS", kind: "switch", help: "465 端口打开；587 保持关闭（会自动 STARTTLS）" },
+    { key: "username", label: t("ui.e7470f6ac54b7a27"), kind: "text" },
+    { key: "password", label: t("ui.a18fee9ce186b72e"), kind: "password" },
+    { key: "from", label: t("ui.1fe512ab94b68a80"), kind: "text", placeholder: "nexus@example.com" },
+    { key: "to", label: t("ui.449c73e689f81102"), kind: "list", help: t("ui.cbbdbfd42c6bc133") },
+    { key: "tls", label: t("ui.ab07f4782f62ed75"), kind: "switch", help: t("ui.4b13ff42b7db8f18") },
   ],
 };
 
 export const SEVERITY_OPTIONS = [
-  { value: "", label: "不限" },
-  { value: "low", label: "低危及以上" },
-  { value: "medium", label: "中危及以上" },
-  { value: "high", label: "高危及以上" },
-  { value: "critical", label: "仅严重" },
+  { value: "", label: t("ui.553f5b2ff5d004f1") },
+  { value: "low", label: t("ui.905eeb687353b1bc") },
+  { value: "medium", label: t("ui.88d47cfd78f3b7ab") },
+  { value: "high", label: t("ui.6b3383cbba9ca986") },
+  { value: "critical", label: t("ui.cca2201ba28a4c37") },
 ];
 
 export type ChannelForm = {
@@ -152,7 +154,7 @@ export const emptyForm = (kind: string): ChannelForm => ({
   onStatusChange: false,
 });
 
-// parseKV 解析「每行 KEY=VALUE」的文本域。
+// parseKV Analizar ”Cada línea KEY=VALUE」Campo de texto de。
 export function parseKV(text: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const line of text.split("\n")) {
@@ -163,7 +165,7 @@ export function parseKV(text: string): Record<string, string> {
   }
   return out;
 }
-// parseIDs 解析逗号/空白分隔的 id 列表。
+// parseIDs analizar comas/espacios en blanco separados id Lista。
 export function parseIDs(text: string): number[] {
   return text
     .split(/[\s,，]+/)
@@ -172,7 +174,7 @@ export function parseIDs(text: string): number[] {
     .map((s) => Number(s))
     .filter((n) => Number.isFinite(n) && n > 0);
 }
-// parseKeywords 解析行/逗号分隔的关键词列表（漏洞类型名可能含空格，所以按行或逗号切）。
+// parseKeywords línea de análisis/Lista de palabras clave separadas por comas (el nombre del tipo de vulnerabilidad puede contener espacios, por lo tanto, córtelo por línea o coma）。
 export function parseKeywords(text: string): string[] {
   return text
     .split(/[\n,，]+/)

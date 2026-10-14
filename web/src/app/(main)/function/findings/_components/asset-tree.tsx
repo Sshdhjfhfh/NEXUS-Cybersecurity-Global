@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from '@/lib/i18n';
+
 import * as React from "react";
 
 import {
@@ -21,7 +23,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import type { FindingAssetKind, FindingAssetNode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-// 图标沿用资产页的类型映射,同一种资产在两处长得一样。
+// El ícono hereda el mapeo de tipo de la página de activos.,El mismo activo tiene el mismo aspecto en dos lugares。
 const KIND_ICON: Record<FindingAssetKind, LucideIcon> = {
   company: BuildingIcon,
   root_domain: GlobeIcon,
@@ -34,22 +36,22 @@ const KIND_ICON: Record<FindingAssetKind, LucideIcon> = {
 };
 
 const KIND_LABEL: Record<FindingAssetKind, string> = {
-  company: "企业",
-  root_domain: "根域名",
-  subdomain: "子域名",
+  company: "empresa",
+  root_domain: "nombre de dominio raíz",
+  subdomain: "nombre de subdominio",
   ip: "IP",
-  app: "应用",
-  service: "服务",
-  endpoint: "接口",
-  none: "未关联",
+  app: t("ui.766d27f411cd76f2"),
+  service: t("ui.1efa3b455a06245e"),
+  endpoint: "interfaz",
+  none: t("ui.90f6383f4d55e02b"),
 };
 
-// TreeNode 是节点数组组装出来的树。后端已按「同父下发现多的在前」排好序,
-// 这里只需按数组顺序挂载。
+// TreeNode Es un árbol ensamblado a partir de matrices de nodos. El backend ha sido ordenado por ”aquellos con el mismo padre que se encuentran primero”,
+// Simplemente monte en orden de matriz aquí。
 interface TreeNode extends FindingAssetNode {
   children: TreeNode[];
   depth: number;
-  /** 树上真正渲染的文字;完整 label 仍保留在 label 里(悬停提示与面包屑用)。 */
+  /** texto realmente renderizado en el árbol;completo label todavía en label dentro(para sugerencias de desplazamiento y rutas de navegación)。 */
   display: string;
 }
 
@@ -65,8 +67,8 @@ function parseAssetURL(raw: string): URL | null {
   }
 }
 
-// hostOf 取一个节点代表的宿主:URL 取 hostname,「host:port」取 host,其余就是
-// 标签本身(根域名 / 子域名 / IP)。
+// hostOf Obtener el host representado por un nodo:URL tomar hostname,「host:port」tomar host,El resto es
+// La etiqueta en sí(nombre de dominio raíz / nombre de subdominio / IP)。
 function hostOf(label: string): string {
   const url = parseAssetURL(label);
   if (url) return stripBrackets(url.hostname);
@@ -74,25 +76,25 @@ function hostOf(label: string): string {
   return stripBrackets(hostPort ? hostPort[1] : label);
 }
 
-// shortLabel 去掉与父节点重复的前缀。service / endpoint 的 label 是完整 URL,而
-// 宿主域名/IP 上一行已经写过了 —— 深层节点本来就窄,再把 host 重复一遍,真正有
-// 信息量的端口和路径就全被截断掉了。完整值仍在 title 与面包屑里。
+// shortLabel Eliminar prefijos duplicados de los nodos principales。service / endpoint de label está completo URL,y
+// nombre de dominio del host/IP La línea anterior ya fue escrita —— Los nodos profundos son inherentemente estrechos,otra vez host repetir,De verdad
+// Todos los puertos y rutas del volumen de información están cortados. El valor total todavía está title Con pan rallado。
 function shortLabel(node: FindingAssetNode, parent?: FindingAssetNode): string {
   if (!parent) return node.label;
 
-  // 子域名挂在根域名下:去掉根域名后缀,只留自己那一段。
+  // El nombre del subdominio está colgado bajo el nombre del dominio raíz.:eliminar el sufijo del nombre de dominio raíz,Quédate solo con tu parte。
   if (node.kind === "subdomain" && node.label.endsWith(`.${parent.label}`)) {
     return node.label.slice(0, -(parent.label.length + 1)) || node.label;
   }
   if (node.kind !== "service" && node.kind !== "endpoint") return node.label;
 
-  // 父标签正好是自己的前缀(接口挂在同 URL 的服务下、服务挂在同 IP 下):直接砍掉。
+  // La etiqueta principal resulta ser su propio prefijo(La interfaz se bloquea en el mismo URL bajo el servicio, el servicio está vinculado al mismo IP abajo):córtalo directamente。
   if (node.label.startsWith(parent.label)) {
     return node.label.slice(parent.label.length) || node.label;
   }
 
-  // 否则只有父节点确实就是这个 URL 的宿主时才简写,不然会丢掉辨识信息
-  // (比如服务因为缺子域名资产行而直接挂在根域名下,那就得显示完整 URL)。
+  // De lo contrario, solo el nodo principal es este URL Abreviatura de anfitrión de,De lo contrario se perderá la información de identificación
+  // (Por ejemplo, el servicio está directamente vinculado al nombre de dominio raíz debido a la falta de activos de nombre de subdominio.,Entonces debe mostrarse completo. URL)。
   if (hostOf(node.label) !== hostOf(parent.label)) return node.label;
 
   const url = parseAssetURL(node.label);
@@ -113,7 +115,7 @@ export function buildAssetTree(nodes: FindingAssetNode[]): TreeNode[] {
     const current = byKey.get(node.key);
     if (!current) continue;
     const parent = node.parent ? byKey.get(node.parent) : undefined;
-    // 父节点缺失(被截断层级丢掉)时上提为顶层,不让子树整个消失。
+    // Falta el nodo principal(Se descartan los niveles truncados)Cuando el tiempo se eleva al nivel superior,evitar que desaparezca todo el subárbol。
     if (parent) {
       parent.children.push(current);
       current.display = shortLabel(node, parent);
@@ -129,8 +131,8 @@ export function buildAssetTree(nodes: FindingAssetNode[]): TreeNode[] {
   return roots;
 }
 
-// assetPathOf 返回从顶层到该节点的路径,用于右侧面包屑。每一级同样只显示相对
-// 上一级的增量(display),完整值留在 label 里。
+// assetPathOf Devuelve la ruta desde el nivel superior al nodo,Para las migas de pan correctas. Cada nivel también muestra solo valores relativos.
+// Incremento del nivel anterior(display),valor total dejado en label dentro。
 export function assetPathOf(nodes: FindingAssetNode[], key: string | null): (FindingAssetNode & { display: string })[] {
   if (!key) return [];
   const byKey = new Map(nodes.map((n) => [n.key, n]));
@@ -145,8 +147,8 @@ export function assetPathOf(nodes: FindingAssetNode[], key: string | null): (Fin
   return path.map((node, index) => ({ ...node, display: shortLabel(node, path[index - 1]) }));
 }
 
-// filterTree 按关键词过滤:命中的节点保留,并保留其整条祖先链(祖先自身可以不命中)。
-// 命中节点的子孙一并保留,便于继续下钻。
+// filterTree Filtrar por palabra clave:Se conserva el nodo de impacto,y conservar toda su cadena ancestral(Los propios ancestros pueden fallar)。
+// Los descendientes del nodo afectado se conservan juntos.,Conveniente para continuar perforando。
 function filterTree(nodes: TreeNode[], keyword: string): TreeNode[] {
   const kw = keyword.trim().toLowerCase();
   if (!kw) return nodes;
@@ -160,7 +162,7 @@ function filterTree(nodes: TreeNode[], keyword: string): TreeNode[] {
   return nodes.map(walk).filter((n): n is TreeNode => n !== null);
 }
 
-// collectKeys 收集一棵(子)树里的全部 key,用于「展开全部匹配项」。
+// collectKeys Recoge uno(sub)Todo en el árbol key,Se utiliza para ”expandir todas las coincidencias」。
 function collectKeys(nodes: TreeNode[], out: Set<string> = new Set()): Set<string> {
   for (const node of nodes) {
     out.add(node.key);
@@ -176,9 +178,9 @@ interface AssetTreeProps {
   loading?: boolean;
   truncated?: boolean;
   droppedKinds?: string[];
-  /** 未选中任何资产时右侧展示的发现总数,用于「全部资产」那一行。 */
+  /** el número total de hallazgos que se muestran a la derecha cuando no se selecciona ningún activo,Para la línea ”todos los activos”。 */
   findingTotal: number;
-  /** 资产视图不轮询,树的计数靠这个按钮或页面内的增删改来刷新。 */
+  /** Vista de activos no sondeada,El recuento del árbol se actualiza con este botón o agregando, eliminando o modificando dentro de la página.。 */
   onRefresh?: () => void;
 }
 
@@ -194,13 +196,13 @@ export function AssetTree({
 }: AssetTreeProps) {
   const [keyword, setKeyword] = React.useState("");
   const [expanded, setExpanded] = React.useState<Set<string>>(() => new Set());
-  // 记住用户手动折叠过的节点,免得「默认展开顶层」在每次刷新后又把它们撑开。
+  // Recuerda los nodos colapsados manualmente por el usuario,Evita que la ”capa superior de expansión predeterminada” los abra nuevamente después de cada actualización。
   const [collapsed, setCollapsed] = React.useState<Set<string>>(() => new Set());
 
   const roots = React.useMemo(() => buildAssetTree(nodes), [nodes]);
   const visible = React.useMemo(() => filterTree(roots, keyword), [roots, keyword]);
 
-  // 搜索时把匹配到的分支全部展开,否则命中项藏在折叠节点里等于没搜。
+  // Expande todas las ramas coincidentes al buscar,De lo contrario, si el elemento encontrado está oculto en el nodo plegado, significa que no hay búsqueda.。
   const searching = keyword.trim() !== "";
   const searchKeys = React.useMemo(() => (searching ? collectKeys(visible) : null), [searching, visible]);
 
@@ -208,7 +210,7 @@ export function AssetTree({
     (node: TreeNode) => {
       if (searchKeys) return searchKeys.has(node.key);
       if (expanded.has(node.key)) return true;
-      // 顶层默认展开一层:再深的层级要用户自己点开,免得一次铺开上千行。
+      // El nivel superior se expande en una capa de forma predeterminada.:No importa cuán profundo sea el nivel, los usuarios deben hacer clic en él ellos mismos.,Evite difundir miles de líneas a la vez。
       return node.depth === 0 && !collapsed.has(node.key);
     },
     [collapsed, expanded, searchKeys],
@@ -233,9 +235,9 @@ export function AssetTree({
     [isExpanded],
   );
 
-  let emptyHint = "当前筛选下没有关联到资产的发现。";
-  if (loading) emptyHint = "加载中…";
-  else if (searching) emptyHint = "没有匹配的资产。";
+  let emptyHint = t("ui.5c349b065fd07c1c");
+  if (loading) emptyHint = t("ui.205443ee88568e8c");
+  else if (searching) emptyHint = t("ui.ce6ab67ae5c75ffe");
 
   const rows: React.ReactNode[] = [];
   const pushRows = (list: TreeNode[]) => {
@@ -264,8 +266,8 @@ export function AssetTree({
             type="search"
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
-            placeholder="过滤资产"
-            aria-label="过滤资产"
+            placeholder={t("ui.f7f91349f1ebe513")}
+            aria-label={t("ui.f7f91349f1ebe513")}
           />
           <InputGroupAddon>
             <SearchIcon aria-hidden="true" />
@@ -278,8 +280,8 @@ export function AssetTree({
             className="size-8 shrink-0 text-muted-foreground"
             onClick={onRefresh}
             disabled={loading}
-            aria-label="刷新资产树"
-            title="刷新资产树"
+            aria-label={t("ui.8bc1c9502279338f")}
+            title={t("ui.8bc1c9502279338f")}
           >
             <RefreshCwIcon className={cn("size-4", loading && "animate-spin")} />
           </Button>
@@ -294,7 +296,7 @@ export function AssetTree({
           selected === null ? "bg-accent font-medium" : "hover:bg-accent/50",
         )}
       >
-        <span>全部资产</span>
+        <span>{t("ui.30ec532fb78d4c30")}</span>
         <span className="text-xs tabular-nums text-muted-foreground">{findingTotal}</span>
       </button>
 
@@ -307,9 +309,8 @@ export function AssetTree({
 
       {truncated && (
         <p className="px-1 text-xs text-muted-foreground">
-          资产过多，已隐藏{(droppedKinds ?? []).map((k) => KIND_LABEL[k as FindingAssetKind] ?? k).join(" / ")}
-          层级（计数仍已计入上层）。用筛选或过滤框收窄可看到完整层级。
-        </p>
+           {t("ui.afa711525623ace9")}{(droppedKinds ?? []).map((k) => KIND_LABEL[k as FindingAssetKind] ?? k).join(" / ")}
+           {t("ui.05d6b038b7c92c07")} </p>
       )}
     </div>
   );
@@ -343,7 +344,7 @@ function AssetTreeRow({
           type="button"
           onClick={onToggle}
           className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-          aria-label={open ? "折叠" : "展开"}
+          aria-label={open ? t("ui.a2a25093472d890f") : t("ui.863180da6c4d83b2")}
           aria-expanded={open}
         >
           <ChevronRightIcon className={cn("size-3.5 transition-transform", open && "rotate-90")} />
@@ -362,16 +363,16 @@ function AssetTreeRow({
       </button>
       <span className="flex shrink-0 items-center gap-1 text-xs tabular-nums">
         {node.critical > 0 && (
-          <span className="text-rose-600" title={`严重 ${node.critical}`}>
+          <span className="text-rose-600" title={`serio ${node.critical}`}>
             {node.critical}
           </span>
         )}
         {node.high > 0 && (
-          <span className="text-red-500" title={`高危 ${node.high}`}>
+          <span className="text-red-500" title={`alto riesgo ${node.high}`}>
             {node.high}
           </span>
         )}
-        <span className="text-muted-foreground" title={`共 ${node.total} 条发现`}>
+        <span className="text-muted-foreground" title={`sumas ${node.total}Descubrimiento`}>
           {node.total}
         </span>
       </span>

@@ -1384,3 +1384,29 @@ CREATE INDEX IF NOT EXISTS idx_notification_deliveries_batch
     ON notification_deliveries(batch_id) WHERE batch_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_notification_deliveries_channel
     ON notification_deliveries(channel_id, id DESC);
+
+-- Passive laboratory reports. Raw traffic and credentials stay in the evidence store.
+CREATE TABLE IF NOT EXISTS lab_analysis_runs (
+    id UUID PRIMARY KEY,
+    task_id BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    target INET NOT NULL,
+    report JSONB NOT NULL CHECK (octet_length(report::text) <= 4194304),
+    started_at TIMESTAMPTZ NOT NULL,
+    finished_at TIMESTAMPTZ NOT NULL,
+    UNIQUE(id,task_id)
+);
+CREATE INDEX IF NOT EXISTS idx_lab_analysis_task ON lab_analysis_runs(task_id,started_at DESC);
+CREATE TABLE IF NOT EXISTS lab_prediction_feedback (
+    run_id UUID NOT NULL,
+    task_id BIGINT NOT NULL,
+    class TEXT NOT NULL CHECK (class IN ('cleartext','missing-hsts','missing-csp','missing-nosniff','cookie-flags','login-failures')),
+    evidence_id TEXT NOT NULL,
+    confirmed BOOLEAN NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY(run_id,class),
+    FOREIGN KEY(run_id,task_id) REFERENCES lab_analysis_runs(id,task_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_lab_feedback_task ON lab_prediction_feedback(task_id);
+
+-- Replaying identical captured evidence must not inflate prediction samples.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_lab_analysis_evidence ON lab_analysis_runs(task_id,target,(report->>'evidence_digest'));

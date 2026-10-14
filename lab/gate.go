@@ -37,6 +37,10 @@ func NewGate(scope network.Scope, checks Checks) (*Gate, error) {
 	return &Gate{scope: scope, checks: checks}, nil
 }
 
+func (g *Gate) Ready() bool {
+	return g != nil && len(g.scope.CIDRs()) > 0 && g.checks.Identity != nil && g.checks.OPSEC != nil && g.checks.Ethics != nil && g.checks.Monitor != nil
+}
+
 func (g *Gate) Authorize(ctx context.Context, a Action) error {
 	if err := ctx.Err(); err != nil {
 		return err

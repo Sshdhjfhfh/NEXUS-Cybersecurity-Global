@@ -25,15 +25,16 @@ import (
 	"time"
 
 	"github.com/nexus-ia/nexus/agents/red"
-	"github.com/nexus-ia/nexus/db"
-	"github.com/nexus-ia/nexus/ethical_boundary/intercept"
-	"github.com/nexus-ia/nexus/llm_gateway/pool"
-	"github.com/nexus-ia/nexus/observability/llmrec"
-	"github.com/nexus-ia/nexus/governance/report"
-	"github.com/nexus-ia/nexus/lab/proxy"
 	"github.com/nexus-ia/nexus/core/llm"
 	actool "github.com/nexus-ia/nexus/core/tool"
 	"github.com/nexus-ia/nexus/core/transcript"
+	"github.com/nexus-ia/nexus/db"
+	"github.com/nexus-ia/nexus/ethical_boundary/intercept"
+	"github.com/nexus-ia/nexus/governance/report"
+	"github.com/nexus-ia/nexus/lab/proxy"
+	"github.com/nexus-ia/nexus/llm_gateway/pool"
+	"github.com/nexus-ia/nexus/observability/llmrec"
+	"github.com/nexus-ia/nexus/orchestrator/level12"
 )
 
 // BuildVersion is the backend application version, injected from cmd/artex at
@@ -44,9 +45,11 @@ var BuildVersion = "dev"
 // Server exposes the ARTEX backend over a JSON HTTP API for the shadcn/ui
 // frontend.
 type Server struct {
-	m      *Manager
-	engine *Engine
-	ctx    context.Context
+	labMu      sync.RWMutex
+	labService *level12.Service
+	m          *Manager
+	engine     *Engine
+	ctx        context.Context
 
 	skillDir string // root directory for skill subdirectories
 	jwtKey   []byte // HS256 signing key loaded from / generated into dataDir/jwt.key
@@ -156,6 +159,11 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string, keyDi
 		profChatAgents: map[int64]*agent.ChatAgent{},
 		provByProfile:  map[int64]*provEntry{}, llmHealth: newLLMHealthRegistry(m.pg),
 		taskAgents: map[string]*taskAgentBundle{}, archiveWake: make(chan struct{}, 1)}
+	if m.pg != nil {
+		if err := s.ConfigureLevel12(level12.Config{}); err != nil {
+			log.Printf("[laboratory] initialization failed: %v", err)
+		}
+	}
 	s.initSideQuestions()
 	// 熔断阈值/冷却是失败路径上的热参数，启动时把全局重试策略推给 Registry 一次；
 	// 之后每次保存策略再推一次（saveLLMRetryPolicy）。
@@ -655,6 +663,7 @@ func (s *Server) chatAgentRef() *agent.ChatAgent {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	s.registerSideRoutes(mux)
+	s.registerLabRoutes(mux)
 
 	// Auth routes — exempt from JWT check (handled in requireAuth)
 	mux.HandleFunc("GET /api/auth/status", s.authStatus)

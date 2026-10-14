@@ -217,6 +217,14 @@ function interceptPageQuery(page: number, size: number, filter: InterceptApprova
 }
 
 export const api = {
+  labStatus: () => get<import("./laboratory").LabStatus>("/lab/status"),
+  labRuns: (task: string) => get<import("./laboratory").LabRun[]>(`/lab/tasks/${encodeURIComponent(task)}/runs`),
+  labPredictions: (task: string) => get<import("./laboratory").LabPrediction[]>(`/lab/tasks/${encodeURIComponent(task)}/predictions`),
+  labAnalyze: (task: string, input: { target: string; evidence_ids: string[] }) =>
+    post<import("./laboratory").LabRun>(`/lab/tasks/${encodeURIComponent(task)}/runs`, input),
+  labFeedback: (task: string, run: string, input: { class: string; evidence_id: string; confirmed: boolean }) =>
+    post<{ recorded: boolean }>(`/lab/tasks/${encodeURIComponent(task)}/runs/${encodeURIComponent(run)}/feedback`, input),
+
   // número de versión de la aplicación backend（release tiempo ldflags Inyección, predeterminado "dev"）。
   health: () => get<{ ok: boolean; service: string; version: string }>("/health"),
 

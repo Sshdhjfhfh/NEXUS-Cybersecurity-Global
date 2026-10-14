@@ -76,6 +76,7 @@ export const sidebarItems: NavGroup[] = [
       { id: "commands", title: t("ui.4b2a3c8ce619fffc"), url: "/function/commands", icon: Terminal },
       { id: "llm-records", title: t("ui.c4340f9f49791ffe"), url: "/function/llm-records", icon: Radio },
       { id: "assets", title: t("nav.assets"), url: "/function/assets", icon: Network },
+      { id: "lab", title: t("lab.title"), url: "/function/lab", icon: ShieldAlert },
       { id: "sync", title: t("ui.4b80250ca1fa8dad"), url: "/function/sync", icon: FolderSync },
       { id: "workspace", title: t("nav.workspace"), url: "/function/workspace", icon: FolderOpen },
     ],

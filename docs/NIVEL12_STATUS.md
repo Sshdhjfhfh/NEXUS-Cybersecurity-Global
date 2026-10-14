@@ -19,20 +19,49 @@ predicción, informe y coordinación. El coordinador exige implementaciones
 explícitas de los trabajadores; no introduce herramientas ofensivas por defecto.
 Todos los mensajes internos nuevos se escribieron en inglés.
 
-## Pendiente para integrar Nivel 1–2
+## Integración pasiva en el servidor
 
-- Conectar los adaptadores de autorización reales del host y registrar los
-  trabajadores en el runtime de `cmd/nexus`/orchestrator. Si faltan controles,
-  los constructores rechazan la configuración; no existe un modo permisivo.
-- Conectar observaciones y resultados persistidos con BLUE y predicción.
+`orchestrator/level12` conecta los ocho trabajadores en un DAG de análisis de
+tráfico ya registrado. No realiza reconocimiento activo ni peticiones al objetivo.
+El servidor crea el servicio durante el arranque, con ejecución cerrada por defecto.
+
+- PostgreSQL conserva informes sin cuerpos ni valores de cabeceras, un digest de
+  evidencias y evaluaciones por clase. La repetición de evidencias idénticas y el
+  feedback duplicado se rechazan mediante restricciones únicas. La predicción se
+  reconstruye a partir de los resultados guardados y queda separada por tarea.
+- La fuente de evidencias solo acepta direcciones IP privadas dentro del alcance
+  del gate y presentes en los activos de la tarea. Comprueba que cada ID de tráfico
+  corresponde al objetivo solicitado. Usa el almacén global existente: la atribución
+  es por host asociado a tarea, no una prueba de que esa tarea generó la captura.
+- Se verifican los controles antes de ejecutar cada trabajador, antes de analizar
+  cada observación y antes de persistir o evaluar. Las ejecuciones del servicio se
+  serializan para evitar identidades simultáneas entre schedulers.
+- `/function/lab` muestra disponibilidad, bloqueo, selección de tarea, historial y
+  estimaciones en español. El formulario y la evaluación quedan deshabilitados
+  cuando faltan controles. Las estimaciones se ocultan hasta reunir 50 evaluaciones
+  por clase; este umbral no demuestra independencia estadística ni precisión.
+
+Rutas autenticadas: `GET /api/lab/status`, `GET|POST /api/lab/tasks/{id}/runs`,
+`GET /api/lab/tasks/{id}/runs/{runID}`, `GET /api/lab/tasks/{id}/predictions` y
+`POST /api/lab/tasks/{id}/runs/{runID}/feedback`. Las peticiones se validan de forma
+estricta, con límites de tamaño, resultados y duración para el análisis.
+
+## Pendientes reales de Nivel 1–2
+
+- Conectar adaptadores reales de identidad ANS/NHI, OPSEC, ética y ABM a través de
+  `Server.ConfigureLevel12`, con ocho identidades distintas. No hay un endpoint ni
+  una variable que permita omitir controles. La configuración disponible actualmente
+  no los aporta y el estado de producción devuelve `ready: false`.
+- OPSEC y el evaluador ético requerido no están disponibles para esta conexión.
+  No se sustituyen por funciones que permitan todo. El arranque integrado por sí
+  solo no completa la ejecución de extremo a extremo.
 - Proveer imágenes locales probadas y configuración propia de cada aplicación.
   Los perfiles son planes aislados, no appliances listos ni importadores de VMs.
-  Las máquinas originales de Metasploitable/VulnHub y escenarios AD necesitan
-  adaptadores de virtualización cuando no sean contenedores compatibles.
+  Metasploitable/VulnHub y AD necesitan adaptadores de virtualización cuando no
+  sean contenedores compatibles.
 - Medir precisión y rendimiento con sesiones de laboratorio reales. No se afirma
-  todavía el objetivo de >60% de precisión ni >40% de mejora de swarm.
-- `watchdog/` está vacío y no se modificó: la regla absoluta del usuario lo
-  declara inmutable. No se añade una implementación alternativa que lo sustituya.
+  el objetivo de >60% de precisión ni >40% de mejora de swarm.
+- `watchdog/` sigue vacío e intacto por la regla de inmutabilidad del usuario.
 
 ## Validación
 
@@ -66,3 +95,16 @@ Resultado final de esta entrega: `go build ./...`, pruebas nuevas con `-race`,
 correctos. La web se volvió a comprobar con Chromium en 20 rutas: sin texto chino,
 sin claves sin resolver y sin errores JavaScript. Los módulos inmutables quedaron
 sin cambios. Esto valida la base implementada, no los pendientes de integración.
+
+La integración posterior añade pruebas del pipeline con autorización explícita de
+fixture, cancelación y concurrencia; pruebas PostgreSQL de reinicio, aislamiento,
+repetición y feedback concurrente; y pruebas HTTP de autenticación, alcance,
+evidencias incompatibles, JSON estricto y bloqueo sin controles. Esto no sustituye
+la validación de los adaptadores reales pendientes.
+
+Validación de esta integración: build Docker completo (incluido TypeScript),
+`go build ./...`, suite Go completa en PostgreSQL temporal limpio y pruebas del
+pipeline con `-race` correctos. Chromium verificó 22 rutas, incluida la entrada
+principal y el laboratorio: HTTP correcto, sin chino visible, claves sin resolver
+ni errores JavaScript. El estado real del laboratorio se comprobó bloqueado y su
+botón de análisis deshabilitado. Los dos contenedores quedaron saludables.

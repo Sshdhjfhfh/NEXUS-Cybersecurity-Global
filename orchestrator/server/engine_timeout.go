@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Autumn-27/artex/agent"
+	"github.com/nexus-ia/nexus/agents/red"
 	"github.com/nexus-ia/nexus/db"
 )
 

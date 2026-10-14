@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Autumn-27/artex/agent"
+	"github.com/nexus-ia/nexus/agents/red"
 	pgdb "github.com/nexus-ia/nexus/db"
 	"github.com/nexus-ia/nexus/lab/enrich"
 	"github.com/nexus-ia/nexus/ethical_boundary/guard"

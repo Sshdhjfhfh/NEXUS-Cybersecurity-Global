@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Autumn-27/artex/agent"
+	"github.com/nexus-ia/nexus/agents/red"
 	"github.com/nexus-ia/nexus/db"
 	"github.com/nexus-ia/nexus/core/permission"
 	actool "github.com/nexus-ia/nexus/core/tool"

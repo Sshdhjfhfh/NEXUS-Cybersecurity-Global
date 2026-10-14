@@ -20,8 +20,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Autumn-27/artex/db"
-	"github.com/Autumn-27/artex/traffic"
+	"github.com/nexus-ia/nexus/db"
+	"github.com/nexus-ia/nexus/lab/proxy"
 )
 
 type Store struct {

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Autumn-27/artex/agent"
+	"github.com/nexus-ia/nexus/agents/red"
 	"github.com/nexus-ia/nexus/observability/llmrec"
 	"github.com/nexus-ia/nexus/core/llm"
 	"github.com/nexus-ia/nexus/core/transcript"

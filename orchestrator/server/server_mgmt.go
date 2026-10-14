@@ -28,7 +28,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/Autumn-27/artex/agent"
+	"github.com/nexus-ia/nexus/agents/red"
 	"github.com/nexus-ia/nexus/db"
 	"github.com/nexus-ia/nexus/core/llm"
 	"github.com/nexus-ia/nexus/core/skill"

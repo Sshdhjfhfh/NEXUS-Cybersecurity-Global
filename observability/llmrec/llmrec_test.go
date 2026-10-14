@@ -10,7 +10,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Autumn-27/artex/db"
+	"github.com/nexus-ia/nexus/db"
 	"github.com/nexus-ia/nexus/core/llm"
 	"github.com/nexus-ia/nexus/core/transcript"
 	"github.com/google/uuid"

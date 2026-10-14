@@ -17,7 +17,10 @@ import (
 	"time"
 
 	"github.com/nexus-ia/nexus/agents/blue"
+	"github.com/nexus-ia/nexus/lab/network"
+	"github.com/nexus-ia/nexus/lab/security"
 	"github.com/nexus-ia/nexus/orchestrator/level12"
+	"github.com/nexus-ia/nexus/swarm"
 )
 
 // ConfigureLevel12 is a host composition hook. HTTP clients cannot install or bypass guards.
@@ -289,4 +292,18 @@ func labResponseHeaders(raw string) (map[string][]string, error) {
 	normalized := strings.TrimRight(string(rest), "\r\n") + "\r\n\r\n"
 	headers, err := textproto.NewReader(bufio.NewReader(strings.NewReader(normalized))).ReadMIMEHeader()
 	return map[string][]string(headers), err
+}
+
+// ConfigureLevel12Security binds the host's existing security services to the
+// passive runtime. It never creates substitute OPSEC or ethical evaluators.
+func (s *Server) ConfigureLevel12Security(scope network.Scope, cfg security.Config, agentIDs map[swarm.Role]string) error {
+	adapter, err := security.New(cfg)
+	if err != nil {
+		return err
+	}
+	gate, err := adapter.Gate(scope)
+	if err != nil {
+		return err
+	}
+	return s.ConfigureLevel12(level12.Config{Gate: gate, AgentIDs: agentIDs})
 }

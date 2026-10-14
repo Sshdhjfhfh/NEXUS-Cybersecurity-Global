@@ -111,8 +111,8 @@ func (s *Store) SaveIdentity(ctx context.Context, nhi *NHI) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO nhi_identities
 			(agent_id, agent_type, did, cert_x509_pem, public_key,
-			 allowed_actions, allowed_assets, issued_at, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			 allowed_actions, allowed_assets, issued_at, expires_at, revoked_at, revoke_reason)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		ON CONFLICT (agent_id) DO UPDATE SET
 			agent_type = EXCLUDED.agent_type,
 			did = EXCLUDED.did,
@@ -121,11 +121,14 @@ func (s *Store) SaveIdentity(ctx context.Context, nhi *NHI) error {
 			allowed_actions = EXCLUDED.allowed_actions,
 			allowed_assets = EXCLUDED.allowed_assets,
 			issued_at = EXCLUDED.issued_at,
-			expires_at = EXCLUDED.expires_at
+			expires_at = EXCLUDED.expires_at,
+            revoked_at = COALESCE(nhi_identities.revoked_at, EXCLUDED.revoked_at),
+            revoke_reason = CASE WHEN nhi_identities.revoked_at IS NOT NULL
+                THEN nhi_identities.revoke_reason ELSE EXCLUDED.revoke_reason END
 	`, nhi.AgentID, string(nhi.AgentType), nhi.DID.String(),
 		nhi.CertX509PEM, nhi.PublicKey,
 		actions, nhi.AllowedAssets,
-		nhi.IssuedAt, nhi.ExpiresAt)
+		nhi.IssuedAt, nhi.ExpiresAt, nhi.RevokedAt, nhi.RevokeReason)
 
 	if err != nil {
 		return fmt.Errorf("save nhi: %w", err)
@@ -137,12 +140,12 @@ func (s *Store) SaveIdentity(ctx context.Context, nhi *NHI) error {
 // Devuelve nil, nil si no existe.
 func (s *Store) GetIdentity(ctx context.Context, agentID string) (*NHI, error) {
 	var (
-		nhi             NHI
-		agentTypeStr    string
-		didStr          string
-		actions         []string
-		revokedAt       *time.Time
-		revokeReason    *string
+		nhi          NHI
+		agentTypeStr string
+		didStr       string
+		actions      []string
+		revokedAt    *time.Time
+		revokeReason *string
 	)
 	err := s.pool.QueryRow(ctx, `
 		SELECT agent_id, agent_type, did, cert_x509_pem, public_key,

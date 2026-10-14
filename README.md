@@ -63,3 +63,9 @@ La validación de la interfaz española está en [Nivel 0](docs/NIVEL0_VALIDATIO
 
 El [estado real del proyecto](docs/PROJECT_STATUS.md) distingue lo implementado,
 lo integrado y lo que falta para completar la especificación v6.0.
+
+El laboratorio defensivo está en `/function/lab`. Sus adaptadores de identidad y
+supervisión están en `lab/security`; la composición del host usa
+`Server.ConfigureLevel12Security`. El arranque permanece bloqueado hasta conectar
+los controles OPSEC/éticos reales y resolver el ciclo de vida de credenciales y
+la auditoría pendientes. No existe una opción web para omitir esos controles.

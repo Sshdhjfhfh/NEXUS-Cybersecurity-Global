@@ -108,3 +108,48 @@ pipeline con `-race` correctos. Chromium verificó 22 rutas, incluida la entrada
 principal y el laboratorio: HTTP correcto, sin chino visible, claves sin resolver
 ni errores JavaScript. El estado real del laboratorio se comprobó bloqueado y su
 botón de análisis deshabilitado. Los dos contenedores quedaron saludables.
+
+## Adaptadores de autorización ANS/NHI/ABM
+
+`lab/security` aporta adaptadores explícitos de las interfaces existentes.
+`Server.ConfigureLevel12Security` instala un gate únicamente cuando recibe los
+servicios, una CA de confianza, evaluadores OPSEC/éticos y ocho identidades.
+El arranque normal sigue cerrado: estos evaluadores no están disponibles todavía.
+
+- Identidad: registro ANS activo, permisos exactos y alcance, identidad NHI vigente
+  y no revocada, certificado firmado por la CA fijada, CN/OU/DID coherentes y JWT
+  verificado con emisor, destinatario, sujeto, vencimiento y permisos coherentes.
+  Los tres conjuntos de permisos y activos deben permitir la acción. No se aceptan
+  comodines ni DNS en los permisos de activos; solo IPs y CIDRs privados.
+- `PersistentDirectory` consulta ANS en PostgreSQL por acción. `PersistentIdentities`
+  lee los permisos y el ciclo de vida actuales de NHI; obtiene el token del manager
+  emisor solo si sus credenciales coinciden. Una actualización externa de permisos
+  o cuarentena se aplica sin esperar a que expire una caché.
+- ABM: requiere estar habilitado e inmutable, con parada y cuarentena automáticas.
+  Rechaza agentes detenidos/cuarentenados y violaciones altas o críticas aunque el
+  monitor todavía no haya cambiado el estado. Vuelve a verificar identidad antes
+  de observar la acción. No modifica la implementación inmutable de ABM.
+- Se corrigió `nhi_manager.Store.SaveIdentity`: persistía permisos y certificados,
+  pero omitía `revoked_at` y `revoke_reason`. Ahora conserva la primera revocación
+  incluso si después guarda una copia antigua de la identidad.
+
+La conexión usa los servicios existentes; no crea identidades automáticamente ni
+proporciona decisiones OPSEC/éticas permisivas. Las aprobaciones de fixture están
+limitadas a los tests aislados. El guard heredado de interceptación no se considera
+un evaluador ético obligatorio porque permite acciones sin reglas configuradas.
+
+Siguen pendientes la composición de producción, el ciclo de vida persistente de
+las claves CA/JWT del manager NHI, la conexión del audit trail firmado de todas las
+decisiones y la recuperación de estados ABM. El manager actual crea claves nuevas
+al construirse: no se activa automáticamente sobre identidades persistidas.
+Estas limitaciones impiden declarar la autorización de producción completada.
+
+Validación de los adaptadores: pruebas con `-race` de ANS/NHI/ABM y del pipeline
+HTTP con ocho identidades reales; retirada de permisos y cuarentena persistidas
+fuera de caché; revocación persistida y preservada frente a guardados antiguos.
+La suite Go completa pasó en PostgreSQL temporal limpio y el build Docker,
+incluida la web, terminó correctamente. Los módulos inmutables siguen intactos.
+Chromium verificó nuevamente 22 rutas después del despliegue, sin chino visible,
+claves sin resolver ni errores JavaScript; confirmó el estado de ejecución cerrado
+y el botón de análisis deshabilitado. Se conservó la clave de sesión del servidor
+durante esta actualización para mantener los accesos existentes.

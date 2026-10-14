@@ -7,7 +7,7 @@ Los recuentos de líneas de código no equivalen a porcentaje de producto termin
 |---|---|---|
 | Interfaz española | Publicada y verificada en 22 rutas; catálogo de 5.370 entradas | Cobertura continua para nuevos estados y contenido; no se certifican aquí los otros nueve idiomas. |
 | Docker y backend heredado | Compilan y arrancan con dos servicios healthy | Validación operativa de todas las integraciones nuevas. |
-| BLUE, predicción y swarm | Pipeline pasivo conectado al servidor, PostgreSQL, API y página de laboratorio; tests y race detector | Conectar los adaptadores reales de autorización y validar sesiones reales. La ejecución permanece bloqueada. |
+| BLUE, predicción y swarm | Pipeline pasivo conectado al servidor, PostgreSQL, API y página de laboratorio; tests y race detector | Adaptadores ANS/NHI/ABM implementados y revocación persistente corregida; falta composición de producción, OPSEC/ética, claves y auditoría. La ejecución permanece bloqueada. |
 | Laboratorios | Proxy/enrich existentes y planes de escenarios aislados | Configuración e imágenes probadas de DVWA, Metasploitable, VulnHub y AD; adaptadores de VM cuando correspondan. |
 | Seguridad y gobernanza existentes | Paquetes implementados con tests | Conexión y validación de extremo a extremo en el proceso principal. |
 | Protección pendiente | `opsec` y `circuit_breaker` ausentes; `watchdog`, `llmjacking_guard`, `oracle_defense` vacíos | No se modifican ni sustituyen: están sujetos a la regla de inmutabilidad del usuario. |

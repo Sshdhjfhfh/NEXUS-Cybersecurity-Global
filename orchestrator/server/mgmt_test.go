@@ -7,7 +7,6 @@ package server
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -24,7 +23,7 @@ func TestMgmtAPI(t *testing.T) {
 		t.Skip("postgres unavailable — skipping management API test")
 	}
 	td := t.TempDir()
-	s := New(context.Background(), m, td, td, td)
+	s := newManagedTestServer(t, m, td, td, td)
 	h := s.Handler()
 	tok, err := signJWT(s.jwtKey)
 	if err != nil {

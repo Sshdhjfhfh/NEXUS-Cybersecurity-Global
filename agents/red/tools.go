@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nexus-ia/nexus/db"
 	acperm "github.com/nexus-ia/nexus/core/permission"
 	actool "github.com/nexus-ia/nexus/core/tool"
+	"github.com/nexus-ia/nexus/db"
 )
 
 // compactIntents distills intents to {id, summary, state, asset_ids, parents,
@@ -547,12 +547,85 @@ func (t *ToolSet) graphOverviewData() map[string]any {
 				// 都重复携带的大量字符串，对规划决策价值有限）；具体主机按需 list_assets 查。
 				m["host_count"] = len(hosts)
 			}
+			if scope, count, truncated := t.currentTaskScopeSummary(); len(scope) > 0 {
+				m["scope"] = scope
+				m["scope_count"] = count
+				if truncated {
+					m["scope_truncated"] = true
+				}
+			}
 			if len(m) > 0 {
 				out["coverage"] = m
 			}
 		}
 	}
 	return out
+}
+
+// currentTaskScopeSummary exposes the existing authorization boundary without
+// adding scope or expanding permissions. Bound its text to keep prompts finite.
+func (t *ToolSet) currentTaskScopeSummary() ([]map[string]any, int, bool) {
+	rows, err := t.as.ListTaskScope(t.taskID)
+	if err != nil {
+		return nil, 0, false
+	}
+	count := len(rows)
+	budget := overviewTextBudget{remaining: 8000}
+	if len(rows) > relatedOverviewMaxScopePerSource {
+		rows = rows[:relatedOverviewMaxScopePerSource]
+		budget.truncated = true
+	}
+	out := make([]map[string]any, 0, len(rows))
+	for _, row := range rows {
+		entry := map[string]any{"kind": row.Kind, "source": budget.take(row.Source, 100)}
+		value := row.Domain
+		if value == "" {
+			value = row.Net
+		}
+		if value == "" {
+			value = row.Value
+		}
+		if value != "" {
+			entry["value"] = budget.take(value, 400)
+		}
+		if row.CompanyID != nil {
+			entry["company_id"] = *row.CompanyID
+			entry["company_name"] = budget.take(row.CompanyName, 400)
+			if t.cs != nil {
+				if rules, err := t.cs.GetScope(*row.CompanyID); err == nil {
+					entry["company_scope_count"] = len(rules)
+					if len(rules) > 32 {
+						rules = rules[:32]
+						budget.truncated = true
+					}
+					companyScope := make([]map[string]any, 0, len(rules))
+					keywords := []string{}
+					for _, rule := range rules {
+						value := rule.Domain
+						if value == "" {
+							value = rule.Net
+						}
+						if value == "" {
+							value = rule.Value
+						}
+						// Keep operator spelling for display; matching continues to use the store's canonical fields.
+						if rule.Raw != "" {
+							value = rule.Raw
+						}
+						rendered := budget.take(value, 400)
+						companyScope = append(companyScope, map[string]any{"kind": rule.Kind, "value": rendered})
+						if rule.Kind == "keyword" {
+							keywords = append(keywords, rendered)
+						}
+					}
+					entry["company_scope"] = companyScope
+					entry["company_keywords"] = keywords
+				}
+			}
+		}
+		out = append(out, entry)
+	}
+	return out, count, budget.truncated
 }
 
 func inheritedMap(m map[string]any, sourceTaskID int64) map[string]any {

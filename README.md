@@ -54,3 +54,12 @@ La funcionalidad de laboratorio debe permanecer aislada; ninguna implementación
 nueva debe permitir acciones fuera de su alcance autorizado. Ver
 [la especificación](docs/NEXUS_v6_SPEC.md) y
 [la arquitectura](docs/ARCHITECTURE.md).
+
+## Continuación de Nivel 1–2
+
+Las APIs de BLUE, predicción, swarm y aislamiento de laboratorio, junto con los
+pendientes de integración, se describen en [el estado de Nivel 1–2](docs/NIVEL12_STATUS.md).
+La validación de la interfaz española está en [Nivel 0](docs/NIVEL0_VALIDATION.md).
+
+El [estado real del proyecto](docs/PROJECT_STATUS.md) distingue lo implementado,
+lo integrado y lo que falta para completar la especificación v6.0.

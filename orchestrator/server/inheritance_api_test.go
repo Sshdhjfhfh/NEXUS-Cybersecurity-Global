@@ -21,7 +21,7 @@ func TestInheritedActivityDetailAndRelationDeletion(t *testing.T) {
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) - skipping", err)
 	}
-	defer m.Close()
+	t.Cleanup(func() { m.Close() })
 
 	source, err := m.CreateTaskWithOptions("detail source", "source goal", db.TaskCreateOptions{})
 	if err != nil {
@@ -57,7 +57,13 @@ func TestInheritedActivityDetailAndRelationDeletion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s := New(context.Background(), m, t.TempDir(), t.TempDir(), t.TempDir())
+	// This fixture tests read APIs, not background agent execution. Stop and
+	// join service writers before TempDir cleanup can remove their workspace.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	s := New(ctx, m, t.TempDir(), t.TempDir(), t.TempDir())
+	s.archiveWG.Wait()
+	<-s.side.done
 	token, err := signJWT(s.jwtKey)
 	if err != nil {
 		t.Fatal(err)

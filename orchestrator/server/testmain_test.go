@@ -1,0 +1,35 @@
+// Nexus IA v6.0 — Absorbido de ARTEX/server
+// Upstream: github.com/mhtsec/ARTEX/server
+// Licencia: AGPL-3.0
+// ⚠️ WIP: depende de agents/red/ (reescritura pendiente)
+
+package server
+
+import (
+	"database/sql"
+	"os"
+	"testing"
+
+	"github.com/nexus-ia/nexus/db"
+	_ "github.com/jackc/pgx/v5/stdlib"
+)
+
+// TestMain acquires a PostgreSQL advisory lock (7337741002) for the entire
+// server test suite so cross-package DELETE cleanup races with db/agent
+// packages are avoided when running `go test ./...`.
+func TestMain(m *testing.M) {
+	dsn, _, err := db.DSN()
+	if err != nil {
+		os.Exit(m.Run())
+	}
+	conn, err := sql.Open("pgx", dsn)
+	if err != nil || conn.Ping() != nil {
+		os.Exit(m.Run())
+	}
+	defer conn.Close()
+	if _, err := conn.Exec(`SELECT pg_advisory_lock(7337741002)`); err != nil {
+		os.Exit(m.Run())
+	}
+	defer conn.Exec(`SELECT pg_advisory_unlock(7337741002)`) //nolint:errcheck
+	os.Exit(m.Run())
+}

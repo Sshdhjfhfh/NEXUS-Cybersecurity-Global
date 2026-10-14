@@ -1,0 +1,48 @@
+# ═══════════════════════════════════════════════════════════════
+# NEXUS IA v6.0 — .dockerignore
+# ═══════════════════════════════════════════════════════════════
+
+# Git
+.git/
+.gitignore
+
+# Reference (no se necesita en build)
+_reference/
+
+# Binarios compilados
+nexus
+nexus-*
+bin/
+cmd/nexus/nexus
+
+# Frontend artifacts (se generan en stage 1)
+web/node_modules/
+web/.next/
+web/out/
+
+# Runtime data
+data/
+*.key
+*.pem
+jwt.key
+config.json
+
+# Docs y papers
+docs/
+papers/
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Build artifacts
+dist/
+*.tar.gz
+*.zip

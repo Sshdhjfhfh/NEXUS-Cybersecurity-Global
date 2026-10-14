@@ -1,7 +1,8 @@
 module github.com/nexus-ia/nexus
-
 go 1.26.3
 
-// NOTA: Las siguientes dependencias se absorberán progresivamente:
-// - norma v0.4.3 → core/ (absorción selectiva)
-// - ARTEX → módulos Nexus (fork duro)
+require (
+    github.com/creack/pty v1.1.24
+    github.com/hinshun/vt10x v0.0.0-20220301184237-5011da428d02
+    golang.org/x/net v0.61.0
+)

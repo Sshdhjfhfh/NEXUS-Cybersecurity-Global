@@ -141,13 +141,13 @@ func compactionConfig(windowTokens int) *compaction.Config {
 
 // FromEnv resolves the LLM provider config:
 //
-//	ARTEX_LLM_PROVIDER = anthropic|openai (default: inferred from keys)
-//	ARTEX_LLM_MODEL    = model id        (default: per provider)
-//	ARTEX_LLM_BASE_URL = endpoint        (optional)
-//	ARTEX_LLM_PROXY    = proxy URL        (optional; http/https/socks5)
+//	NEXUS_LLM_PROVIDER = anthropic|openai (default: inferred from keys)
+//	NEXUS_LLM_MODEL    = model id        (default: per provider)
+//	NEXUS_LLM_BASE_URL = endpoint        (optional)
+//	NEXUS_LLM_PROXY    = proxy URL        (optional; http/https/socks5)
 //	ANTHROPIC_API_KEY / OPENAI_API_KEY         = credentials
 func FromEnv() (Config, bool) {
-	prov := os.Getenv("ARTEX_LLM_PROVIDER")
+	prov := os.Getenv("NEXUS_LLM_PROVIDER")
 	anthKey := os.Getenv("ANTHROPIC_API_KEY")
 	oaiKey := os.Getenv("OPENAI_API_KEY")
 
@@ -163,11 +163,11 @@ func FromEnv() (Config, bool) {
 	}
 
 	c := Config{
-		BaseURL: os.Getenv("ARTEX_LLM_BASE_URL"),
-		Model:   os.Getenv("ARTEX_LLM_MODEL"),
-		Proxy:   strings.TrimSpace(os.Getenv("ARTEX_LLM_PROXY")),
-		// 默认流式;ARTEX_LLM_STREAM=false/0/off 显式关闭走非流式。
-		Stream: !isFalsy(os.Getenv("ARTEX_LLM_STREAM")),
+		BaseURL: os.Getenv("NEXUS_LLM_BASE_URL"),
+		Model:   os.Getenv("NEXUS_LLM_MODEL"),
+		Proxy:   strings.TrimSpace(os.Getenv("NEXUS_LLM_PROXY")),
+		// 默认流式;NEXUS_LLM_STREAM=false/0/off 显式关闭走非流式。
+		Stream: !isFalsy(os.Getenv("NEXUS_LLM_STREAM")),
 	}
 	switch prov {
 	case "openai":

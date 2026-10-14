@@ -1,0 +1,43 @@
+{
+  "app": {"name": "Nexus IA", "tagline": "Sistema de Pesquisa Adversarial Autônoma", "warning": "■ APENAS LABORATÓRIO CONTROLADO ■"},
+  "nav": {
+    "dashboard": "Painel", "tasks": "Tarefas", "assets": "Ativos", "findings": "Descobertas",
+    "traffic": "Tráfego", "agents": "Agentes", "skills": "Habilidades", "tools": "Ferramentas",
+    "notifications": "Notificações", "intercept": "Interceptação", "approvals": "Aprovações",
+    "settings": "Configurações", "logs": "Registros", "llm": "LLM", "mcp": "MCP",
+    "workspace": "Área de trabalho", "chat": "Conversa", "system": "Sistema",
+    "function": "Funções", "sync": "Sincronizar", "commands": "Comandos", "llm_records": "Registros LLM"
+  },
+  "common": {
+    "save": "Salvar", "cancel": "Cancelar", "delete": "Excluir", "edit": "Editar",
+    "add": "Adicionar", "create": "Criar", "update": "Atualizar", "refresh": "Atualizar",
+    "search": "Pesquisar", "filter": "Filtrar", "export": "Exportar", "import": "Importar",
+    "confirm": "Confirmar", "back": "Voltar", "close": "Fechar", "open": "Abrir",
+    "details": "Detalhes", "loading": "Carregando", "no_data": "Sem dados",
+    "no_results": "Sem resultados", "all": "Todos", "name": "Nome", "description": "Descrição",
+    "status": "Status", "time": "Hora", "created_at": "Criado em", "updated_at": "Atualizado em",
+    "actions": "Ações", "yes": "Sim", "no": "Não", "ok": "OK",
+    "error": "Erro", "success": "Sucesso", "warning": "Aviso", "info": "Info"
+  },
+  "auth": {
+    "login": "Entrar", "logout": "Sair", "username": "Usuário",
+    "password": "Senha", "account": "Conta", "change_password": "Alterar senha",
+    "init_password": "Inicializar senha", "first_use": "Primeiro uso",
+    "set_password_hint": "Por favor, defina uma senha para sua conta",
+    "at_least_8": "Pelo menos 8 caracteres", "new_password": "Nova senha",
+    "confirm_password": "Confirmar senha", "reenter_password": "Digite novamente",
+    "set_and_login": "Definir senha e entrar"
+  },
+  "status": {
+    "in_progress": "Em andamento", "completed": "Concluído", "failed": "Falhou",
+    "pending": "Pendente", "paused": "Pausado", "running": "Executando",
+    "queued": "Na fila", "stopped": "Parado", "error": "Erro"
+  },
+  "messages": {
+    "operation_success": "Operação bem-sucedida", "operation_failed": "Operação falhou",
+    "saved_success": "Salvo com sucesso", "saved_failed": "Falha ao salvar",
+    "network_error": "Erro de rede", "server_error": "Erro do servidor",
+    "not_found": "Não encontrado", "confirm_delete": "Tem certeza que deseja excluir?"
+  },
+  "languages": {"en": "English", "zh": "中文", "hi": "हिन्दी", "es": "Español", "ar": "العربية", "fr": "Français", "bn": "বাংলা", "pt": "Português", "id": "Bahasa Indonesia", "ru": "Русский"}
+}

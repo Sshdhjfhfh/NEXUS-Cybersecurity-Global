@@ -1,0 +1,44 @@
+{
+  "app": {"name": "Nexus IA", "tagline": "Système de Recherche Adversariale Autonome", "warning": "■ LABORATOIRE CONTRÔLÉ UNIQUEMENT ■"},
+  "nav": {
+    "dashboard": "Tableau de bord", "tasks": "Tâches", "assets": "Actifs", "findings": "Découvertes",
+    "traffic": "Trafic", "agents": "Agents", "skills": "Compétences", "tools": "Outils",
+    "notifications": "Notifications", "intercept": "Interception", "approvals": "Approbations",
+    "settings": "Paramètres", "logs": "Journaux", "llm": "LLM", "mcp": "MCP",
+    "workspace": "Espace de travail", "chat": "Discussion", "system": "Système",
+    "function": "Fonctions", "sync": "Synchroniser", "commands": "Commandes", "llm_records": "Enregistrements LLM"
+  },
+  "common": {
+    "save": "Enregistrer", "cancel": "Annuler", "delete": "Supprimer", "edit": "Modifier",
+    "add": "Ajouter", "create": "Créer", "update": "Mettre à jour", "refresh": "Rafraîchir",
+    "search": "Rechercher", "filter": "Filtrer", "export": "Exporter", "import": "Importer",
+    "confirm": "Confirmer", "back": "Retour", "close": "Fermer", "open": "Ouvrir",
+    "details": "Détails", "loading": "Chargement", "no_data": "Aucune donnée",
+    "no_results": "Aucun résultat", "all": "Tous", "name": "Nom", "description": "Description",
+    "status": "Statut", "time": "Heure", "created_at": "Créé le",
+    "updated_at": "Mis à jour le", "actions": "Actions", "yes": "Oui", "no": "Non",
+    "ok": "OK", "error": "Erreur", "success": "Succès", "warning": "Avertissement", "info": "Info"
+  },
+  "auth": {
+    "login": "Connexion", "logout": "Déconnexion", "username": "Nom d'utilisateur",
+    "password": "Mot de passe", "account": "Compte", "change_password": "Changer le mot de passe",
+    "init_password": "Initialiser le mot de passe", "first_use": "Première utilisation",
+    "set_password_hint": "Veuillez définir un mot de passe pour votre compte",
+    "at_least_8": "Au moins 8 caractères", "new_password": "Nouveau mot de passe",
+    "confirm_password": "Confirmer le mot de passe", "reenter_password": "Ressaisir le mot de passe",
+    "set_and_login": "Définir le mot de passe et se connecter"
+  },
+  "status": {
+    "in_progress": "En cours", "completed": "Terminé", "failed": "Échoué",
+    "pending": "En attente", "paused": "En pause", "running": "En cours",
+    "queued": "En file", "stopped": "Arrêté", "error": "Erreur"
+  },
+  "messages": {
+    "operation_success": "Opération réussie", "operation_failed": "Opération échouée",
+    "saved_success": "Enregistré avec succès", "saved_failed": "Échec de l'enregistrement",
+    "deleted_success": "Supprimé avec succès", "deleted_failed": "Échec de la suppression",
+    "network_error": "Erreur réseau", "server_error": "Erreur serveur",
+    "not_found": "Non trouvé", "confirm_delete": "Êtes-vous sûr de vouloir supprimer ?"
+  },
+  "languages": {"en": "English", "zh": "中文", "hi": "हिन्दी", "es": "Español", "ar": "العربية", "fr": "Français", "bn": "বাংলা", "pt": "Português", "id": "Bahasa Indonesia", "ru": "Русский"}
+}

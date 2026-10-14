@@ -28,7 +28,7 @@ secrets/*.json
 gen/
 
 # Vendor (referencia temporal, no se commitea)
-vendor/
+_reference/
 
 # Build
 bin/

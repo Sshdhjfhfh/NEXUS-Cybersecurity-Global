@@ -4,7 +4,9 @@ package lab
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/nexus-ia/nexus/lab/network"
 )
@@ -25,6 +27,7 @@ type Checks struct{ Identity, OPSEC, Ethics, Monitor Check }
 type Gate struct {
 	scope  network.Scope
 	checks Checks
+	audit  Audit
 }
 
 func NewGate(scope network.Scope, checks Checks) (*Gate, error) {
@@ -41,7 +44,17 @@ func (g *Gate) Ready() bool {
 	return g != nil && len(g.scope.CIDRs()) > 0 && g.checks.Identity != nil && g.checks.OPSEC != nil && g.checks.Ethics != nil && g.checks.Monitor != nil
 }
 
-func (g *Gate) Authorize(ctx context.Context, a Action) error {
+func (g *Gate) Authorize(ctx context.Context, a Action) (result error) {
+	if g != nil && g.audit != nil {
+		defer func() {
+			auditCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+			defer cancel()
+			if err := g.audit(auditCtx, a, result); err != nil {
+				result = errors.Join(result, fmt.Errorf("laboratory audit failed: %w", err))
+			}
+		}()
+	}
+
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -72,4 +85,20 @@ func (g *Gate) Authorize(ctx context.Context, a Action) error {
 
 type Authorizer interface {
 	Authorize(context.Context, Action) error
+}
+
+// Audit records authorization decisions, including denials. Returning an error
+// prevents authorization even when all other checks passed.
+type Audit func(context.Context, Action, error) error
+
+func NewAuditedGate(scope network.Scope, checks Checks, audit Audit) (*Gate, error) {
+	if audit == nil {
+		return nil, fmt.Errorf("laboratory audit recorder is required")
+	}
+	gate, err := NewGate(scope, checks)
+	if err != nil {
+		return nil, err
+	}
+	gate.audit = audit
+	return gate, nil
 }

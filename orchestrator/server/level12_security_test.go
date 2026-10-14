@@ -57,7 +57,11 @@ func TestLabSecureCompositionWithRealIdentities(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := security.Config{Directory: authoritative, Identities: currentIdentities, Monitor: monitor, CACertPEM: identities.CACertPEM()}
+	audit, err := security.NewAuditRecorder(identities)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := security.Config{Audit: audit, Directory: authoritative, Identities: currentIdentities, Monitor: monitor, CACertPEM: identities.CACertPEM()}
 	scope, err := network.NewScope("10.20.0.0/24")
 	if err != nil {
 		t.Fatal(err)
@@ -122,7 +126,10 @@ func TestLabSecureCompositionWithRealIdentities(t *testing.T) {
 	body := `{"target":"10.20.0.3","evidence_ids":["secure-lab"]}`
 	response := request("POST", base, body)
 	if response.Code != 201 {
-		t.Fatalf("secure pipeline: %d %s", response.Code, response.Body.String())
+		adapter, _ := security.New(cfg)
+		gate, _ := adapter.Gate(scope)
+		detail := gate.Authorize(t.Context(), lab.Action{AgentID: ids[swarm.Recon], TaskID: fmt.Sprint(taskID), Name: "swarm.recon", Target: "10.20.0.3"})
+		t.Fatalf("secure pipeline: %d %s detail=%v", response.Code, response.Body.String(), detail)
 	}
 	var run level12.Run
 	if err := json.Unmarshal(response.Body.Bytes(), &run); err != nil || len(run.Workers) != 8 {
@@ -139,6 +146,17 @@ func TestLabSecureCompositionWithRealIdentities(t *testing.T) {
 	}
 	if response := request("POST", base, body); response.Code != 403 {
 		t.Fatalf("revoked worker: %d %s", response.Code, response.Body.String())
+	}
+	var approvals, denials int
+	actorIDs := []string{}
+	for _, id := range ids {
+		actorIDs = append(actorIDs, id)
+	}
+	if err := pool.QueryRow(t.Context(), `SELECT COUNT(*) FILTER(WHERE result='allowed'),COUNT(*) FILTER(WHERE result='denied') FROM nhi_audit WHERE actor_id=ANY($1) AND metadata->>'phase'='authorization'`, actorIDs).Scan(&approvals, &denials); err != nil {
+		t.Fatal(err)
+	}
+	if approvals != 10 || denials != 1 {
+		t.Fatalf("missing authorization audit: allowed=%d denied=%d", approvals, denials)
 	}
 	history, err := s.laboratory().List(t.Context(), taskID, 20)
 	if err != nil || len(history) != 1 {

@@ -30,10 +30,10 @@ type AuditEntry struct {
 	AgentType AgentType `json:"agent_type"` // Tipo de agente
 
 	// Acción
-	Action      string `json:"action"`       // Tipo de acción (ActionType)
-	Target      string `json:"target"`       // Módulo/asset objetivo
-	PayloadHash string `json:"payload_hash"` // SHA-256 del payload
-	Result      string `json:"result"`       // "ok", "denied", "error"
+	Action      string `json:"action"`           // Tipo de acción (ActionType)
+	Target      string `json:"target"`           // Módulo/asset objetivo
+	PayloadHash string `json:"payload_hash"`     // SHA-256 del payload
+	Result      string `json:"result"`           // "ok", "denied", "error"
 	Reason      string `json:"reason,omitempty"` // Motivo si denegado
 
 	// Contexto
@@ -46,9 +46,9 @@ type AuditEntry struct {
 	Metadata  map[string]string `json:"metadata,omitempty"`
 
 	// Firma
-	SignatureAlgorithm string `json:"sig_alg"`         // "dilithium3"
-	Signature          string `json:"signature"`       // hex de la firma Dilithium
-	SigningKeyID       string `json:"signing_key_id"`  // ID de la clave pública
+	SignatureAlgorithm string `json:"sig_alg"`        // "dilithium3"
+	Signature          string `json:"signature"`      // hex de la firma Dilithium
+	SigningKeyID       string `json:"signing_key_id"` // ID de la clave pública
 }
 
 // HashSHA256 devuelve el SHA-256 hex de un payload.
@@ -122,7 +122,7 @@ func NewAuditEntry(nhi *NHI, action ActionType, target string, payload []byte, r
 		PayloadHash: HashSHA256(payload),
 		Result:      result,
 		Reason:      reason,
-		Timestamp:   time.Now(),
+		Timestamp:   time.Now().UTC().Truncate(time.Microsecond),
 	}
 }
 

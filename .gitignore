@@ -78,3 +78,7 @@ Makefile.bak
 
 # Local translation backup
 web/src.backup/
+
+# Persistent NHI private key bundle
+manager-keys.json
+.manager-keys-*

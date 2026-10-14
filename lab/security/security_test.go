@@ -102,6 +102,7 @@ func TestIdentityAcceptsBoundCertificateAndToken(t *testing.T) {
 		t.Fatal("missing OPSEC and ethics accepted")
 	}
 	denied := errors.New("OPSEC unavailable")
+	f.adapter.cfg.Audit = func(context.Context, lab.Action, error) error { return nil }
 	f.adapter.cfg.OPSEC = func(context.Context, lab.Action) error { return denied }
 	f.adapter.cfg.Ethics = func(context.Context, lab.Action) error { return nil }
 	gate, err := f.adapter.Gate(scope)

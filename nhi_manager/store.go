@@ -10,6 +10,7 @@
 package nhi_manager
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -253,6 +254,7 @@ func (s *Store) ListAudit(ctx context.Context, agentID string, limit int) ([]*Au
 			return nil, fmt.Errorf("scan audit: %w", err)
 		}
 
+		entry.Timestamp = entry.Timestamp.UTC()
 		entry.AgentType = AgentType(agentTypeSt)
 		if metadataRaw != nil {
 			_ = json.Unmarshal(metadataRaw, &entry.Metadata)
@@ -268,12 +270,17 @@ func (s *Store) SaveSigningKey(ctx context.Context, keyID string, publicKey []by
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO nhi_signing_keys (key_id, public_key, active)
 		VALUES ($1, $2, TRUE)
-		ON CONFLICT (key_id) DO UPDATE SET
-			public_key = EXCLUDED.public_key,
-			active = TRUE
+		ON CONFLICT (key_id) DO NOTHING
 	`, keyID, publicKey)
 	if err != nil {
 		return fmt.Errorf("save signing key: %w", err)
+	}
+	existing, err := s.GetSigningKey(ctx, keyID)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(existing, publicKey) {
+		return fmt.Errorf("signing key identifier is already bound to another key")
 	}
 	return nil
 }

@@ -1,6 +1,7 @@
 package security
 
 import (
+	"errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nexus-ia/nexus/abm"
@@ -60,6 +61,23 @@ func TestRealServicesRejectRevocationPersistedOutsideCache(t *testing.T) {
 	action := lab.Action{AgentID: id, TaskID: "7", Name: "blue.analyze", Target: "10.20.0.3"}
 	if err := adapter.CheckIdentity(t.Context(), action); err != nil {
 		t.Fatal(err)
+	}
+	// Unknown actors are signed as unverified attempts, never provisioned.
+	recorder, err := NewAuditRecorder(identities)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unknown := "unknown-" + uuid.NewString()
+	defer pool.Exec(t.Context(), `DELETE FROM nhi_audit WHERE actor_id=$1`, unknown)
+	if err := recorder(t.Context(), lab.Action{AgentID: unknown, TaskID: "7", Name: "blue.analyze", Target: "10.20.0.3"}, errors.New("secret provider detail")); err != nil {
+		t.Fatal(err)
+	}
+	records, err := identities.Store().ListAudit(t.Context(), unknown, 10)
+	if err != nil || len(records) != 1 {
+		t.Fatal("unknown denial missing", err)
+	}
+	if records[0].Result != "denied" || records[0].ActorDID != "" || records[0].AgentType != "UNKNOWN" || records[0].Reason != "authorization checks denied" {
+		t.Fatal("unknown denial was misrepresented")
 	}
 	// Current database grants narrow a still-valid cached token immediately.
 	narrowed := *identity

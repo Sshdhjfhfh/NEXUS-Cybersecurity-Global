@@ -26,6 +26,10 @@ import (
 
 // Config configura el NHI Manager.
 type Config struct {
+	// KeyDir persists CA, JWT and audit keys outside the browsable workspace.
+	// Empty retains the legacy ephemeral behavior for isolated callers.
+	KeyDir string
+
 	// TTL por defecto de las identidades
 	DefaultCertTTL time.Duration
 	DefaultJWTTTL  time.Duration
@@ -60,8 +64,8 @@ type Manager struct {
 	jwtKey JWTSigningKey
 
 	// Clave de firma del audit trail (por sistema)
-	systemKey     *DilithiumKeyPair
-	systemKeyID   string
+	systemKey   *DilithiumKeyPair
+	systemKeyID string
 
 	// Pool de PostgreSQL
 	pool *pgxpool.Pool
@@ -77,25 +81,12 @@ func NewManager(ctx context.Context, pool *pgxpool.Pool, cfg Config) (*Manager, 
 		return nil, fmt.Errorf("pool cannot be nil")
 	}
 
-	// Generar CA interna
-	ca, err := NewCertAuthority()
+	keys, err := loadManagerKeys(cfg.KeyDir)
 	if err != nil {
-		return nil, fmt.Errorf("init CA: %w", err)
+		return nil, fmt.Errorf("load manager keys: %w", err)
 	}
-
-	// Generar clave JWT
-	jwtKey, err := GenerateSigningKey()
-	if err != nil {
-		return nil, fmt.Errorf("init JWT key: %w", err)
-	}
-
-	// Generar clave de firma del audit trail
-	systemKey, err := GenerateDilithiumKeyPair()
-	if err != nil {
-		return nil, fmt.Errorf("init system key: %w", err)
-	}
-
-	systemKeyID := "nexus-audit-v1"
+	ca, jwtKey, systemKey := keys.ca, keys.jwt, keys.audit
+	systemKeyID := auditKeyID(systemKey.PublicKeyBytes())
 
 	// Crear Store
 	store := NewStore(pool)
@@ -365,4 +356,17 @@ func (m *Manager) Revocations() *RevocationRegistry {
 // SystemKeyID devuelve el ID de la clave de firma del sistema.
 func (m *Manager) SystemKeyID() string {
 	return m.systemKeyID
+}
+
+// RecordAudit signs and persists an already constructed system decision.
+// Callers must not expose this composition interface directly over HTTP.
+func (m *Manager) RecordAudit(ctx context.Context, entry *AuditEntry) error {
+	if entry == nil {
+		return fmt.Errorf("audit entry is required")
+	}
+	entry.Timestamp = entry.Timestamp.UTC().Truncate(time.Microsecond)
+	if err := entry.Sign(m.systemKey, m.systemKeyID); err != nil {
+		return err
+	}
+	return m.store.SaveAudit(ctx, entry)
 }

@@ -45,6 +45,7 @@ type Config struct {
 	CACertPEM  []byte
 	OPSEC      lab.Check
 	Ethics     lab.Check
+	Audit      lab.Audit
 }
 type Adapter struct {
 	cfg   Config
@@ -78,7 +79,7 @@ func monitorReady(m Monitor) bool {
 
 // Gate never invents OPSEC or ethical decisions when the corresponding services are absent.
 func (a *Adapter) Gate(scope network.Scope) (*lab.Gate, error) {
-	return lab.NewGate(scope, lab.Checks{Identity: a.CheckIdentity, Monitor: a.CheckMonitor, OPSEC: a.cfg.OPSEC, Ethics: a.cfg.Ethics})
+	return lab.NewAuditedGate(scope, lab.Checks{Identity: a.CheckIdentity, Monitor: a.CheckMonitor, OPSEC: a.cfg.OPSEC, Ethics: a.cfg.Ethics}, a.cfg.Audit)
 }
 func validateAction(action lab.Action) error {
 	task, err := strconv.ParseInt(action.TaskID, 10, 64)

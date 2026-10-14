@@ -138,10 +138,10 @@ proporciona decisiones OPSEC/éticas permisivas. Las aprobaciones de fixture est
 limitadas a los tests aislados. El guard heredado de interceptación no se considera
 un evaluador ético obligatorio porque permite acciones sin reglas configuradas.
 
-Siguen pendientes la composición de producción, el ciclo de vida persistente de
-las claves CA/JWT del manager NHI, la conexión del audit trail firmado de todas las
-decisiones y la recuperación de estados ABM. El manager actual crea claves nuevas
-al construirse: no se activa automáticamente sobre identidades persistidas.
+Siguen pendientes la composición de producción, la renovación y rotación operativa
+de certificados y claves, y la recuperación de estados ABM. Los controles OPSEC
+y éticos siguen sin implementación conectable bajo la regla de inmutabilidad.
+El manager no se activa automáticamente sobre identidades persistidas.
 Estas limitaciones impiden declarar la autorización de producción completada.
 
 Validación de los adaptadores: pruebas con `-race` de ANS/NHI/ABM y del pipeline
@@ -153,3 +153,41 @@ Chromium verificó nuevamente 22 rutas después del despliegue, sin chino visibl
 claves sin resolver ni errores JavaScript; confirmó el estado de ejecución cerrado
 y el botón de análisis deshabilitado. Se conservó la clave de sesión del servidor
 durante esta actualización para mantener los accesos existentes.
+
+
+## Credenciales persistentes y decisiones firmadas
+
+`nhi_manager.Config.KeyDir` permite conservar la CA, la clave JWT y la clave privada
+Dilithium en un único archivo versionado fuera del espacio navegable. El directorio
+requiere permisos privados y el archivo usa `0600`. La publicación es atómica, sin
+sobrescritura entre inicializadores; se rechazan enlaces simbólicos finales,
+archivos públicos, material corrupto y claves incompatibles. Un archivo dañado no
+provoca una regeneración silenciosa. Sin `KeyDir`, se mantiene el comportamiento
+efímero heredado para llamadores existentes; no equivale a despliegue persistente.
+
+Las claves públicas de auditoría usan un ID derivado de su hash completo y no pueden
+sobrescribirse con otra clave. Esto evita perder la verificabilidad de los nuevos
+registros al reiniciar; no recupera claves históricas que ya se hayan sobrescrito.
+Las marcas temporales se firman en UTC con precisión de microsegundos y se leen en
+UTC, conforme a la precisión de PostgreSQL. Los registros nuevos sobreviven a una
+ida y vuelta por la base de datos sin alterar el contenido firmado.
+
+`security.NewAuditRecorder` y `lab.NewAuditedGate` registran cada decisión de
+autorización antes de devolverla. La composición segura exige este recorder: si
+falla el registro, no se autoriza la acción. Los rechazos y las cancelaciones usan
+un contexto de auditoría independiente limitado a tres segundos. Los actores no
+registrados quedan identificados expresamente como desconocidos, sin inventarles
+un DID. Solo se guarda el digest de la acción y motivos fijos, nunca errores del
+proveedor ni credenciales. Esto registra decisiones de autorización, no los
+resultados posteriores de todos los trabajadores.
+
+Las pruebas cubren reinicios con los mismos certificados y tokens, renovación de
+token después del reinicio, revocaciones persistentes, verificación de firmas tras
+leer PostgreSQL, protección de claves históricas, inicialización concurrente y
+bloqueo al fallar la auditoría.
+
+Validación de esta entrega: `go build ./...`, suite completa en PostgreSQL temporal
+limpio y pruebas de credenciales, auditoría y composición segura con `-race`
+correctos. Docker compiló y el despliegue conservó la clave de sesión existente.
+Chromium verificó 22 rutas sin chino visible, claves sin resolver ni errores JS;
+confirmó el laboratorio bloqueado. No se modificaron módulos inmutables.

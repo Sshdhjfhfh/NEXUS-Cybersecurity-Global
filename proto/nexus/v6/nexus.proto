@@ -1,0 +1,156 @@
+syntax = "proto3";
+
+package nexus.v6;
+
+option go_package          = "github.com/nexus-ia/nexus/gen/go/nexus/v6;nexusv6";
+option java_package        = "com.nexusia.nexus.v6";
+option java_multiple_files = true;
+option csharp_namespace    = "NexusIA.Nexus.V6";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/rpc/status.proto";
+import "nexus/v6/common/enums.proto";
+import "nexus/v6/common/crypto.proto";
+
+// ═══════════════════════════════════════════════════════════════
+// SERVICIO PRINCIPAL — NexusOrchestrator
+// ═══════════════════════════════════════════════════════════════
+service NexusOrchestrator {
+  rpc EstablishSession (SessionRequest)     returns (SessionResponse);
+  rpc RefreshIdentity  (RefreshRequest)     returns (SecurityIdentity);
+  rpc TerminateSession (SessionTermination) returns (Ack);
+
+  rpc RegisterAgent    (AgentRegistration)  returns (RegistrationResponse);
+  rpc LookupAgent      (AnsLookupRequest)   returns (AnsLookupResponse);
+
+  rpc VerifyAction     (ActionRequest)      returns (ActionResponse);
+  rpc StreamTelemetry  (stream TelemetryMessage) returns (stream TelemetryAck);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// IDENTIDAD Y SESIÓN
+// ═══════════════════════════════════════════════════════════════
+message SecurityIdentity {
+  string                    agent_id         = 1;
+  string                    nhi_did          = 2;
+  bytes                     x509_certificate = 3;
+  string                    jwt_token        = 4;
+  google.protobuf.Timestamp issued_at        = 5;
+  google.protobuf.Timestamp expires_at       = 6;
+}
+
+message SessionRequest {
+  SecurityIdentity                   identity            = 1;
+  bytes                              client_nonce        = 2;
+  repeated common.SignatureAlgorithm supported_sig_algs  = 3;
+  repeated common.KemAlgorithm       supported_kem_algs  = 4;
+}
+
+message SessionResponse {
+  string                     session_id         = 1;
+  google.protobuf.Timestamp  expires_at         = 2;
+  bytes                      server_nonce       = 3;
+  common.SignatureAlgorithm  negotiated_sig_alg = 4;
+  common.KemAlgorithm        negotiated_kem_alg = 5;
+  bytes                      server_signature   = 6;
+}
+
+message RefreshRequest {
+  string session_id  = 1;
+  bytes  current_jwt = 2;
+}
+
+message SessionTermination {
+  string session_id = 1;
+  string reason     = 2;
+}
+
+message Ack {
+  bool   ok     = 1;
+  string detail = 2;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// REGISTRO (NHI + ANS)
+// ═══════════════════════════════════════════════════════════════
+message AgentRegistration {
+  string                    agent_name            = 1;
+  common.AgentType          agent_type            = 2;
+  bytes                     public_key_dilithium  = 3;
+  bytes                     bootstrap_attestation = 4;
+  bytes                     enrollment_token      = 5;
+  google.protobuf.Timestamp requested_at          = 6;
+}
+
+message RegistrationResponse {
+  bool                       success            = 1;
+  string                     assigned_dns       = 2;
+  string                     token              = 3;
+  bytes                      issued_certificate = 4;
+  google.protobuf.Timestamp  expires_at         = 5;
+  bytes                      server_signature   = 6;
+  common.SignatureAlgorithm  sig_alg            = 7;
+}
+
+message AnsLookupRequest {
+  string agent_name = 1;
+}
+
+message AnsLookupResponse {
+  bool                      found       = 1;
+  string                    dns         = 2;
+  common.AgentType          agent_type  = 3;
+  repeated common.ActionType permissions = 4;
+  common.HealthStatus       status      = 5;
+  google.protobuf.Timestamp last_action = 6;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ACCIÓN
+// ═══════════════════════════════════════════════════════════════
+message ActionRequest {
+  SecurityIdentity          identity       = 1;
+  string                    session_id     = 2;
+  string                    target_module  = 3;
+  common.ActionType         action_type    = 4;
+  bytes                     payload        = 5;
+  string                    mitre_ttp      = 6;
+  repeated string           mitre_tactics  = 7;
+  google.protobuf.Timestamp timestamp      = 8;
+  google.protobuf.Duration  ttl            = 9;
+  bytes                     nonce          = 10;
+  string                    trace_id       = 11;
+  string                    correlation_id = 12;
+}
+
+message ActionResponse {
+  bool                       approved                = 1;
+  common.StatusCode          status_code             = 2;
+  bytes                      encrypted_result        = 3;
+  common.SignatureAlgorithm  sig_alg                 = 4;
+  bytes                      cryptographic_signature = 5;
+  bytes                      signing_key_id          = 6;
+  google.rpc.Status          error                   = 7;
+  bytes                      audit_hash              = 8;
+
+  reserved 90 to 99;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TELEMETRÍA
+// ═══════════════════════════════════════════════════════════════
+message TelemetryMessage {
+  string                    component_id = 1;
+  string                    metric_name  = 2;
+  double                    metric_value = 3;
+  common.HealthStatus       status       = 4;
+  google.protobuf.Timestamp observed_at  = 5;
+  string                    trace_id     = 6;
+}
+
+message TelemetryAck {
+  bool   processed               = 1;
+  bool   trigger_circuit_breaker = 2;
+  string reason                  = 3;
+}

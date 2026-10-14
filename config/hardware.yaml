@@ -1,0 +1,41 @@
+tiers:
+  nano:
+    min_vram_gb: 0
+    min_ram_gb: 4
+    models:
+      agents: qwen3:1.7b
+      ethical_boundary: qwen3:1.7b
+      reasoning: deepseek-r1:1.5b
+    parallelism: { swarm_agents: 2, ctf_parallel: 1 }
+  micro:
+    min_vram_gb: 2
+    min_ram_gb: 8
+    models:
+      agents: qwen3:4b
+      ethical_boundary: qwen3:4b
+      reasoning: deepseek-r1:1.5b
+    parallelism: { swarm_agents: 4, ctf_parallel: 2 }
+  standard:
+    min_vram_gb: 4
+    min_ram_gb: 12
+    models:
+      agents: qwen3:8b
+      ethical_boundary: qwen3:8b
+      reasoning: deepseek-r1:7b
+    parallelism: { swarm_agents: 8, ctf_parallel: 4 }
+  pro:
+    min_vram_gb: 8
+    min_ram_gb: 16
+    models:
+      agents: qwen3:14b
+      ethical_boundary: qwen3:8b
+      reasoning: deepseek-r1:14b
+    parallelism: { swarm_agents: 8, ctf_parallel: 6 }
+  ultra:
+    min_vram_gb: 16
+    min_ram_gb: 32
+    models:
+      agents: qwen3:32b
+      ethical_boundary: qwen3:8b
+      reasoning: deepseek-r1:32b
+    parallelism: { swarm_agents: 16, ctf_parallel: 8 }

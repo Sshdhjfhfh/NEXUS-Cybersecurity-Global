@@ -1,0 +1,32 @@
+syntax = "proto3";
+package nexus.v6.common;
+
+import "google/protobuf/timestamp.proto";
+import "nexus/v6/common/enums.proto";
+
+option go_package = "github.com/nexus-ia/nexus/gen/go/nexus/v6/common;common";
+
+message SignedEnvelope {
+  bytes              payload           = 1;
+  SignatureAlgorithm sig_alg           = 2;
+  bytes              signature         = 3;
+  bytes              signing_key_id    = 4;
+  bytes              signing_cert_x509 = 5;
+}
+
+message EncryptedEnvelope {
+  bytes        ciphertext       = 1;
+  KemAlgorithm kem_alg          = 2;
+  bytes        encapsulated_key = 3;
+  bytes        nonce            = 4;
+}
+
+message AuditEntry {
+  string                    actor_id     = 1;
+  string                    actor_did    = 2;
+  ActionType                action       = 3;
+  bytes                     payload_hash = 4;
+  google.protobuf.Timestamp timestamp    = 5;
+  bytes                     signature    = 6;
+  SignatureAlgorithm        sig_alg      = 7;
+}

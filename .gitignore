@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+.next/
+
+# Docker
+docker-compose.override.yml
+docker-compose.generated.yml
+
+# Config local
+.env
+.env.local
+config/hardware_profile.json
+config/active_tier.yaml
+
+# Secrets
+secrets/*.pem
+secrets/*.key
+secrets/*.crt
+secrets/*.json
+
+# Generados (proto)
+gen/
+
+# Vendor (referencia temporal, no se commitea)
+vendor/
+
+# Build
+bin/
+dist/
+*.exe
+*.test
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/*
+!.vscode/extensions.json
+
+# Go
+*.out
+coverage.txt
+
+# Absorción temporal
+adapters/

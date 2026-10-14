@@ -1,0 +1,43 @@
+{
+  "app": {"name": "Nexus IA", "tagline": "Sistem Penelitian Adversarial Otonom", "warning": "■ HANYA LABORATORIUM TERKENDALI ■"},
+  "nav": {
+    "dashboard": "Dasbor", "tasks": "Tugas", "assets": "Aset", "findings": "Temuan",
+    "traffic": "Lalu lintas", "agents": "Agen", "skills": "Keterampilan", "tools": "Alat",
+    "notifications": "Notifikasi", "intercept": "Intersepsi", "approvals": "Persetujuan",
+    "settings": "Pengaturan", "logs": "Log", "llm": "LLM", "mcp": "MCP",
+    "workspace": "Ruang kerja", "chat": "Obrolan", "system": "Sistem",
+    "function": "Fungsi", "sync": "Sinkronisasi", "commands": "Perintah", "llm_records": "Catatan LLM"
+  },
+  "common": {
+    "save": "Simpan", "cancel": "Batal", "delete": "Hapus", "edit": "Ubah",
+    "add": "Tambah", "create": "Buat", "update": "Perbarui", "refresh": "Segarkan",
+    "search": "Cari", "filter": "Filter", "export": "Ekspor", "import": "Impor",
+    "confirm": "Konfirmasi", "back": "Kembali", "close": "Tutup", "open": "Buka",
+    "details": "Detail", "loading": "Memuat", "no_data": "Tidak ada data",
+    "no_results": "Tidak ada hasil", "all": "Semua", "name": "Nama", "description": "Deskripsi",
+    "status": "Status", "time": "Waktu", "created_at": "Dibuat pada", "updated_at": "Diperbarui pada",
+    "actions": "Aksi", "yes": "Ya", "no": "Tidak", "ok": "OK",
+    "error": "Kesalahan", "success": "Berhasil", "warning": "Peringatan", "info": "Info"
+  },
+  "auth": {
+    "login": "Masuk", "logout": "Keluar", "username": "Nama pengguna",
+    "password": "Kata sandi", "account": "Akun", "change_password": "Ubah kata sandi",
+    "init_password": "Inisialisasi kata sandi", "first_use": "Penggunaan pertama",
+    "set_password_hint": "Silakan atur kata sandi untuk akun Anda",
+    "at_least_8": "Minimal 8 karakter", "new_password": "Kata sandi baru",
+    "confirm_password": "Konfirmasi kata sandi", "reenter_password": "Masukkan ulang kata sandi",
+    "set_and_login": "Atur kata sandi dan masuk"
+  },
+  "status": {
+    "in_progress": "Sedang berjalan", "completed": "Selesai", "failed": "Gagal",
+    "pending": "Tertunda", "paused": "Dijeda", "running": "Berjalan",
+    "queued": "Dalam antrean", "stopped": "Dihentikan", "error": "Kesalahan"
+  },
+  "messages": {
+    "operation_success": "Operasi berhasil", "operation_failed": "Operasi gagal",
+    "saved_success": "Berhasil disimpan", "saved_failed": "Gagal menyimpan",
+    "network_error": "Kesalahan jaringan", "server_error": "Kesalahan server",
+    "not_found": "Tidak ditemukan", "confirm_delete": "Yakin ingin menghapus?"
+  },
+  "languages": {"en": "English", "zh": "中文", "hi": "हिन्दी", "es": "Español", "ar": "العربية", "fr": "Français", "bn": "বাংলা", "pt": "Português", "id": "Bahasa Indonesia", "ru": "Русский"}
+}

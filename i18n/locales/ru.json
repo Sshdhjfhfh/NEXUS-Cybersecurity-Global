@@ -1,0 +1,43 @@
+{
+  "app": {"name": "Nexus IA", "tagline": "Автономная система состязательных исследований", "warning": "■ ТОЛЬКО КОНТРОЛИРУЕМАЯ ЛАБОРАТОРИЯ ■"},
+  "nav": {
+    "dashboard": "Панель управления", "tasks": "Задачи", "assets": "Активы", "findings": "Находки",
+    "traffic": "Трафик", "agents": "Агенты", "skills": "Навыки", "tools": "Инструменты",
+    "notifications": "Уведомления", "intercept": "Перехват", "approvals": "Утверждения",
+    "settings": "Настройки", "logs": "Журналы", "llm": "LLM", "mcp": "MCP",
+    "workspace": "Рабочая область", "chat": "Чат", "system": "Система",
+    "function": "Функции", "sync": "Синхронизация", "commands": "Команды", "llm_records": "Записи LLM"
+  },
+  "common": {
+    "save": "Сохранить", "cancel": "Отмена", "delete": "Удалить", "edit": "Изменить",
+    "add": "Добавить", "create": "Создать", "update": "Обновить", "refresh": "Обновить",
+    "search": "Поиск", "filter": "Фильтр", "export": "Экспорт", "import": "Импорт",
+    "confirm": "Подтвердить", "back": "Назад", "close": "Закрыть", "open": "Открыть",
+    "details": "Детали", "loading": "Загрузка", "no_data": "Нет данных",
+    "no_results": "Нет результатов", "all": "Все", "name": "Имя", "description": "Описание",
+    "status": "Статус", "time": "Время", "created_at": "Создано", "updated_at": "Обновлено",
+    "actions": "Действия", "yes": "Да", "no": "Нет", "ok": "ОК",
+    "error": "Ошибка", "success": "Успех", "warning": "Предупреждение", "info": "Информация"
+  },
+  "auth": {
+    "login": "Войти", "logout": "Выйти", "username": "Имя пользователя",
+    "password": "Пароль", "account": "Аккаунт", "change_password": "Сменить пароль",
+    "init_password": "Инициализация пароля", "first_use": "Первое использование",
+    "set_password_hint": "Пожалуйста, установите пароль для вашей учетной записи",
+    "at_least_8": "Не менее 8 символов", "new_password": "Новый пароль",
+    "confirm_password": "Подтвердить пароль", "reenter_password": "Введите пароль снова",
+    "set_and_login": "Установить пароль и войти"
+  },
+  "status": {
+    "in_progress": "В процессе", "completed": "Завершено", "failed": "Ошибка",
+    "pending": "Ожидание", "paused": "Пауза", "running": "Выполняется",
+    "queued": "В очереди", "stopped": "Остановлено", "error": "Ошибка"
+  },
+  "messages": {
+    "operation_success": "Операция успешна", "operation_failed": "Операция не удалась",
+    "saved_success": "Успешно сохранено", "saved_failed": "Ошибка сохранения",
+    "network_error": "Ошибка сети", "server_error": "Ошибка сервера",
+    "not_found": "Не найдено", "confirm_delete": "Вы уверены, что хотите удалить?"
+  },
+  "languages": {"en": "English", "zh": "中文", "hi": "हिन्दी", "es": "Español", "ar": "العربية", "fr": "Français", "bn": "বাংলা", "pt": "Português", "id": "Bahasa Indonesia", "ru": "Русский"}
+}

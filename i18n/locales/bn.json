@@ -1,0 +1,43 @@
+{
+  "app": {"name": "Nexus IA", "tagline": "স্বায়ত্তশাসিত প্রতিকূল গবেষণা সিস্টেম", "warning": "■ শুধুমাত্র নিয়ন্ত্রিত ল্যাব ■"},
+  "nav": {
+    "dashboard": "ড্যাশবোর্ড", "tasks": "কাজ", "assets": "সম্পদ", "findings": "ফলাফল",
+    "traffic": "ট্রাফিক", "agents": "এজেন্ট", "skills": "দক্ষতা", "tools": "সরঞ্জাম",
+    "notifications": "বিজ্ঞপ্তি", "intercept": "বাধা", "approvals": "অনুমোদন",
+    "settings": "সেটিংস", "logs": "লগ", "llm": "LLM", "mcp": "MCP",
+    "workspace": "কর্মক্ষেত্র", "chat": "চ্যাট", "system": "সিস্টেম",
+    "function": "ফাংশন", "sync": "সিঙ্ক", "commands": "কমান্ড", "llm_records": "LLM রেকর্ড"
+  },
+  "common": {
+    "save": "সংরক্ষণ", "cancel": "বাতিল", "delete": "মুছুন", "edit": "সম্পাদনা",
+    "add": "যোগ", "create": "তৈরি", "update": "আপডেট", "refresh": "রিফ্রেশ",
+    "search": "অনুসন্ধান", "filter": "ফিল্টার", "export": "রপ্তানি", "import": "আমদানি",
+    "confirm": "নিশ্চিত", "back": "ফিরে", "close": "বন্ধ", "open": "খোলা",
+    "details": "বিবরণ", "loading": "লোড হচ্ছে", "no_data": "কোন ডেটা নেই",
+    "no_results": "কোন ফলাফল নেই", "all": "সব", "name": "নাম", "description": "বিবরণ",
+    "status": "অবস্থা", "time": "সময়", "created_at": "তৈরি", "updated_at": "আপডেট",
+    "actions": "ক্রিয়া", "yes": "হ্যাঁ", "no": "না", "ok": "ঠিক আছে",
+    "error": "ত্রুটি", "success": "সফল", "warning": "সতর্কতা", "info": "তথ্য"
+  },
+  "auth": {
+    "login": "লগইন", "logout": "লগআউট", "username": "ব্যবহারকারীর নাম",
+    "password": "পাসওয়ার্ড", "account": "অ্যাকাউন্ট", "change_password": "পাসওয়ার্ড পরিবর্তন",
+    "init_password": "পাসওয়ার্ড শুরু", "first_use": "প্রথমবার ব্যবহার",
+    "set_password_hint": "আপনার অ্যাকাউন্টের জন্য একটি পাসওয়ার্ড সেট করুন",
+    "at_least_8": "কমপক্ষে 8 অক্ষর", "new_password": "নতুন পাসওয়ার্ড",
+    "confirm_password": "পাসওয়ার্ড নিশ্চিত", "reenter_password": "পাসওয়ার্ড পুনরায় লিখুন",
+    "set_and_login": "পাসওয়ার্ড সেট করুন এবং লগইন করুন"
+  },
+  "status": {
+    "in_progress": "চলছে", "completed": "সম্পন্ন", "failed": "ব্যর্থ",
+    "pending": "অপেক্ষমাণ", "paused": "বিরতি", "running": "চলমান",
+    "queued": "সারিতে", "stopped": "বন্ধ", "error": "ত্রুটি"
+  },
+  "messages": {
+    "operation_success": "অপারেশন সফল", "operation_failed": "অপারেশন ব্যর্থ",
+    "saved_success": "সফলভাবে সংরক্ষিত", "saved_failed": "সংরক্ষণ ব্যর্থ",
+    "network_error": "নেটওয়ার্ক ত্রুটি", "server_error": "সার্ভার ত্রুটি",
+    "not_found": "পাওয়া যায়নি", "confirm_delete": "আপনি কি মুছে ফেলতে চান?"
+  },
+  "languages": {"en": "English", "zh": "中文", "hi": "हिन्दी", "es": "Español", "ar": "العربية", "fr": "Français", "bn": "বাংলা", "pt": "Português", "id": "Bahasa Indonesia", "ru": "Русский"}
+}

@@ -1,0 +1,44 @@
+{
+  "app": {"name": "Nexus IA", "tagline": "स्वायत्त विरोधी अनुसंधान प्रणाली", "warning": "■ केवल नियंत्रित प्रयोगशाला ■"},
+  "nav": {
+    "dashboard": "डैशबोर्ड", "tasks": "कार्य", "assets": "संपत्ति", "findings": "निष्कर्ष",
+    "traffic": "ट्रैफ़िक", "agents": "एजेंट", "skills": "कौशल", "tools": "उपकरण",
+    "notifications": "सूचनाएं", "intercept": "अवरोधन", "approvals": "अनुमोदन",
+    "settings": "सेटिंग्स", "logs": "लॉग", "llm": "LLM", "mcp": "MCP",
+    "workspace": "कार्यक्षेत्र", "chat": "चैट", "system": "सिस्टम",
+    "function": "कार्य", "sync": "सिंक", "commands": "आदेश", "llm_records": "LLM रिकॉर्ड"
+  },
+  "common": {
+    "save": "सहेजें", "cancel": "रद्द करें", "delete": "हटाएं", "edit": "संपादित करें",
+    "add": "जोड़ें", "create": "बनाएं", "update": "अद्यतन करें", "refresh": "रीफ्रेश करें",
+    "search": "खोजें", "filter": "फ़िल्टर", "export": "निर्यात", "import": "आयात",
+    "confirm": "पुष्टि करें", "back": "वापस", "close": "बंद करें", "open": "खोलें",
+    "details": "विवरण", "loading": "लोड हो रहा है", "no_data": "कोई डेटा नहीं",
+    "no_results": "कोई परिणाम नहीं", "all": "सभी", "name": "नाम", "description": "विवरण",
+    "status": "स्थिति", "time": "समय", "created_at": "बनाया गया",
+    "updated_at": "अद्यतन किया गया", "actions": "क्रियाएं", "yes": "हाँ", "no": "नहीं",
+    "ok": "ठीक", "error": "त्रुटि", "success": "सफलता", "warning": "चेतावनी", "info": "जानकारी"
+  },
+  "auth": {
+    "login": "लॉगिन", "logout": "लॉगआउट", "username": "उपयोगकर्ता नाम",
+    "password": "पासवर्ड", "account": "खाता", "change_password": "पासवर्ड बदलें",
+    "init_password": "पासवर्ड प्रारंभ करें", "first_use": "पहली बार उपयोग",
+    "set_password_hint": "कृपया अपने खाते के लिए लॉगिन पासवर्ड सेट करें",
+    "at_least_8": "कम से कम 8 अक्षर", "new_password": "नया पासवर्ड",
+    "confirm_password": "पासवर्ड की पुष्टि करें", "reenter_password": "पासवर्ड फिर से दर्ज करें",
+    "set_and_login": "पासवर्ड सेट करें और लॉगिन करें"
+  },
+  "status": {
+    "in_progress": "प्रगति में", "completed": "पूर्ण", "failed": "विफल",
+    "pending": "लंबित", "paused": "रुका हुआ", "running": "चल रहा है",
+    "queued": "कतार में", "stopped": "रोका गया", "error": "त्रुटि"
+  },
+  "messages": {
+    "operation_success": "ऑपरेशन सफल", "operation_failed": "ऑपरेशन विफल",
+    "saved_success": "सफलतापूर्वक सहेजा गया", "saved_failed": "सहेजना विफल",
+    "deleted_success": "सफलतापूर्वक हटाया गया", "deleted_failed": "हटाना विफल",
+    "network_error": "नेटवर्क त्रुटि", "server_error": "सर्वर त्रुटि",
+    "not_found": "नहीं मिला", "confirm_delete": "क्या आप वाकई हटाना चाहते हैं?"
+  },
+  "languages": {"en": "English", "zh": "中文", "hi": "हिन्दी", "es": "Español", "ar": "العربية", "fr": "Français", "bn": "বাংলা", "pt": "Português", "id": "Bahasa Indonesia", "ru": "Русский"}
+}

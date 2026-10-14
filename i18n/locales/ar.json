@@ -1,0 +1,44 @@
+{
+  "app": {"name": "Nexus IA", "tagline": "نظام البحث العدائي المستقل", "warning": "■ مختبر خاضع للسيطرة فقط ■"},
+  "nav": {
+    "dashboard": "لوحة القيادة", "tasks": "المهام", "assets": "الأصول", "findings": "النتائج",
+    "traffic": "حركة المرور", "agents": "الوكلاء", "skills": "المهارات", "tools": "الأدوات",
+    "notifications": "الإشعارات", "intercept": "الاعتراض", "approvals": "الموافقات",
+    "settings": "الإعدادات", "logs": "السجلات", "llm": "LLM", "mcp": "MCP",
+    "workspace": "مساحة العمل", "chat": "الدردشة", "system": "النظام",
+    "function": "الوظائف", "sync": "مزامنة", "commands": "الأوامر", "llm_records": "سجلات LLM"
+  },
+  "common": {
+    "save": "حفظ", "cancel": "إلغاء", "delete": "حذف", "edit": "تعديل",
+    "add": "إضافة", "create": "إنشاء", "update": "تحديث", "refresh": "تحديث",
+    "search": "بحث", "filter": "تصفية", "export": "تصدير", "import": "استيراد",
+    "confirm": "تأكيد", "back": "رجوع", "close": "إغلاق", "open": "فتح",
+    "details": "التفاصيل", "loading": "جار التحميل", "no_data": "لا توجد بيانات",
+    "no_results": "لا توجد نتائج", "all": "الكل", "name": "الاسم", "description": "الوصف",
+    "status": "الحالة", "time": "الوقت", "created_at": "تاريخ الإنشاء",
+    "updated_at": "تاريخ التحديث", "actions": "الإجراءات", "yes": "نعم", "no": "لا",
+    "ok": "موافق", "error": "خطأ", "success": "نجاح", "warning": "تحذير", "info": "معلومات"
+  },
+  "auth": {
+    "login": "تسجيل الدخول", "logout": "تسجيل الخروج", "username": "اسم المستخدم",
+    "password": "كلمة المرور", "account": "الحساب", "change_password": "تغيير كلمة المرور",
+    "init_password": "تهيئة كلمة المرور", "first_use": "الاستخدام الأول",
+    "set_password_hint": "يرجى تعيين كلمة مرور تسجيل الدخول لحسابك",
+    "at_least_8": "8 أحرف على الأقل", "new_password": "كلمة مرور جديدة",
+    "confirm_password": "تأكيد كلمة المرور", "reenter_password": "أعد إدخال كلمة المرور",
+    "set_and_login": "تعيين كلمة المرور وتسجيل الدخول"
+  },
+  "status": {
+    "in_progress": "قيد التنفيذ", "completed": "مكتمل", "failed": "فشل",
+    "pending": "معلق", "paused": "متوقف مؤقتاً", "running": "قيد التشغيل",
+    "queued": "في الانتظار", "stopped": "متوقف", "error": "خطأ"
+  },
+  "messages": {
+    "operation_success": "عملية ناجحة", "operation_failed": "فشلت العملية",
+    "saved_success": "تم الحفظ بنجاح", "saved_failed": "فشل الحفظ",
+    "deleted_success": "تم الحذف بنجاح", "deleted_failed": "فشل الحذف",
+    "network_error": "خطأ في الشبكة", "server_error": "خطأ في الخادم",
+    "not_found": "غير موجود", "confirm_delete": "هل أنت متأكد من الحذف؟"
+  },
+  "languages": {"en": "English", "zh": "中文", "hi": "हिन्दी", "es": "Español", "ar": "العربية", "fr": "Français", "bn": "বাংলা", "pt": "Português", "id": "Bahasa Indonesia", "ru": "Русский"}
+}

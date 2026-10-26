@@ -1,0 +1,91 @@
+import base64
+import collections
+import datetime
+import hashlib
+import json
+import pathlib
+import subprocess
+import urllib.parse
+import urllib.request
+import sys
+
+ROOT = pathlib.Path('/home/saul/nexus-real')
+OUT = pathlib.Path('/tmp/nexus-inventory')
+OUT.mkdir(exist_ok=True)
+raw = pathlib.Path('/tmp/nexus-research-go-modules.json').read_text()
+decoder = json.JSONDecoder()
+modules = []
+while raw.strip():
+    obj, end = decoder.raw_decode(raw.lstrip())
+    modules.append(obj)
+    raw = raw.lstrip()[end:]
+now = datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z')
+components = []
+queries = []
+refs = []
+license_inventory = []
+for module in modules:
+    if module.get('Main'):
+        continue
+    path, version = module['Path'], module.get('Version', '')
+    ref = f'pkg:golang/{path}@{version}'
+    component = {'type': 'library', 'name': path, 'version': version, 'purl': ref, 'bom-ref': ref}
+    components.append(component)
+    queries.append({'package': {'name': path, 'ecosystem': 'Go'}, 'version': version})
+    refs.append(ref)
+    files = []
+    directory = pathlib.Path(module.get('Dir', '/nonexistent'))
+    if directory.exists():
+        for f in directory.iterdir():
+            if f.is_file() and f.name.lower().startswith(('license', 'copying', 'notice')):
+                files.append({'file': f.name, 'sha256': hashlib.sha256(f.read_bytes()).hexdigest()})
+    license_inventory.append({'module': path, 'version': version, 'license_files': files, 'conclusion': 'NOASSERTION'})
+for lock_path in ['web/package-lock.json', 'resources/skills/api-recon/scripts/package-lock.json']:
+    lock = json.loads((ROOT / lock_path).read_text())
+    for path, package in lock.get('packages', {}).items():
+        if not path or not package.get('version') or 'node_modules/' not in path:
+            continue
+        name = package.get('name') or path.split('node_modules/')[-1]
+        version = package['version']
+        ref = 'pkg:npm/' + name.replace('@', '%40') + '@' + version
+        existing = next((c for c in components if c['bom-ref'] == ref), None)
+        if existing:
+            existing['properties'].append({'name': 'nexus:lockfile', 'value': lock_path + ':' + path})
+            continue
+        component = {'type': 'library', 'name': name, 'version': version, 'purl': ref, 'bom-ref': ref,
+                     'properties': [{'name': 'nexus:lockfile', 'value': lock_path + ':' + path}]}
+        if package.get('license'):
+            if package['license'] == 'SIL OPEN FONT LICENSE':
+                component['licenses'] = [{'license': {'name': package['license']}}]
+            else:
+                component['licenses'] = [{'expression': package['license']}]
+        components.append(component)
+        queries.append({'package': {'name': name, 'ecosystem': 'npm'}, 'version': version})
+        refs.append(ref)
+bom = {'bomFormat': 'CycloneDX', 'specVersion': '1.6', 'version': 1,
+       'metadata': {'timestamp': now, 'component': {'type': 'application', 'name': 'NEXUS', 'version': '21ac386100218b2ab0b8f907e6aa52e9e8906698', 'bom-ref': 'nexus-source'},
+                    'properties': [{'name': 'nexus:scope', 'value': 'Go module build list and two npm lockfiles; excludes image OS packages, external tools, Python environments and copied source provenance'}]},
+       'components': sorted(components, key=lambda c: c['bom-ref']),
+       'dependencies': [{'ref': 'nexus-source', 'dependsOn': sorted(refs)}]}
+(OUT / 'SBOM.cdx.json').write_text(json.dumps(bom, indent=2) + '\n')
+(OUT / 'go-license-inventory.json').write_text(json.dumps(license_inventory, indent=2) + '\n')
+print('SBOM', len(components), 'components;', len(modules)-1, 'Go modules; npm includes dev/optional/build dependencies. Dependency graph is flattened.')
+if '--osv' in sys.argv:
+    results = []
+    for start in range(0, len(queries), 500):
+        batch = queries[start:start+500]
+        payload = json.dumps({'queries': batch}).encode()
+        req = urllib.request.Request('https://api.osv.dev/v1/querybatch', data=payload, headers={'Content-Type': 'application/json', 'User-Agent': 'NEXUS-read-only-research'})
+        try:
+            with urllib.request.urlopen(req, timeout=90) as response:
+                data = json.load(response)
+            for ref, query, result in zip(refs[start:start+500], batch, data['results']):
+                results.append({'ref': ref, 'query': query, 'vulnerability_ids': [v['id'] for v in result.get('vulns', [])]})
+        except Exception as exc:
+            results.append({'error': str(exc), 'batch_start': start})
+    report = {'queried_at': now, 'source': 'https://api.osv.dev/v1/querybatch', 'scope': 'manifest version matches only; no code reachability analysis; no installed image scan', 'results': results}
+    (OUT / 'osv-manifest-results.json').write_text(json.dumps(report, indent=2) + '\n')
+    affected = [r for r in results if r.get('vulnerability_ids')]
+    print('OSV',len(results),'results;',len(affected),'components with advisories; errors', sum('error' in r for r in results))
+    for row in affected:
+        print(row['ref'], ','.join(row['vulnerability_ids']))

@@ -1,0 +1,10 @@
+{
+  "agent_id": "blue-detection-lab",
+  "initial_strategy": "v1",
+  "cost_unit": "synthetic-case-evaluations",
+  "generations": [],
+  "evaluations": 20,
+  "last_improved_generation": 0,
+  "stopped_at_generation": 1,
+  "stop_reason": "evaluation_budget"
+}

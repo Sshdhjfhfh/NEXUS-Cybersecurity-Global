@@ -1,0 +1,147 @@
+{
+  "base": "21ac386100218b2ab0b8f907e6aa52e9e8906698",
+  "branch": "implementation/nexus-reliability-20261026",
+  "scope": "Implementation only; excludes earlier research documents and load_dir_test.go; preserves earlier LoadDir fix",
+  "files": [
+    {
+      "path": "agents/blue/detectbench/detectbench.go",
+      "status": "modified",
+      "sha256": "6eda27f54e92dfb28e48ee0b1475fca7695d78e0a7fff7a3ffb75fbb21f977c5",
+      "preimage_sha256": "7e03566b38756966eed6218e64e2e3deac353c8491bf0b692157d9e79be96278",
+      "preimage_source": "HEAD"
+    },
+    {
+      "path": "agents/blue/detectbench/detectbench_test.go",
+      "status": "modified",
+      "sha256": "7b6354f657af5e925cc55c9aac2b085e25f3a2ded76021f7c34d20f2f4ca00f4",
+      "preimage_sha256": "71cb6b124aab125058dfb5d353413183a8a73e59eee2d154b3e35a8a49de1075",
+      "preimage_source": "HEAD"
+    },
+    {
+      "path": "agents/blue/sigma/compile.go",
+      "status": "new",
+      "sha256": "d70ec83ecaacf34f4c852a6cd00f191a123893d9dc7ed4894cdfbd9ed32284b9",
+      "preimage_sha256": null,
+      "preimage_source": "new file"
+    },
+    {
+      "path": "agents/blue/sigma/condition.go",
+      "status": "new",
+      "sha256": "b9e2a28528c81d1a833d1555298a98bcf8b35f1fd08bf1cdb0ec28987e715afc",
+      "preimage_sha256": null,
+      "preimage_source": "new file"
+    },
+    {
+      "path": "agents/blue/sigma/match.go",
+      "status": "modified",
+      "sha256": "a0a38135399df101f84df12ddd9c8db1833796aceccc4728ebec908caed67ec3",
+      "preimage_sha256": "75e9a96ade5f22400beb4db63c05f784c796e6e274f2770d02551ea8cb85aa01",
+      "preimage_source": "HEAD"
+    },
+    {
+      "path": "agents/blue/sigma/semantic_test.go",
+      "status": "new",
+      "sha256": "a0a6dd8044dbbd9196152ff952f2178138cf7fd499d9825107de86a24ce92526",
+      "preimage_sha256": null,
+      "preimage_source": "new file"
+    },
+    {
+      "path": "agents/blue/sigma/sigma.go",
+      "status": "modified",
+      "sha256": "72fb4c390c549990f21acf516cf2a3498637c4ac9c911e58f9806b60532d3f98",
+      "preimage_sha256": "e2d7551b6765eeb1fb70127f230da99d31ff8c3160ff96e668ac08c52ec19b3f",
+      "preimage_source": "HEAD with earlier LoadDir research fix retained"
+    },
+    {
+      "path": "agents/blue/telemetry/engine.go",
+      "status": "new",
+      "sha256": "0b2411a4d6dbf12e3cc3a3281fe0ff2ae4d3f660d3df7a2cfb702b2581a95088",
+      "preimage_sha256": null,
+      "preimage_source": "new file"
+    },
+    {
+      "path": "agents/blue/telemetry/engine_test.go",
+      "status": "new",
+      "sha256": "fa42e2084d27fab783321f1761f56b77052afd3bb7a0f5e11ca73776f608d08f",
+      "preimage_sha256": null,
+      "preimage_source": "new file"
+    },
+    {
+      "path": "agents/blue/telemetry/json.go",
+      "status": "new",
+      "sha256": "70cf8b75bda1e3adea5dd432bca5ef5297b30fb63662fe82ea045bb7e65b5bb1",
+      "preimage_sha256": null,
+      "preimage_source": "new file"
+    },
+    {
+      "path": "cmd/nexus-evolve/main.go",
+      "status": "modified",
+      "sha256": "d75462e4c8261940d12a82d0b1d2792e0c0887a270fafeb19134f56e855bd811",
+      "preimage_sha256": "ad96c20b42264f0ba84ced946f2742c11f137b2fd40875e77a3e9cc3ebd7f556",
+      "preimage_source": "HEAD"
+    },
+    {
+      "path": "core/coordinator/coordinator.go",
+      "status": "modified",
+      "sha256": "e9c0b1f34d5548169d512bf3fbcf5f1f76142923edb050f36e3c1bb6e115b18e",
+      "preimage_sha256": "e2faa269e8222c7a19b202d15b367cd69d5739a0505d00c071cb6410a59f0e88",
+      "preimage_source": "HEAD"
+    },
+    {
+      "path": "core/coordinator/coordinator_test.go",
+      "status": "modified",
+      "sha256": "8daab0234a28c011d5adf3e1a06e6c066dd12cd469624d3f30e386956b619752",
+      "preimage_sha256": "fe5781dc1d5cea76e5dcb3723893bac14d0f9babae787a9cb69786fb95214551",
+      "preimage_source": "HEAD"
+    },
+    {
+      "path": "core/subagent/subagent.go",
+      "status": "modified",
+      "sha256": "79186de74a880f0b31366abcc49763ca04e2c157172ab53f31279c3c68e8225e",
+      "preimage_sha256": "c0fe5a7adcadaa9c67914a3d7ba514f5fd0f7c7532c97d10ba054d5a2fa0a111",
+      "preimage_source": "HEAD"
+    },
+    {
+      "path": "core/tool/builtins_test.go",
+      "status": "modified",
+      "sha256": "5f49da35ddce84e61f3740c7cf222900b45211d45a84f7bad444dd6df19bba1d",
+      "preimage_sha256": "393a75537e89665752fc9b7ce8c639c6afc95b291f27f8ca86ddc80803aac251",
+      "preimage_source": "HEAD"
+    },
+    {
+      "path": "evolve/engine.go",
+      "status": "modified",
+      "sha256": "ff5e5251e805ff08aee034dd47aa467cf22af51cb2033db6b6067faa4a73f7ee",
+      "preimage_sha256": "7e996fdb47b900c33d6e959c711a5039f948a2fde87698391501a36b3caabdac",
+      "preimage_source": "HEAD"
+    },
+    {
+      "path": "evolve/experiment.go",
+      "status": "new",
+      "sha256": "8f26e0940647c1fe897f1c6ccd5d2b62d55b866ab3b95be4e0f359bba7ad5cd3",
+      "preimage_sha256": null,
+      "preimage_source": "new file"
+    },
+    {
+      "path": "evolve/experiment_test.go",
+      "status": "new",
+      "sha256": "f2e592f8058a44647a53178618fdd0d77eee6e303a2cd9d9aa4a3cb77615d3e5",
+      "preimage_sha256": null,
+      "preimage_source": "new file"
+    },
+    {
+      "path": "lab/security/integration_test.go",
+      "status": "modified",
+      "sha256": "835885c16d9f1fa0581af6a03b00b60251f8fac6d85f7f14303f188024c6df3d",
+      "preimage_sha256": "70a89c1c2078e8810c7705fc32533b257f0c98e427c7014b2f649a4ffd61ee32",
+      "preimage_source": "HEAD"
+    },
+    {
+      "path": "orchestrator/server/level12_security_test.go",
+      "status": "modified",
+      "sha256": "224f2cae1b266ce67409b490a8c0d63affdefbedc5c07f47768873755047b352",
+      "preimage_sha256": "018f27418183b66d29c5512fa3b178eea53bb4a9f67005b2d45b64a5bd084de2",
+      "preimage_source": "HEAD"
+    }
+  ]
+}

@@ -6,6 +6,7 @@ package coordinator
 
 import (
 	"context"
+	"errors"
 	"iter"
 	"strings"
 	"sync/atomic"
@@ -15,6 +16,37 @@ import (
 	"github.com/nexus-ia/nexus/core/permission"
 	"github.com/nexus-ia/nexus/core/tool"
 )
+
+type startCounter struct{ starts atomic.Int32 }
+
+func (*startCounter) PreToolUse(context.Context, string, []byte) (bool, string, []byte) {
+	return false, "", nil
+}
+func (*startCounter) PostToolUse(context.Context, string, []byte, []byte, bool) {}
+func (*startCounter) Stop(context.Context, []llm.Message) (bool, []string, string) {
+	return false, nil, ""
+}
+func (h *startCounter) FireSubagentStart(context.Context, string) { h.starts.Add(1) }
+
+func TestCancelledCoordinatorDoesNotStartSubagents(t *testing.T) {
+	hooks := &startCounter{}
+	c := &Config{Provider: &echoProvider{}, Hooks: hooks, MaxParallel: 1}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	results := c.RunParallel(ctx, []string{"one", "two", "three"})
+	if hooks.starts.Load() != 0 {
+		t.Fatalf("started %d subagents after cancellation", hooks.starts.Load())
+	}
+	for i, r := range results {
+		if r.Task != []string{"one", "two", "three"}[i] || !errors.Is(r.Err, context.Canceled) {
+			t.Fatalf("cancelled result lost identity/cause: %+v", r)
+		}
+	}
+	res, err := c.AgentTool().Call(ctx, []byte(`{"agent_type":"worker","prompt":"cancelled"}`), &tool.ToolContext{})
+	if err != nil || !res.IsError || hooks.starts.Load() != 0 {
+		t.Fatalf("cancelled direct subagent started: %v %+v", err, res)
+	}
+}
 
 // echoProvider answers each worker with text derived from the task's last user
 // message, so we can verify distinct workers ran.

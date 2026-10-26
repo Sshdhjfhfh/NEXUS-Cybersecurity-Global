@@ -1,0 +1,10 @@
+{
+  "command": "go list -deps ./cmd/nexus ./cmd/nexus-scan",
+  "mode": "default build tags; not symbol reachability or deployed image analysis",
+  "checked": {
+    "github.com/klauspost/compress/s2": false,
+    "golang.org/x/crypto/openpgp": false,
+    "github.com/refraction-networking/utls": false,
+    "github.com/yuin/goldmark": false
+  }
+}

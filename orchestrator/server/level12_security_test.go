@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -61,7 +62,21 @@ func TestLabSecureCompositionWithRealIdentities(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := security.Config{Audit: audit, Directory: authoritative, Identities: currentIdentities, Monitor: monitor, CACertPEM: identities.CACertPEM()}
+	// Preserve the first denial from the real pipeline. Rechecking only the recon
+	// identity after a failure can succeed and obscure a denial in another worker.
+	var firstDenial string
+	var denialMu sync.Mutex
+	recordAudit := func(ctx context.Context, action lab.Action, decision error) error {
+		if decision != nil {
+			denialMu.Lock()
+			if firstDenial == "" {
+				firstDenial = fmt.Sprintf("%s: %v", action.Name, decision)
+			}
+			denialMu.Unlock()
+		}
+		return audit(ctx, action, decision)
+	}
+	cfg := security.Config{Audit: recordAudit, Directory: authoritative, Identities: currentIdentities, Monitor: monitor, CACertPEM: identities.CACertPEM()}
 	scope, err := network.NewScope("10.20.0.0/24")
 	if err != nil {
 		t.Fatal(err)
@@ -129,7 +144,10 @@ func TestLabSecureCompositionWithRealIdentities(t *testing.T) {
 		adapter, _ := security.New(cfg)
 		gate, _ := adapter.Gate(scope)
 		detail := gate.Authorize(t.Context(), lab.Action{AgentID: ids[swarm.Recon], TaskID: fmt.Sprint(taskID), Name: "swarm.recon", Target: "10.20.0.3"})
-		t.Fatalf("secure pipeline: %d %s detail=%v", response.Code, response.Body.String(), detail)
+		denialMu.Lock()
+		denial := firstDenial
+		denialMu.Unlock()
+		t.Fatalf("secure pipeline: %d %s detail=%v first_denial=%s", response.Code, response.Body.String(), detail, denial)
 	}
 	var run level12.Run
 	if err := json.Unmarshal(response.Body.Bytes(), &run); err != nil || len(run.Workers) != 8 {

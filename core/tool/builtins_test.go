@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -248,22 +249,38 @@ func TestProxyLikelyErr(t *testing.T) {
 }
 
 // TestWebFetchProxyFallback proves a proxied fetch that fails for a proxy-caused
-// reason (here: the proxy port is dead → connection refused) retries once directly
-// (no proxy) and reaches the target. A successful fetch is not annotated.
+// reason retries once directly and reaches the target. The proxy closes an
+// accepted connection to produce EOF; an arbitrary fixed "closed" port can be
+// filtered by the host and time out instead of refusing the connection.
 func TestWebFetchProxyFallback(t *testing.T) {
+	var proxyCalls, targetCalls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		targetCalls.Add(1)
 		w.Header().Set("content-type", "text/html")
 		w.Write([]byte(`<html><body><h1>Direct OK</h1></body></html>`))
 	}))
 	defer srv.Close()
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		proxyCalls.Add(1)
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			t.Errorf("hijack proxy connection: %v", err)
+			return
+		}
+		_ = conn.Close()
+	}))
+	defer proxy.Close()
 	raw, _ := json.Marshal(map[string]any{"url": srv.URL})
-	res, err := NewWebFetch(WebFetchConfig{Proxy: "http://127.0.0.1:1"}).Call(context.Background(), raw, &ToolContext{})
+	res, err := NewWebFetch(WebFetchConfig{Proxy: proxy.URL}).Call(context.Background(), raw, &ToolContext{})
 	if err != nil {
 		t.Fatalf("webfetch: %v", err)
 	}
 	out := res.Flatten()
 	if !strings.Contains(out, "Direct OK") {
 		t.Fatalf("direct fallback should have fetched the page: %q", out)
+	}
+	if proxyCalls.Load() != 1 || targetCalls.Load() != 1 {
+		t.Fatalf("expected one failed proxy request and one direct request: proxy=%d target=%d", proxyCalls.Load(), targetCalls.Load())
 	}
 }
 

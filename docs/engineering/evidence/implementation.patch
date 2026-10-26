@@ -1,0 +1,2474 @@
+diff --git a/agents/blue/detectbench/detectbench.go b/agents/blue/detectbench/detectbench.go
+--- a/agents/blue/detectbench/detectbench.go
++++ b/agents/blue/detectbench/detectbench.go
+@@ -1,9 +1,8 @@
+ // Package detectbench provides a deterministic detection benchmark for the
+ // evolve engine. "Generations" are detection rulesets (Sigma); "cases" are
+-// labeled telemetry events (malicious vs benign). It gives the honest,
+-// measurable basis for the claim "the blue agent improved": a new ruleset is
+-// only better if an independent train/holdout score shows it detects more
+-// attacks WITHOUT regressing on benign traffic.
++// labeled synthetic telemetry events. These fixtures verify the mechanics of
++// selection and regression gates; they do not establish real-world detection
++// accuracy, independent population samples or general agent capability.
+ //
+ // It runs no network, no LLM, and executes no generated code — it only scores
+ // rulesets against fixed labeled events, which is exactly what the evolve engine
+@@ -14,6 +13,7 @@
+ 	"context"
+ 	"crypto/sha256"
+ 	"encoding/hex"
++	"encoding/json"
+ 	"fmt"
+ 	"sort"
+ 
+@@ -71,6 +71,7 @@
+ // Bench implements evolve.Benchmark for detection rulesets.
+ type Bench struct {
+ 	rulesets  map[string][]sigma.Rule
++	compiled  map[string][]*sigma.CompiledRule
+ 	cases     []evolve.Case
+ 	events    map[string]sigma.Event
+ 	malicious map[string]bool
+@@ -82,6 +83,16 @@
+ //   - "v2":    improved, also detects exposed .git directories (a real gain).
+ //   - "noisy": overbroad, flags everything (false positives on benign traffic).
+ func New() (*Bench, error) {
++	return NewGeneration(0)
++}
++
++// NewGeneration supplies fresh, deterministic fixture inputs for an isolated
++// generation. Families are still synthetic and related; distinct hashes are
++// not evidence of statistical independence or broad skill transfer.
++func NewGeneration(generation int) (*Bench, error) {
++	if generation < 0 || generation > 1000000 {
++		return nil, fmt.Errorf("invalid fixture generation")
++	}
+ 	parse := func(y string) (sigma.Rule, error) { return sigma.Parse([]byte(y)) }
+ 	php, err := parse(rulePHP)
+ 	if err != nil {
+@@ -111,21 +122,33 @@
+ 	}
+ 
+ 	mk := func(split, kind string, i int) {
+-		id := fmt.Sprintf("%s-%s-%d", split, kind, i)
++		id := fmt.Sprintf("g%d-%s-%s-%d", generation, split, kind, i)
+ 		var ev sigma.Event
+ 		var mal, critical bool
+ 		switch kind {
+ 		case "webshell": // malicious: exposed .php web shell
+-			ev = sigma.Event{"uri": fmt.Sprintf("/uploads/shell%d.php", i)}
++			ev = sigma.Event{"uri": fmt.Sprintf("/uploads/g%d/shell%d.php", generation, i)}
++			if split == evolve.Holdout {
++				ev = sigma.Event{"uri": fmt.Sprintf("/replay/g%d/artifact%d.php", generation, i)}
++			}
+ 			mal = true
+ 		case "gitleak": // malicious: exposed .git directory (v1 misses this)
+-			ev = sigma.Event{"path": fmt.Sprintf("/srv/.git/config%d", i)}
++			ev = sigma.Event{"path": fmt.Sprintf("/srv/g%d/.git/config%d", generation, i)}
++			if split == evolve.Holdout {
++				paths := []string{"HEAD", "logs/HEAD", "refs/heads/main", "objects/info/packs", "info/exclude", "hooks/pre-commit.sample"}
++				ev = sigma.Event{"path": fmt.Sprintf("/replay/g%d/.git/%s", generation, paths[i])}
++			}
+ 			mal = true
+ 		case "benign": // benign: a must-not-alert case (marked Critical)
+-			ev = sigma.Event{"uri": fmt.Sprintf("/index%d.html", i), "path": fmt.Sprintf("/home/u%d", i)}
++			ev = sigma.Event{"uri": fmt.Sprintf("/g%d/index%d.html", generation, i), "path": fmt.Sprintf("/home/g%d/u%d", generation, i)}
++			if split == evolve.Holdout {
++				ev = sigma.Event{"uri": fmt.Sprintf("/g%d/help/%d", generation, i), "path": fmt.Sprintf("/var/g%d/content/%d", generation, i)}
++			}
+ 			critical = true
+ 		}
+-		b.cases = append(b.cases, evolve.Case{ID: id, Group: id, Split: split, Critical: critical})
++		raw, _ := json.Marshal(ev)
++		inputHash := sha256.Sum256(raw)
++		b.cases = append(b.cases, evolve.Case{ID: id, InputDigest: hex.EncodeToString(inputHash[:]), Group: id, Split: split, Critical: critical})
+ 		b.events[id] = ev
+ 		b.malicious[id] = mal
+ 	}
+@@ -142,20 +165,32 @@
+ 		}
+ 	}
+ 
+-	ids := make([]string, 0, len(b.cases))
+-	for _, c := range b.cases {
+-		ids = append(ids, c.ID)
+-	}
+-	sort.Strings(ids)
+-	h := sha256.New()
+-	for _, id := range ids {
+-		fmt.Fprintf(h, "%s=%t;", id, b.malicious[id])
+-	}
+-	b.digest = hex.EncodeToString(h.Sum(nil))
++	b.compiled = map[string][]*sigma.CompiledRule{}
++	for id, rules := range b.rulesets {
++		for _, rule := range rules {
++			c, err := rule.Compile()
++			if err != nil {
++				return nil, err
++			}
++			b.compiled[id] = append(b.compiled[id], c)
++		}
++	}
++	b.digest = b.fingerprint()
+ 	return b, nil
+ }
+ 
+-func (b *Bench) Version() string      { return "detectbench/1" }
++func (b *Bench) fingerprint() string {
++	raw, _ := json.Marshal(struct {
++		Rules  map[string][]sigma.Rule
++		Cases  []evolve.Case
++		Events map[string]sigma.Event
++		Labels map[string]bool
++	}{b.rulesets, b.cases, b.events, b.malicious})
++	hash := sha256.Sum256(raw)
++	return hex.EncodeToString(hash[:])
++}
++
++func (b *Bench) Version() string      { return "detectbench/2" }
+ func (b *Bench) Digest() string       { return b.digest }
+ func (b *Bench) Cases() []evolve.Case { return append([]evolve.Case(nil), b.cases...) }
+ 
+@@ -171,8 +206,11 @@
+ 
+ // Evaluate runs a strategy's ruleset against one case's event and scores it:
+ // a case passes when the ruleset's detection verdict matches the true label.
+-func (b *Bench) Evaluate(_ context.Context, strategyID, caseID string) (evolve.Outcome, error) {
+-	rules, ok := b.rulesets[strategyID]
++func (b *Bench) Evaluate(ctx context.Context, strategyID, caseID string) (evolve.Outcome, error) {
++	if err := ctx.Err(); err != nil {
++		return evolve.Outcome{}, err
++	}
++	rules, ok := b.compiled[strategyID]
+ 	if !ok {
+ 		return evolve.Outcome{}, fmt.Errorf("detectbench: unknown strategy %q", strategyID)
+ 	}
+@@ -182,16 +220,12 @@
+ 	}
+ 	detected := false
+ 	for _, r := range rules {
+-		m, err := r.Match(ev)
+-		if err != nil {
+-			return evolve.Outcome{}, err
+-		}
+-		if m {
++		if r.Match(ev) {
+ 			detected = true
+ 			break
+ 		}
+ 	}
+ 	passed := detected == b.malicious[caseID]
+-	sum := sha256.Sum256([]byte(strategyID + "|" + caseID + "|" + fmt.Sprint(detected)))
++	sum := sha256.Sum256([]byte(b.digest + "|" + strategyID + "|" + caseID + "|" + fmt.Sprint(detected)))
+ 	return evolve.Outcome{Passed: passed, Cost: 1, EvidenceDigest: hex.EncodeToString(sum[:])}, nil
+ }
+diff --git a/agents/blue/detectbench/detectbench_test.go b/agents/blue/detectbench/detectbench_test.go
+--- a/agents/blue/detectbench/detectbench_test.go
++++ b/agents/blue/detectbench/detectbench_test.go
+@@ -7,10 +7,38 @@
+ 	"github.com/nexus-ia/nexus/evolve"
+ )
+ 
++func TestFixturesHaveNoExactReplayAndDigestsCoverContent(t *testing.T) {
++	seen := map[string]bool{}
++	for generation := 0; generation < 3; generation++ {
++		b, err := NewGeneration(generation)
++		if err != nil {
++			t.Fatal(err)
++		}
++		for _, c := range b.Cases() {
++			if len(c.InputDigest) != 64 || seen[c.InputDigest] {
++				t.Fatal("identical input reused across split/generation")
++			}
++			seen[c.InputDigest] = true
++		}
++		prior := b.Digest()
++		id := b.Cases()[0].ID
++		b.events[id]["independent-evidence"] = "changed"
++		if b.fingerprint() == prior {
++			t.Fatal("digest omits event input")
++		}
++		delete(b.events[id], "independent-evidence")
++		b.rulesets["v1"][0].Description = "changed"
++		if b.fingerprint() == prior {
++			t.Fatal("digest omits rule contents")
++		}
++	}
++}
++
+ // TestVerifiedImprovementPromoted shows the honest evolution loop: a ruleset
+ // (v2) that genuinely detects more attacks than the incumbent (v1), without
+ // regressing on benign traffic, is promoted — and only after passing an
+-// independent holdout split with statistical significance.
++// held-out synthetic fixture split with the configured statistical gate. The
++// synthetic families themselves are not independent population measurements.
+ func TestVerifiedImprovementPromoted(t *testing.T) {
+ 	b, err := New()
+ 	if err != nil {
+diff --git a/agents/blue/sigma/compile.go b/agents/blue/sigma/compile.go
+new file mode 100644
+--- /dev/null
++++ b/agents/blue/sigma/compile.go
+@@ -0,0 +1,358 @@
++// Original NEXUS code implementing a bounded subset of the public Sigma format.
++// No third-party detection-rule content is bundled.
++package sigma
++
++import (
++	"encoding/json"
++	"fmt"
++	"math"
++	"regexp"
++	"sort"
++	"strconv"
++	"strings"
++)
++
++const (
++	MaxRuleBytes  = 1 << 20
++	maxSelections = 256
++	maxDepth      = 32
++	maxValues     = 256
++)
++
++type eventTest func(Event) bool
++type matchBits [maxSelections / 64]uint64
++
++func (v matchBits) has(index int) bool { return v[index/64]&(uint64(1)<<uint(index%64)) != 0 }
++
++type condition func(matchBits) bool
++
++// CompiledRule owns all predicates. It retains no mutable Rule maps and can be
++// reused concurrently. The caller must route telemetry by logsource first.
++type CompiledRule struct {
++	selections []eventTest
++	condition  condition
++}
++
++func (r *CompiledRule) Match(ev Event) bool {
++	if r == nil || r.condition == nil {
++		return false
++	}
++	var matches matchBits
++	for i, selection := range r.selections {
++		if selection(ev) {
++			matches[i/64] |= uint64(1) << uint(i%64)
++		}
++	}
++	return r.condition(matches)
++}
++
++var selectionName = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
++
++// Compile rejects unsupported semantics before scoring any events.
++func (r Rule) Compile() (*CompiledRule, error) {
++	if r.Title == "" || len(r.Detection) < 2 || len(r.Detection) > maxSelections+1 {
++		return nil, fmt.Errorf("sigma: title and 1..%d selections required", maxSelections)
++	}
++	expression, err := r.Condition()
++	if err != nil {
++		return nil, err
++	}
++	names := make([]string, 0, len(r.Detection)-1)
++	for name := range r.Detection {
++		if name == "condition" {
++			continue
++		}
++		if !selectionName.MatchString(name) || name == "timeframe" || name == "and" || name == "or" || name == "not" || name == "of" {
++			return nil, fmt.Errorf("sigma: unsupported selection %q", name)
++		}
++		names = append(names, name)
++	}
++	sort.Strings(names)
++	c := &CompiledRule{}
++	indices := map[string]int{}
++	for _, name := range names {
++		predicate, err := compileSelection(r.Detection[name], 0)
++		if err != nil {
++			return nil, fmt.Errorf("sigma rule %q selection %q: %w", r.Title, name, err)
++		}
++		indices[name] = len(c.selections)
++		c.selections = append(c.selections, predicate)
++	}
++	c.condition, err = compileCondition(expression, indices, names)
++	if err != nil {
++		return nil, fmt.Errorf("sigma rule %q: %w", r.Title, err)
++	}
++	return c, nil
++}
++
++func compileSelection(spec any, depth int) (eventTest, error) {
++	if depth > maxDepth {
++		return nil, fmt.Errorf("selection nesting limit exceeded")
++	}
++	switch v := spec.(type) {
++	case map[string]any:
++		if len(v) == 0 || len(v) > maxValues {
++			return nil, fmt.Errorf("invalid field count")
++		}
++		keys := make([]string, 0, len(v))
++		for k := range v {
++			keys = append(keys, k)
++		}
++		sort.Strings(keys)
++		predicates := make([]eventTest, 0, len(keys))
++		for _, k := range keys {
++			p, err := compileField(k, v[k])
++			if err != nil {
++				return nil, err
++			}
++			predicates = append(predicates, p)
++		}
++		return func(e Event) bool {
++			for _, p := range predicates {
++				if !p(e) {
++					return false
++				}
++			}
++			return true
++		}, nil
++	case []any:
++		if len(v) == 0 || len(v) > maxValues {
++			return nil, fmt.Errorf("invalid selection list size")
++		}
++		predicates := make([]eventTest, 0, len(v))
++		for _, item := range v {
++			p, err := compileSelection(item, depth+1)
++			if err != nil {
++				return nil, err
++			}
++			predicates = append(predicates, p)
++		}
++		return func(e Event) bool {
++			for _, p := range predicates {
++				if p(e) {
++					return true
++				}
++			}
++			return false
++		}, nil
++	case string:
++		p, err := compilePattern(v, "contains", false, "")
++		if err != nil {
++			return nil, err
++		}
++		return func(e Event) bool {
++			for _, item := range e {
++				if matchEventValue(item, p) {
++					return true
++				}
++			}
++			return false
++		}, nil
++	default:
++		return nil, fmt.Errorf("unsupported selection type %T", spec)
++	}
++}
++
++func scalar(v any) (string, bool) {
++	switch n := v.(type) {
++	case string:
++		return n, true
++	case bool, int, int64, uint64:
++		return fmt.Sprint(n), true
++	case json.Number:
++		if i, err := n.Int64(); err == nil {
++			return strconv.FormatInt(i, 10), true
++		}
++		if !strings.ContainsAny(string(n), ".eE") {
++			u, err := strconv.ParseUint(string(n), 10, 64)
++			return strconv.FormatUint(u, 10), err == nil
++		}
++		f, err := n.Float64()
++		return strconv.FormatFloat(f, 'g', -1, 64), err == nil && !math.IsNaN(f) && !math.IsInf(f, 0)
++	case float64:
++		return strconv.FormatFloat(n, 'g', -1, 64), !math.IsNaN(n) && !math.IsInf(n, 0)
++	default:
++		return "", false
++	}
++}
++
++func matchEventValue(v any, p func(string) bool) bool {
++	switch n := v.(type) {
++	case []any:
++		for _, item := range n {
++			if s, ok := scalar(item); ok && p(s) {
++				return true
++			}
++		}
++	case []string:
++		for _, s := range n {
++			if p(s) {
++				return true
++			}
++		}
++	default:
++		if s, ok := scalar(v); ok {
++			return p(s)
++		}
++	}
++	return false
++}
++
++func compileField(key string, v any) (eventTest, error) {
++	parts := strings.Split(key, "|")
++	field := parts[0]
++	if field == "" || len(parts) > 8 {
++		return nil, fmt.Errorf("invalid field %q", key)
++	}
++	mode, flags, all, cased := "equals", "", false, false
++	seen := map[string]bool{}
++	for _, m := range parts[1:] {
++		if seen[m] {
++			return nil, fmt.Errorf("duplicate modifier %q", m)
++		}
++		seen[m] = true
++		switch m {
++		case "contains", "startswith", "endswith", "re", "exists":
++			if mode != "equals" {
++				return nil, fmt.Errorf("conflicting modifiers in %q", key)
++			}
++			mode = m
++		case "all":
++			all = true
++		case "cased":
++			cased = true
++		case "i", "m", "s":
++			if mode != "re" {
++				return nil, fmt.Errorf("regex flag without re in %q", key)
++			}
++			flags += m
++		default:
++			return nil, fmt.Errorf("unsupported modifier %q", m)
++		}
++	}
++	if mode == "exists" {
++		want, ok := v.(bool)
++		if !ok || len(parts) != 2 {
++			return nil, fmt.Errorf("exists requires a boolean and no other modifiers")
++		}
++		return func(e Event) bool { _, ok := e[field]; return ok == want }, nil
++	}
++	if v == nil {
++		if len(parts) != 1 {
++			return nil, fmt.Errorf("null does not support modifiers")
++		}
++		return func(e Event) bool { v, ok := e[field]; return !ok || v == nil }, nil
++	}
++	values, isList := v.([]any)
++	if all && (!isList || len(values) < 2) {
++		return nil, fmt.Errorf("all requires a list of at least two values")
++	}
++	if !isList {
++		values = []any{v}
++	}
++	if len(values) == 0 || len(values) > maxValues {
++		return nil, fmt.Errorf("invalid value count for %q", field)
++	}
++	predicates := make([]func(string) bool, 0, len(values))
++	for _, item := range values {
++		text, ok := scalar(item)
++		if !ok {
++			return nil, fmt.Errorf("unsupported field value %T", item)
++		}
++		p, err := compilePattern(text, mode, cased, flags)
++		if err != nil {
++			return nil, fmt.Errorf("field %q: %w", field, err)
++		}
++		predicates = append(predicates, p)
++	}
++	return func(e Event) bool {
++		v, exists := e[field]
++		if !exists || v == nil {
++			return false
++		}
++		for _, p := range predicates {
++			matched := matchEventValue(v, p)
++			if all && !matched {
++				return false
++			}
++			if !all && matched {
++				return true
++			}
++		}
++		return all
++	}, nil
++}
++
++func compilePattern(pattern, mode string, cased bool, flags string) (func(string) bool, error) {
++	if len(pattern) > 8192 {
++		return nil, fmt.Errorf("pattern size limit exceeded")
++	}
++	if mode == "re" {
++		if cased {
++			return nil, fmt.Errorf("cased is not a regex modifier")
++		}
++		if flags != "" {
++			pattern = "(?" + flags + ")" + pattern
++		}
++		re, err := regexp.Compile(pattern)
++		if err != nil {
++			return nil, fmt.Errorf("unsupported or invalid regular expression: %w", err)
++		}
++		return re.MatchString, nil
++	}
++	if !strings.ContainsAny(pattern, `*?\`) {
++		if !cased {
++			pattern = strings.ToLower(pattern)
++		}
++		return func(v string) bool {
++			if !cased {
++				v = strings.ToLower(v)
++			}
++			switch mode {
++			case "contains":
++				return strings.Contains(v, pattern)
++			case "startswith":
++				return strings.HasPrefix(v, pattern)
++			case "endswith":
++				return strings.HasSuffix(v, pattern)
++			default:
++				return v == pattern
++			}
++		}, nil
++	}
++	var expression strings.Builder
++	if cased {
++		expression.WriteString("(?s)")
++	} else {
++		expression.WriteString("(?is)")
++	}
++	if mode != "contains" && mode != "endswith" {
++		expression.WriteString("^")
++	}
++	chars := []rune(pattern)
++	for i := 0; i < len(chars); i++ {
++		switch chars[i] {
++		case '\\':
++			if i+1 < len(chars) && strings.ContainsRune(`\*?`, chars[i+1]) {
++				i++
++				expression.WriteString(regexp.QuoteMeta(string(chars[i])))
++			} else {
++				expression.WriteString(`\\`)
++			}
++		case '*':
++			expression.WriteString(".*")
++		case '?':
++			expression.WriteString(".")
++		default:
++			expression.WriteString(regexp.QuoteMeta(string(chars[i])))
++		}
++	}
++	if mode != "contains" && mode != "startswith" {
++		expression.WriteString("$")
++	}
++	re, err := regexp.Compile(expression.String())
++	if err != nil {
++		return nil, err
++	}
++	return re.MatchString, nil
++}
+diff --git a/agents/blue/sigma/condition.go b/agents/blue/sigma/condition.go
+new file mode 100644
+--- /dev/null
++++ b/agents/blue/sigma/condition.go
+@@ -0,0 +1,144 @@
++package sigma
++
++import (
++	"fmt"
++	"strconv"
++	"strings"
++)
++
++type conditionCompiler struct {
++	tokens  []string
++	pos     int
++	indices map[string]int
++	names   []string
++	err     error
++}
++
++func compileCondition(text string, indices map[string]int, names []string) (condition, error) {
++	if len(text) > 16384 {
++		return nil, fmt.Errorf("condition size limit exceeded")
++	}
++	tokens := strings.Fields(strings.NewReplacer("(", " ( ", ")", " ) ").Replace(text))
++	if len(tokens) == 0 || len(tokens) > 1024 {
++		return nil, fmt.Errorf("invalid condition token count")
++	}
++	p := &conditionCompiler{tokens: tokens, indices: indices, names: names}
++	result := p.parseOr(0)
++	if p.err != nil {
++		return nil, p.err
++	}
++	if p.pos != len(tokens) {
++		return nil, fmt.Errorf("unexpected condition token %q", p.peek())
++	}
++	return result, nil
++}
++
++func (p *conditionCompiler) peek() string {
++	if p.pos >= len(p.tokens) {
++		return ""
++	}
++	return p.tokens[p.pos]
++}
++func (p *conditionCompiler) next() string { token := p.peek(); p.pos++; return token }
++
++func (p *conditionCompiler) parseOr(depth int) condition {
++	left := p.parseAnd(depth)
++	for strings.EqualFold(p.peek(), "or") {
++		p.next()
++		right := p.parseAnd(depth)
++		previous := left
++		left = func(v matchBits) bool { return previous(v) || right(v) }
++	}
++	return left
++}
++
++func (p *conditionCompiler) parseAnd(depth int) condition {
++	left := p.parseUnary(depth)
++	for strings.EqualFold(p.peek(), "and") {
++		p.next()
++		right := p.parseUnary(depth)
++		previous := left
++		left = func(v matchBits) bool { return previous(v) && right(v) }
++	}
++	return left
++}
++
++func (p *conditionCompiler) fail(format string, args ...any) condition {
++	if p.err == nil {
++		p.err = fmt.Errorf(format, args...)
++	}
++	return func(matchBits) bool { return false }
++}
++
++func (p *conditionCompiler) parseUnary(depth int) condition {
++	if depth > maxDepth {
++		return p.fail("condition nesting limit exceeded")
++	}
++	if strings.EqualFold(p.peek(), "not") {
++		p.next()
++		child := p.parseUnary(depth + 1)
++		return func(v matchBits) bool { return !child(v) }
++	}
++	token := p.next()
++	if token == "(" {
++		child := p.parseOr(depth + 1)
++		if p.peek() != ")" {
++			return p.fail("missing closing parenthesis")
++		}
++		p.next()
++		return child
++	}
++	if strings.EqualFold(p.peek(), "of") {
++		p.next()
++		pattern := p.next()
++		needed, err := strconv.Atoi(token)
++		quantifier := strings.ToLower(token)
++		if quantifier != "all" && quantifier != "any" && (err != nil || needed < 1) {
++			return p.fail("invalid selection count %q", token)
++		}
++		var matched []int
++		if strings.EqualFold(pattern, "them") {
++			for _, name := range p.names {
++				if !strings.HasPrefix(name, "_") {
++					matched = append(matched, p.indices[name])
++				}
++			}
++		} else {
++			match, err := compilePattern(pattern, "equals", true, "")
++			if err != nil || pattern == "" {
++				return p.fail("invalid selection pattern")
++			}
++			for _, name := range p.names {
++				if match(name) {
++					matched = append(matched, p.indices[name])
++				}
++			}
++		}
++		if len(matched) == 0 {
++			return p.fail("selection pattern %q matches no selections", pattern)
++		}
++		if quantifier == "all" {
++			needed = len(matched)
++		}
++		if quantifier == "any" {
++			needed = 1
++		}
++		return func(v matchBits) bool {
++			count := 0
++			for _, index := range matched {
++				if v.has(index) {
++					count++
++				}
++				if count >= needed {
++					return true
++				}
++			}
++			return false
++		}
++	}
++	index, exists := p.indices[token]
++	if !exists {
++		return p.fail("unknown selection %q", token)
++	}
++	return func(v matchBits) bool { return v.has(index) }
++}
+diff --git a/agents/blue/sigma/match.go b/agents/blue/sigma/match.go
+--- a/agents/blue/sigma/match.go
++++ b/agents/blue/sigma/match.go
+@@ -1,261 +1,14 @@
+ package sigma
+ 
+-import (
+-	"fmt"
+-	"regexp"
+-	"strings"
+-)
+-
+-// Event is a normalized telemetry record: field name -> value. Values are
+-// compared as their string form, case-insensitively (pragmatic default).
++// Event is a flat telemetry record. Field names are case-sensitive; ordinary
++// values are case-insensitive, while regexes preserve case and escape semantics.
+ type Event map[string]any
+ 
+-// Match reports whether the event satisfies the rule's detection and condition.
++// Match validates and evaluates a rule. For streams, Compile once and reuse it.
+ func (r Rule) Match(ev Event) (bool, error) {
+-	cond, err := r.Condition()
++	c, err := r.Compile()
+ 	if err != nil {
+ 		return false, err
+ 	}
+-	sel := map[string]bool{}
+-	names := make([]string, 0, len(r.Detection))
+-	for name, spec := range r.Detection {
+-		if name == "condition" {
+-			continue
+-		}
+-		sel[name] = evalSelection(spec, ev)
+-		names = append(names, name)
+-	}
+-	return evalCondition(cond, sel, names)
++	return c.Match(ev), nil
+ }
+-
+-// evalSelection evaluates one selection block against the event.
+-//   - map   -> every field condition must hold (AND)
+-//   - list  -> any sub-selection may hold (OR)
+-//   - string-> keyword: any field value contains it
+-func evalSelection(spec any, ev Event) bool {
+-	switch v := spec.(type) {
+-	case map[string]any:
+-		if len(v) == 0 {
+-			return false
+-		}
+-		for key, want := range v {
+-			if !matchField(key, want, ev) {
+-				return false
+-			}
+-		}
+-		return true
+-	case []any:
+-		for _, item := range v {
+-			if evalSelection(item, ev) {
+-				return true
+-			}
+-		}
+-		return false
+-	case string:
+-		return anyFieldContains(ev, v)
+-	default:
+-		return false
+-	}
+-}
+-
+-// matchField applies a "field|modifiers" condition to the event.
+-func matchField(key string, want any, ev Event) bool {
+-	parts := strings.Split(key, "|")
+-	field := parts[0]
+-	raw, ok := ev[field]
+-	if !ok {
+-		return false
+-	}
+-	got := strings.ToLower(toStr(raw))
+-
+-	cmp := "equals"
+-	requireAll := false
+-	for _, m := range parts[1:] {
+-		switch strings.ToLower(m) {
+-		case "contains", "startswith", "endswith", "re":
+-			cmp = strings.ToLower(m)
+-		case "all":
+-			requireAll = true
+-		}
+-	}
+-
+-	test := func(w string) bool {
+-		w = strings.ToLower(w)
+-		switch cmp {
+-		case "contains":
+-			return strings.Contains(got, w)
+-		case "startswith":
+-			return strings.HasPrefix(got, w)
+-		case "endswith":
+-			return strings.HasSuffix(got, w)
+-		case "re":
+-			re, err := regexp.Compile(w)
+-			return err == nil && re.MatchString(got)
+-		default:
+-			return got == w
+-		}
+-	}
+-
+-	wants := toStrings(want)
+-	if requireAll {
+-		for _, w := range wants {
+-			if !test(w) {
+-				return false
+-			}
+-		}
+-		return true
+-	}
+-	for _, w := range wants {
+-		if test(w) {
+-			return true
+-		}
+-	}
+-	return false
+-}
+-
+-func anyFieldContains(ev Event, sub string) bool {
+-	sub = strings.ToLower(sub)
+-	for _, v := range ev {
+-		if strings.Contains(strings.ToLower(toStr(v)), sub) {
+-			return true
+-		}
+-	}
+-	return false
+-}
+-
+-func toStr(v any) string { return fmt.Sprintf("%v", v) }
+-
+-func toStrings(v any) []string {
+-	if list, ok := v.([]any); ok {
+-		out := make([]string, 0, len(list))
+-		for _, e := range list {
+-			out = append(out, toStr(e))
+-		}
+-		return out
+-	}
+-	return []string{toStr(v)}
+-}
+-
+-// ---- condition expression ----
+-
+-var ofExpr = regexp.MustCompile(`(?i)(all|any|\d+)\s+of\s+([a-zA-Z0-9_*]+|them)`)
+-
+-// expandOf rewrites "all of them", "N of them", "all of pre*", "1 of pre*" into
+-// parenthesized and/or expressions over the concrete selection names. Numeric
+-// "N of" is approximated as "at least one" (OR) in this first increment.
+-func expandOf(cond string, names []string) string {
+-	return ofExpr.ReplaceAllStringFunc(cond, func(m string) string {
+-		g := ofExpr.FindStringSubmatch(m)
+-		quant := strings.ToLower(g[1])
+-		target := g[2]
+-		var matched []string
+-		switch {
+-		case strings.EqualFold(target, "them"):
+-			matched = names
+-		case strings.HasSuffix(target, "*"):
+-			pre := strings.TrimSuffix(target, "*")
+-			for _, n := range names {
+-				if strings.HasPrefix(n, pre) {
+-					matched = append(matched, n)
+-				}
+-			}
+-		default:
+-			matched = []string{target}
+-		}
+-		if len(matched) == 0 {
+-			if quant == "all" {
+-				return "true"
+-			}
+-			return "false"
+-		}
+-		op := " or "
+-		if quant == "all" {
+-			op = " and "
+-		}
+-		return "( " + strings.Join(matched, op) + " )"
+-	})
+-}
+-
+-func evalCondition(cond string, sel map[string]bool, names []string) (bool, error) {
+-	toks := tokenize(expandOf(strings.TrimSpace(cond), names))
+-	p := &condParser{toks: toks, sel: sel}
+-	v := p.parseOr()
+-	if p.err != nil {
+-		return false, p.err
+-	}
+-	if p.pos != len(p.toks) {
+-		return false, fmt.Errorf("unexpected token %q in condition", p.peek())
+-	}
+-	return v, nil
+-}
+-
+-func tokenize(s string) []string {
+-	s = strings.ReplaceAll(s, "(", " ( ")
+-	s = strings.ReplaceAll(s, ")", " ) ")
+-	return strings.Fields(s)
+-}
+-
+-type condParser struct {
+-	toks []string
+-	pos  int
+-	sel  map[string]bool
+-	err  error
+-}
+-
+-func (p *condParser) peek() string {
+-	if p.pos < len(p.toks) {
+-		return p.toks[p.pos]
+-	}
+-	return ""
+-}
+-func (p *condParser) next() string {
+-	t := p.peek()
+-	p.pos++
+-	return t
+-}
+-
+-func (p *condParser) parseOr() bool {
+-	v := p.parseAnd()
+-	for strings.EqualFold(p.peek(), "or") {
+-		p.next()
+-		v = p.parseAnd() || v
+-	}
+-	return v
+-}
+-func (p *condParser) parseAnd() bool {
+-	v := p.parseNot()
+-	for strings.EqualFold(p.peek(), "and") {
+-		p.next()
+-		v = p.parseNot() && v
+-	}
+-	return v
+-}
+-func (p *condParser) parseNot() bool {
+-	if strings.EqualFold(p.peek(), "not") {
+-		p.next()
+-		return !p.parseNot()
+-	}
+-	return p.parseAtom()
+-}
+-func (p *condParser) parseAtom() bool {
+-	t := p.next()
+-	switch {
+-	case t == "(":
+-		v := p.parseOr()
+-		if p.peek() == ")" {
+-			p.next()
+-		} else if p.err == nil {
+-			p.err = fmt.Errorf("missing closing parenthesis")
+-		}
+-		return v
+-	case t == "true":
+-		return true
+-	case t == "false":
+-		return false
+-	case t == "":
+-		p.err = fmt.Errorf("unexpected end of condition")
+-		return false
+-	default:
+-		return p.sel[t]
+-	}
+-}
+diff --git a/agents/blue/sigma/semantic_test.go b/agents/blue/sigma/semantic_test.go
+new file mode 100644
+--- /dev/null
++++ b/agents/blue/sigma/semantic_test.go
+@@ -0,0 +1,186 @@
++package sigma
++
++import (
++	"fmt"
++	"strings"
++	"sync"
++	"testing"
++)
++
++// Original fixtures derived from the public Sigma semantic contract, not from
++// third-party rule content. Expected verdicts are authored independently.
++func TestCountConditionTruthTable(t *testing.T) {
++	r := mustParse(t, "title: count\ndetection:\n  one:\n    a: yes\n  two:\n    b: yes\n  three:\n    c: yes\n  condition: 2 of them\n")
++	for mask := 0; mask < 8; mask++ {
++		ev := Event{}
++		count := 0
++		for bit, name := range []string{"a", "b", "c"} {
++			if mask&(1<<bit) != 0 {
++				ev[name] = "yes"
++				count++
++			}
++		}
++		if got := mustMatch(t, r, ev); got != (count >= 2) {
++			t.Errorf("mask %03b: got %t, want %t", mask, got, count >= 2)
++		}
++	}
++}
++
++func TestUnsupportedRulesAreRejected(t *testing.T) {
++	for name, detection := range map[string]string{
++		"modifier":              "  sel:\n    path|base64: data\n  condition: sel\n",
++		"unknown selection":     "  sel:\n    path: data\n  condition: missing\n",
++		"empty wildcard":        "  sel:\n    path: data\n  condition: all of missing*\n",
++		"invalid regex":         "  sel:\n    path|re: '[broken'\n  condition: sel\n",
++		"timeframe":             "  sel:\n    path: data\n  timeframe: 1m\n  condition: sel\n",
++		"empty values":          "  sel:\n    path|all: []\n  condition: sel\n",
++		"all scalar":            "  sel:\n    path|all: data\n  condition: sel\n",
++		"all singleton":         "  sel:\n    path|all: [data]\n  condition: sel\n",
++		"conflicting modifiers": "  sel:\n    path|contains|endswith: data\n  condition: sel\n",
++		"trailing document":     "  sel:\n    path: data\n  condition: sel\n---\ntitle: ignored\n",
++	} {
++		t.Run(name, func(t *testing.T) {
++			if _, err := Parse([]byte("title: invalid\ndetection:\n" + detection)); err == nil {
++				t.Fatal("unsupported semantics accepted without an error")
++			}
++		})
++	}
++}
++
++func TestAllModifierRequiresEveryValue(t *testing.T) {
++	r := mustParse(t, "title: all values\ndetection:\n  sel:\n    path|contains|all: [admin, report]\n  condition: sel\n")
++	for path, want := range map[string]bool{"/admin/report": true, "/ADMIN/REPORT": true, "/admin/index": false, "/public/report": false, "/public/index": false} {
++		if got := mustMatch(t, r, Event{"path": path}); got != want {
++			t.Errorf("path %q: got %v, want %v", path, got, want)
++		}
++	}
++}
++
++func TestRegexPreservesCaseAndEscapes(t *testing.T) {
++	r := mustParse(t, "title: regex\ndetection:\n  sel:\n    path|re: '^/ADMIN/\\D+$'\n  condition: sel\n")
++	for _, tc := range []struct {
++		path string
++		want bool
++	}{{"/ADMIN/abc", true}, {"/admin/abc", false}, {"/ADMIN/123", false}} {
++		if got := mustMatch(t, r, Event{"path": tc.path}); got != tc.want {
++			t.Errorf("path %q: got %t, want %t", tc.path, got, tc.want)
++		}
++	}
++}
++
++func TestWildcardAndMissingFieldSemantics(t *testing.T) {
++	for _, tc := range []struct {
++		field string
++		value string
++		event Event
++		want  bool
++	}{
++		{"path", "'/ADMIN/*.php'", Event{"path": "/admin/report.php"}, true},
++		{"path", "'/ADMIN/?.php'", Event{"path": "/ADMIN/ab.php"}, false},
++		{"path", "'/literal/\\*.txt'", Event{"path": "/literal/*.txt"}, true},
++		{"path", "null", Event{}, true},
++		{"path", "null", Event{"path": "null"}, false},
++		{"path|exists", "false", Event{}, true},
++		{"path|exists", "false", Event{"path": ""}, false},
++	} {
++		r := mustParse(t, fmt.Sprintf("title: field\ndetection:\n  sel:\n    %s: %s\n  condition: sel\n", tc.field, tc.value))
++		if got := mustMatch(t, r, tc.event); got != tc.want {
++			t.Errorf("%s %s, event=%v: got %t, want %t", tc.field, tc.value, tc.event, got, tc.want)
++		}
++	}
++}
++
++func BenchmarkSigmaMatch(b *testing.B) {
++	r, err := Parse([]byte(ruleAndContains))
++	if err != nil {
++		b.Fatal(err)
++	}
++	ev := Event{"uri": "/webdav/update.exe"}
++	b.ReportAllocs()
++	b.ResetTimer()
++	for b.Loop() {
++		if matched, err := r.Match(ev); err != nil || !matched {
++			b.Fatal(matched, err)
++		}
++	}
++}
++
++func BenchmarkSigmaCompiledMatch(b *testing.B) {
++	r, err := Parse([]byte(ruleAndContains))
++	if err != nil {
++		b.Fatal(err)
++	}
++	c, err := r.Compile()
++	if err != nil {
++		b.Fatal(err)
++	}
++	ev := Event{"uri": "/webdav/update.exe"}
++	b.ReportAllocs()
++	b.ResetTimer()
++	for b.Loop() {
++		if !c.Match(ev) {
++			b.Fatal("missed positive event")
++		}
++	}
++}
++
++func TestCompiledRuleOwnsPredicatesAndIsConcurrent(t *testing.T) {
++	r := mustParse(t, ruleAndContains)
++	c, err := r.Compile()
++	if err != nil {
++		t.Fatal(err)
++	}
++	r.Detection["sel_webdav"].(map[string]any)["uri|contains"] = "changed"
++	r.Detection["condition"] = "invalid"
++	var wg sync.WaitGroup
++	for i := 0; i < 16; i++ {
++		wg.Add(1)
++		go func() {
++			defer wg.Done()
++			for j := 0; j < 100; j++ {
++				if !c.Match(Event{"uri": "/webdav/update.exe"}) || c.Match(Event{"uri": "/public/readme.txt"}) {
++					t.Error("compiled rule changed or misclassified")
++				}
++			}
++		}()
++	}
++	wg.Wait()
++}
++
++func TestConditionPatternsPrecedenceAndHiddenSelections(t *testing.T) {
++	r := mustParse(t, "title: conditions\ndetection:\n  _helper:\n    x: hidden\n  select_a_end:\n    x: a\n  select_b_end:\n    x: b\n  filter:\n    ignored: true\n  condition: (1 of select*_end and not filter) or all of them\n")
++	for _, tc := range []struct {
++		e    Event
++		want bool
++	}{
++		{Event{"x": "a"}, true}, {Event{"x": "b", "ignored": true}, false}, {Event{"x": "hidden"}, false},
++	} {
++		if got := mustMatch(t, r, tc.e); got != tc.want {
++			t.Errorf("%v: %t != %t", tc.e, got, tc.want)
++		}
++	}
++	_, err := Parse([]byte("title: bound\ndetection:\n  s:\n    a: b\n  condition: " + strings.Repeat("not ", maxDepth+2) + "s\n"))
++	if err == nil {
++		t.Fatal("unbounded condition nesting accepted")
++	}
++}
++
++func FuzzParseAndCompile(f *testing.F) {
++	for _, s := range []string{ruleAndContains, ruleOneOfThem, ruleNot, "title: broken\ndetection: ["} {
++		f.Add(s)
++	}
++	f.Fuzz(func(t *testing.T, s string) {
++		if len(s) > MaxRuleBytes {
++			return
++		}
++		r, err := Parse([]byte(s))
++		if err != nil {
++			return
++		}
++		c, err := r.Compile()
++		if err != nil {
++			t.Fatalf("parsed rule cannot compile: %v", err)
++		}
++		_ = c.Match(Event{"uri": "/benign", "status": 200})
++	})
++}
+diff --git a/agents/blue/sigma/sigma.go b/agents/blue/sigma/sigma.go
+--- a/agents/blue/sigma/sigma.go
++++ b/agents/blue/sigma/sigma.go
+@@ -7,15 +7,16 @@
+ // file alongside them. This package contains only original NEXUS code; it loads
+ // rules from a directory you supply, so no third-party rule content is embedded.
+ //
+-// Supported today: single-document rules with named selections (field maps and
+-// lists), the modifiers contains/startswith/endswith/re/all, list values (OR),
+-// and conditions using and/or/not/parentheses plus "all of"/"N of" them/prefix*.
+-// Advanced features (correlation, timeframe, numeric "N of" counting, near) are
+-// intentionally out of scope for this first increment.
++// Supported: single-document rules, field maps/lists, wildcards, null, exists,
++// contains/startswith/endswith/re/all/cased, regex flags i/m/s, and boolean/count
++// conditions. Unsupported features (including timeframe and correlation) fail
++// validation explicitly rather than approximating their meaning.
+ package sigma
+ 
+ import (
++	"bytes"
+ 	"fmt"
++	"io"
+ 	"io/fs"
+ 	"os"
+ 	"path/filepath"
+@@ -26,9 +27,9 @@
+ 
+ // LogSource identifies the telemetry a rule applies to.
+ type LogSource struct {
+-	Product  string `yaml:"product"`
+-	Service  string `yaml:"service"`
+-	Category string `yaml:"category"`
++	Product  string `yaml:"product" json:"product,omitempty"`
++	Service  string `yaml:"service" json:"service,omitempty"`
++	Category string `yaml:"category" json:"category,omitempty"`
+ }
+ 
+ // Rule is a parsed Sigma detection rule.
+@@ -38,6 +39,8 @@
+ 	Status      string         `yaml:"status"`
+ 	Description string         `yaml:"description"`
+ 	Author      string         `yaml:"author"`
++	License     string         `yaml:"license"`
++	References  []string       `yaml:"references"`
+ 	Level       string         `yaml:"level"`
+ 	Tags        []string       `yaml:"tags"`
+ 	LogSource   LogSource      `yaml:"logsource"`
+@@ -59,14 +62,22 @@
+ 
+ // Parse decodes a single Sigma rule from YAML.
+ func Parse(data []byte) (Rule, error) {
++	if len(data) > MaxRuleBytes {
++		return Rule{}, fmt.Errorf("sigma rule size limit exceeded")
++	}
+ 	var r Rule
+-	if err := yaml.Unmarshal(data, &r); err != nil {
++	decoder := yaml.NewDecoder(bytes.NewReader(data))
++	if err := decoder.Decode(&r); err != nil {
+ 		return Rule{}, err
+ 	}
+ 	if r.Title == "" || r.Detection == nil {
+ 		return Rule{}, fmt.Errorf("invalid sigma rule: missing title or detection")
+ 	}
+-	if _, err := r.Condition(); err != nil {
++	var extra any
++	if err := decoder.Decode(&extra); err != io.EOF {
++		return Rule{}, fmt.Errorf("sigma requires exactly one YAML document")
++	}
++	if _, err := r.Compile(); err != nil {
+ 		return Rule{}, err
+ 	}
+ 	return r, nil
+diff --git a/agents/blue/telemetry/engine.go b/agents/blue/telemetry/engine.go
+new file mode 100644
+--- /dev/null
++++ b/agents/blue/telemetry/engine.go
+@@ -0,0 +1,312 @@
++// Package telemetry provides original NEXUS passive event normalization,
++// source-routed Sigma detection and bounded temporal alert aggregation.
++// It never opens a target connection or applies containment actions.
++package telemetry
++
++import (
++	"bytes"
++	"context"
++	"crypto/sha256"
++	"encoding/hex"
++	"encoding/json"
++	"fmt"
++	"io"
++	"math"
++	"net/netip"
++	"regexp"
++	"sort"
++	"strconv"
++	"strings"
++	"time"
++
++	"github.com/nexus-ia/nexus/agents/blue/sigma"
++	"github.com/nexus-ia/nexus/lab"
++)
++
++const MaxEventBytes = 256 << 10
++
++var identifier = regexp.MustCompile(`^[a-zA-Z0-9_.-]{1,128}$`)
++var technique = regexp.MustCompile(`(?i)^attack\.(t[0-9]{4}(?:\.[0-9]{3})?)$`)
++
++// Event carries attribution supplied by a trusted ingestion boundary. Analyze
++// requires tenant/task to match its independent request and reauthorizes assets.
++type Event struct {
++	TenantID   string          `json:"tenant_id"`
++	TaskID     string          `json:"task_id"`
++	ID         string          `json:"id"`
++	Asset      string          `json:"asset"`
++	ObservedAt time.Time       `json:"observed_at"`
++	ReceivedAt time.Time       `json:"received_at"`
++	Source     sigma.LogSource `json:"source"`
++	Fields     sigma.Event     `json:"fields"`
++}
++
++// Decode accepts a single bounded JSON event. Nested field objects, non-finite
++// values, unknown envelope fields and concatenated documents are rejected.
++func Decode(raw []byte) (Event, error) {
++	if len(raw) > MaxEventBytes {
++		return Event{}, fmt.Errorf("event size limit exceeded")
++	}
++	d := json.NewDecoder(bytes.NewReader(raw))
++	d.DisallowUnknownFields()
++	d.UseNumber()
++	var e Event
++	if err := d.Decode(&e); err != nil {
++		return Event{}, err
++	}
++	if err := checkJSONKeys(raw); err != nil {
++		return Event{}, err
++	}
++	var extra any
++	if err := d.Decode(&extra); err != io.EOF {
++		return Event{}, fmt.Errorf("exactly one event is required")
++	}
++	if err := validate(e); err != nil {
++		return Event{}, err
++	}
++	e.Source = normalizeSource(e.Source)
++	e.ObservedAt = e.ObservedAt.UTC()
++	e.ReceivedAt = e.ReceivedAt.UTC()
++	return e, nil
++}
++
++func validate(e Event) error {
++	task, err := strconv.ParseInt(e.TaskID, 10, 64)
++	asset, assetErr := netip.ParseAddr(e.Asset)
++	if !identifier.MatchString(e.TenantID) || !identifier.MatchString(e.ID) || err != nil || task <= 0 || assetErr != nil || !asset.IsPrivate() || asset.Is4In6() || asset.Zone() != "" || e.ObservedAt.IsZero() || e.ReceivedAt.IsZero() || len(e.Fields) == 0 || len(e.Fields) > 256 {
++		return fmt.Errorf("invalid event attribution or shape")
++	}
++	for _, s := range []string{e.Source.Product, e.Source.Service, e.Source.Category} {
++		if len(s) > 128 {
++			return fmt.Errorf("source size limit exceeded")
++		}
++	}
++	if normalizeSource(e.Source) == (sigma.LogSource{}) {
++		return fmt.Errorf("event source is required")
++	}
++	validScalar := func(v any) bool {
++		switch n := v.(type) {
++		case nil, bool, int, int64, uint64:
++			return true
++		case float64:
++			return !math.IsNaN(n) && !math.IsInf(n, 0)
++		case json.Number:
++			if !strings.ContainsAny(string(n), ".eE") {
++				if _, err := n.Int64(); err == nil {
++					return true
++				}
++				_, err := strconv.ParseUint(string(n), 10, 64)
++				return err == nil
++			}
++			f, err := n.Float64()
++			return err == nil && !math.IsNaN(f) && !math.IsInf(f, 0)
++		case string:
++			return len(n) <= 8192
++		default:
++			return false
++		}
++	}
++	for key, v := range e.Fields {
++		if key == "" || len(key) > 128 {
++			return fmt.Errorf("invalid field name")
++		}
++		switch values := v.(type) {
++		case []any:
++			if len(values) > 256 {
++				return fmt.Errorf("field list limit exceeded")
++			}
++			for _, item := range values {
++				if !validScalar(item) {
++					return fmt.Errorf("unsupported field value")
++				}
++			}
++		case []string:
++			if len(values) > 256 {
++				return fmt.Errorf("field list limit exceeded")
++			}
++			for _, item := range values {
++				if !validScalar(item) {
++					return fmt.Errorf("field size limit exceeded")
++				}
++			}
++		default:
++			if !validScalar(v) {
++				return fmt.Errorf("unsupported field value")
++			}
++		}
++	}
++	return nil
++}
++
++func normalizeSource(s sigma.LogSource) sigma.LogSource {
++	return sigma.LogSource{Product: strings.ToLower(strings.TrimSpace(s.Product)), Service: strings.ToLower(strings.TrimSpace(s.Service)), Category: strings.ToLower(strings.TrimSpace(s.Category))}
++}
++func sourceMatches(rule, event sigma.LogSource) bool {
++	return (rule.Product == "" || rule.Product == event.Product) && (rule.Service == "" || rule.Service == event.Service) && (rule.Category == "" || rule.Category == event.Category)
++}
++
++type Alert struct {
++	TenantID    string    `json:"tenant_id"`
++	TaskID      string    `json:"task_id"`
++	Asset       string    `json:"asset"`
++	RuleID      string    `json:"rule_id"`
++	Title       string    `json:"title"`
++	Severity    string    `json:"severity"`
++	Author      string    `json:"author,omitempty"`
++	License     string    `json:"license,omitempty"`
++	References  []string  `json:"references,omitempty"`
++	Techniques  []string  `json:"techniques"`
++	FirstSeen   time.Time `json:"first_seen"`
++	LastSeen    time.Time `json:"last_seen"`
++	EvidenceIDs []string  `json:"evidence_ids"`
++}
++type Report struct {
++	InputEvents     int     `json:"input_events"`
++	UniqueEvents    int     `json:"unique_events"`
++	DuplicateEvents int     `json:"duplicate_events"`
++	MatchedEvents   int     `json:"matched_events"`
++	EvidenceDigest  string  `json:"evidence_digest"`
++	ElapsedNS       int64   `json:"elapsed_ns"`
++	Alerts          []Alert `json:"alerts"`
++}
++type compiledRule struct {
++	predicate *sigma.CompiledRule
++	source    sigma.LogSource
++	alert     Alert
++}
++type Engine struct {
++	agentID string
++	gate    lab.Authorizer
++	window  time.Duration
++	rules   []compiledRule
++}
++
++// New compiles rules once. Callers supply real host authorization; no permissive
++// default, process execution, tenant-global cache or shared incident state exists.
++func New(agentID string, gate lab.Authorizer, rules []sigma.Rule, window time.Duration) (*Engine, error) {
++	if agentID == "" || gate == nil || window <= 0 || window > 24*time.Hour || len(rules) == 0 || len(rules) > 1000 {
++		return nil, fmt.Errorf("invalid detection engine configuration")
++	}
++	e := &Engine{agentID: agentID, gate: gate, window: window}
++	seen := map[string]bool{}
++	for _, r := range rules {
++		if !identifier.MatchString(r.ID) || seen[r.ID] || normalizeSource(r.LogSource) == (sigma.LogSource{}) {
++			return nil, fmt.Errorf("unique rule IDs and logsource are required")
++		}
++		seen[r.ID] = true
++		predicate, err := r.Compile()
++		if err != nil {
++			return nil, err
++		}
++		a := Alert{RuleID: r.ID, Title: r.Title, Severity: r.Level, Author: r.Author, License: r.License, References: append([]string(nil), r.References...), Techniques: []string{}}
++		for _, tag := range r.Tags {
++			if m := technique.FindStringSubmatch(tag); m != nil {
++				a.Techniques = append(a.Techniques, strings.ToUpper(m[1]))
++			}
++		}
++		sort.Strings(a.Techniques)
++		e.rules = append(e.rules, compiledRule{predicate: predicate, source: normalizeSource(r.LogSource), alert: a})
++	}
++	sort.Slice(e.rules, func(i, j int) bool { return e.rules[i].alert.RuleID < e.rules[j].alert.RuleID })
++	return e, nil
++}
++
++// Analyze is a passive, request-local replay. The request tenant/task must be
++// independently authenticated by the caller. Correlation uses fixed windows
++// starting at the first event, scoped to one rule and asset. Different content
++// under the same event ID is rejected rather than silently deduplicated.
++func (e *Engine) Analyze(ctx context.Context, tenant, task string, events []Event) (Report, error) {
++	started := time.Now()
++	taskID, taskErr := strconv.ParseInt(task, 10, 64)
++	if e == nil || !identifier.MatchString(tenant) || taskErr != nil || taskID <= 0 || len(events) > 10000 {
++		return Report{}, fmt.Errorf("invalid detection request")
++	}
++	unique := make([]Event, 0, len(events))
++	seen := map[string]string{}
++	total := 0
++	for _, event := range events {
++		if err := ctx.Err(); err != nil {
++			return Report{}, err
++		}
++		if event.TenantID != tenant || event.TaskID != task {
++			return Report{}, fmt.Errorf("event attribution does not match request")
++		}
++		if err := validate(event); err != nil {
++			return Report{}, err
++		}
++		raw, err := json.Marshal(event)
++		if err != nil {
++			return Report{}, err
++		}
++		total += len(raw)
++		if len(raw) > MaxEventBytes || total > 16<<20 {
++			return Report{}, fmt.Errorf("event batch size limit exceeded")
++		}
++		copy, err := Decode(raw)
++		if err != nil {
++			return Report{}, err
++		}
++		canonical, _ := json.Marshal(copy)
++		hash := sha256.Sum256(canonical)
++		digest := hex.EncodeToString(hash[:])
++		if prior, exists := seen[copy.ID]; exists {
++			if prior != digest {
++				return Report{}, fmt.Errorf("conflicting duplicate event ID")
++			}
++			continue
++		}
++		seen[copy.ID] = digest
++		unique = append(unique, copy)
++	}
++	sort.Slice(unique, func(i, j int) bool {
++		if unique[i].ObservedAt.Equal(unique[j].ObservedAt) {
++			return unique[i].ID < unique[j].ID
++		}
++		return unique[i].ObservedAt.Before(unique[j].ObservedAt)
++	})
++	manifest, _ := json.Marshal(unique)
++	digest := sha256.Sum256(manifest)
++	report := Report{InputEvents: len(events), UniqueEvents: len(unique), DuplicateEvents: len(events) - len(unique), EvidenceDigest: hex.EncodeToString(digest[:]), Alerts: []Alert{}}
++	groups := map[string]int{}
++	for _, event := range unique {
++		if err := ctx.Err(); err != nil {
++			return Report{}, err
++		}
++		if err := e.gate.Authorize(ctx, lab.Action{AgentID: e.agentID, TaskID: task, Name: "blue.analyze", Target: event.Asset}); err != nil {
++			return Report{}, fmt.Errorf("event analysis denied: %w", err)
++		}
++		matched := false
++		for _, rule := range e.rules {
++			if !sourceMatches(rule.source, event.Source) || !rule.predicate.Match(event.Fields) {
++				continue
++			}
++			matched = true
++			key := rule.alert.RuleID + "\x00" + event.Asset
++			index, exists := groups[key]
++			if !exists || event.ObservedAt.Sub(report.Alerts[index].FirstSeen) > e.window {
++				a := rule.alert
++				a.TenantID = tenant
++				a.TaskID = task
++				a.Asset = event.Asset
++				a.FirstSeen = event.ObservedAt
++				a.LastSeen = event.ObservedAt
++				a.Techniques = append([]string{}, a.Techniques...)
++				a.References = append([]string(nil), a.References...)
++				a.EvidenceIDs = []string{}
++				index = len(report.Alerts)
++				report.Alerts = append(report.Alerts, a)
++				groups[key] = index
++			}
++			report.Alerts[index].LastSeen = event.ObservedAt
++			report.Alerts[index].EvidenceIDs = append(report.Alerts[index].EvidenceIDs, event.ID)
++		}
++		if matched {
++			report.MatchedEvents++
++		}
++	}
++	if err := ctx.Err(); err != nil {
++		return Report{}, err
++	}
++	report.ElapsedNS = time.Since(started).Nanoseconds()
++	return report, nil
++}
+diff --git a/agents/blue/telemetry/engine_test.go b/agents/blue/telemetry/engine_test.go
+new file mode 100644
+--- /dev/null
++++ b/agents/blue/telemetry/engine_test.go
+@@ -0,0 +1,181 @@
++package telemetry
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++	"strings"
++	"sync"
++	"sync/atomic"
++	"testing"
++	"time"
++
++	"github.com/nexus-ia/nexus/agents/blue/sigma"
++	"github.com/nexus-ia/nexus/lab"
++	"github.com/nexus-ia/nexus/lab/network"
++)
++
++const fixtureRule = `title: Laboratory restricted path
++id: nexus-lab-path
++author: NEXUS original fixture
++license: AGPL-3.0-or-later
++logsource:
++  category: webserver
++detection:
++  selection:
++    uri|startswith: /restricted/
++  condition: selection
++level: medium
++tags:
++  - attack.t1190
++`
++
++func fixtureEngine(t *testing.T, check lab.Check) *Engine {
++	t.Helper()
++	if check == nil {
++		check = func(_ context.Context, a lab.Action) error {
++			if a.AgentID != "blue-fixture" || a.Name != "blue.analyze" || a.TaskID != "7" {
++				return fmt.Errorf("unexpected fixture action")
++			}
++			return nil
++		}
++	}
++	scope, err := network.NewScope("10.60.0.0/24")
++	if err != nil {
++		t.Fatal(err)
++	}
++	gate, err := lab.NewGate(scope, lab.Checks{Identity: check, Monitor: check, OPSEC: check, Ethics: check})
++	if err != nil {
++		t.Fatal(err)
++	}
++	r, err := sigma.Parse([]byte(fixtureRule))
++	if err != nil {
++		t.Fatal(err)
++	}
++	e, err := New("blue-fixture", gate, []sigma.Rule{r}, time.Minute)
++	if err != nil {
++		t.Fatal(err)
++	}
++	return e
++}
++func fixtureEvent(id string, offset time.Duration) Event {
++	when := time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC).Add(offset)
++	return Event{TenantID: "tenant-a", TaskID: "7", ID: id, Asset: "10.60.0.3", ObservedAt: when, ReceivedAt: when.Add(time.Second), Source: sigma.LogSource{Category: "webserver"}, Fields: sigma.Event{"uri": "/restricted/report"}}
++}
++
++func TestNormalizeDetectDeduplicateAndCorrelate(t *testing.T) {
++	e := fixtureEngine(t, nil)
++	a, b, c := fixtureEvent("a", 0), fixtureEvent("b", time.Second), fixtureEvent("c", time.Minute+time.Nanosecond)
++	d := fixtureEvent("d", 2*time.Second)
++	d.Fields = sigma.Event{"uri": "/public/report"}
++	other := fixtureEvent("e", 3*time.Second)
++	other.Source.Category = "authentication"
++	data, _ := json.Marshal(a)
++	normalized, err := Decode(data)
++	if err != nil {
++		t.Fatal(err)
++	}
++	r, err := e.Analyze(t.Context(), "tenant-a", "7", []Event{c, b, d, other, normalized, b})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if r.InputEvents != 6 || r.UniqueEvents != 5 || r.DuplicateEvents != 1 || r.MatchedEvents != 3 || len(r.Alerts) != 2 {
++		t.Fatalf("incorrect accounting: %+v", r)
++	}
++	if got := strings.Join(r.Alerts[0].EvidenceIDs, ","); got != "a,b" {
++		t.Fatalf("wrong temporal grouping: %s", got)
++	}
++	alert := r.Alerts[0]
++	if alert.Author != "NEXUS original fixture" || alert.License != "AGPL-3.0-or-later" || strings.Join(alert.Techniques, ",") != "T1190" || len(r.EvidenceDigest) != 64 {
++		t.Fatal("lost provenance or taxonomy")
++	}
++	// Source tags classify the rule; this test does not emulate an ATT&CK attack.
++}
++
++func TestAttributionAndConflictingDuplicatesFailBeforeAuthorization(t *testing.T) {
++	var calls atomic.Int32
++	e := fixtureEngine(t, func(context.Context, lab.Action) error { calls.Add(1); return nil })
++	for _, kind := range []string{"tenant", "task", "duplicate"} {
++		t.Run(kind, func(t *testing.T) {
++			a, b := fixtureEvent("a", 0), fixtureEvent("a", 0)
++			switch kind {
++			case "tenant":
++				b.TenantID = "tenant-b"
++			case "task":
++				b.TaskID = "8"
++			case "duplicate":
++				b.Fields = sigma.Event{"uri": "changed"}
++			}
++			if _, err := e.Analyze(t.Context(), "tenant-a", "7", []Event{a, b}); err == nil {
++				t.Fatal("invalid attribution/duplicate accepted")
++			}
++		})
++	}
++	if calls.Load() != 0 {
++		t.Fatal("partially processed invalid batch")
++	}
++}
++
++func TestRevocationCancellationAndNoPartialReport(t *testing.T) {
++	var calls atomic.Int32
++	e := fixtureEngine(t, func(context.Context, lab.Action) error {
++		if calls.Add(1) > 4 {
++			return fmt.Errorf("fixture permission revoked")
++		}
++		return nil
++	})
++	r, err := e.Analyze(t.Context(), "tenant-a", "7", []Event{fixtureEvent("a", 0), fixtureEvent("b", time.Second)})
++	if err == nil || len(r.Alerts) != 0 {
++		t.Fatal("denied batch returned partial findings")
++	}
++	ctx, cancel := context.WithCancel(t.Context())
++	cancel()
++	before := calls.Load()
++	if _, err := e.Analyze(ctx, "tenant-a", "7", []Event{fixtureEvent("a", 0)}); err != context.Canceled || calls.Load() != before {
++		t.Fatal("cancelled request reached authorization")
++	}
++}
++
++func TestDecodeRejectsUnsupportedAndConcatenatedEvents(t *testing.T) {
++	e := fixtureEvent("a", 0)
++	data, _ := json.Marshal(e)
++	if _, err := Decode(append(append([]byte{}, data...), data...)); err == nil {
++		t.Fatal("concatenated events accepted")
++	}
++	for _, replacement := range []string{`"tenant_id":"other","TENANT_ID":"tenant-a"`, `"tenant_id":"other","tenant_id":"tenant-a"`} {
++		ambiguous := strings.Replace(string(data), `"tenant_id":"tenant-a"`, replacement, 1)
++		if _, err := Decode([]byte(ambiguous)); err == nil {
++			t.Fatal("duplicate attribution accepted")
++		}
++	}
++	overflow := strings.Replace(string(data), `"fields":{"uri":"/restricted/report"}`, `"fields":{"value":1e999}`, 1)
++	if _, err := Decode([]byte(overflow)); err == nil {
++		t.Fatal("numeric overflow accepted")
++	}
++	e.Fields = sigma.Event{"nested": map[string]any{"uri": "/restricted/"}}
++	data, _ = json.Marshal(e)
++	if _, err := Decode(data); err == nil {
++		t.Fatal("nested fields silently converted")
++	}
++	if _, err := Decode([]byte(strings.Repeat("x", MaxEventBytes+1))); err == nil {
++		t.Fatal("oversized event accepted")
++	}
++}
++
++func TestConcurrentRequestsDoNotShareIncidentState(t *testing.T) {
++	e := fixtureEngine(t, nil)
++	var wg sync.WaitGroup
++	for i := 0; i < 16; i++ {
++		wg.Add(1)
++		go func(i int) {
++			defer wg.Done()
++			event := fixtureEvent("same-id", 0)
++			event.TenantID = fmt.Sprintf("tenant-%d", i)
++			r, err := e.Analyze(t.Context(), event.TenantID, "7", []Event{event})
++			if err != nil || len(r.Alerts) != 1 || r.Alerts[0].TenantID != event.TenantID {
++				t.Errorf("request state leaked: %v %+v", err, r)
++			}
++		}(i)
++	}
++	wg.Wait()
++}
+diff --git a/agents/blue/telemetry/json.go b/agents/blue/telemetry/json.go
+new file mode 100644
+--- /dev/null
++++ b/agents/blue/telemetry/json.go
+@@ -0,0 +1,62 @@
++package telemetry
++
++import (
++	"bytes"
++	"encoding/json"
++	"fmt"
++	"strings"
++)
++
++// Reject ambiguous envelopes before attribution. Fields retain case-sensitive
++// names; envelope/source keys follow encoding/json's case-insensitive matching.
++func checkJSONKeys(raw []byte) error {
++	d := json.NewDecoder(bytes.NewReader(raw))
++	d.UseNumber()
++	var walk func(int, bool) error
++	walk = func(depth int, fields bool) error {
++		if depth > 4 {
++			return fmt.Errorf("JSON nesting limit exceeded")
++		}
++		token, err := d.Token()
++		if err != nil {
++			return err
++		}
++		switch token {
++		case json.Delim('{'):
++			seen := map[string]bool{}
++			for d.More() {
++				keyToken, err := d.Token()
++				if err != nil {
++					return err
++				}
++				key, ok := keyToken.(string)
++				if !ok {
++					return fmt.Errorf("invalid JSON key")
++				}
++				canonical := key
++				if !fields {
++					canonical = strings.ToLower(key)
++				}
++				if seen[canonical] {
++					return fmt.Errorf("duplicate event JSON key")
++				}
++				seen[canonical] = true
++				if err := walk(depth+1, depth == 0 && canonical == "fields"); err != nil {
++					return err
++				}
++			}
++			_, err = d.Token()
++			return err
++		case json.Delim('['):
++			for d.More() {
++				if err := walk(depth+1, fields); err != nil {
++					return err
++				}
++			}
++			_, err = d.Token()
++			return err
++		}
++		return nil
++	}
++	return walk(0, false)
++}
+diff --git a/cmd/nexus-evolve/main.go b/cmd/nexus-evolve/main.go
+--- a/cmd/nexus-evolve/main.go
++++ b/cmd/nexus-evolve/main.go
+@@ -8,7 +8,9 @@
+ 	"fmt"
+ 	"os"
+ 	"os/signal"
++	"time"
+ 
++	"github.com/nexus-ia/nexus/agents/blue/detectbench"
+ 	"github.com/nexus-ia/nexus/core/memory"
+ 	"github.com/nexus-ia/nexus/evolve"
+ 	"github.com/nexus-ia/nexus/evolve/recall"
+@@ -24,12 +26,43 @@
+ 
+ func run() error {
+ 	demo := flag.Bool("demo", false, "Evaluar el corpus sintético español del laboratorio")
++	detectionLab := flag.Bool("detection-lab", false, "Ejecutar generaciones de reglas sobre eventos sintéticos, sin activar cambios productivos")
++	generationLimit := flag.Int("generations", 5, "Máximo de generaciones del laboratorio de detección")
++	evaluationBudget := flag.Int("evaluation-budget", 512, "Presupuesto global de evaluaciones de casos")
+ 	memoryDir := flag.String("memory-dir", "", "Directorio de memoria que se evaluará sin modificar sus notas")
+ 	stateDir := flag.String("state-dir", "", "Directorio privado donde guardar las decisiones (opcional)")
+ 	jsonOutput := flag.Bool("json", false, "Mostrar el informe completo como JSON")
+ 	flag.Parse()
+-	if (*demo) == (*memoryDir != "") || flag.NArg() != 0 {
+-		return fmt.Errorf("indica -demo o -memory-dir, exclusivamente")
++	modes := 0
++	if *demo {
++		modes++
++	}
++	if *memoryDir != "" {
++		modes++
++	}
++	if *detectionLab {
++		modes++
++	}
++	if modes != 1 || flag.NArg() != 0 {
++		return fmt.Errorf("indica -demo, -memory-dir o -detection-lab, exclusivamente")
++	}
++	if *detectionLab {
++		if *stateDir != "" {
++			return fmt.Errorf("el laboratorio no modifica estados de agentes; omite -state-dir")
++		}
++		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
++		defer stop()
++		patience := 2
++		if *generationLimit == 1 {
++			patience = 1
++		}
++		result, err := evolve.RunExperiment(ctx, evolve.ExperimentConfig{AgentID: "blue-detection-lab", Generations: *generationLimit, Patience: patience, EvaluationBudget: *evaluationBudget, Timeout: time.Minute, CostUnit: "synthetic-case-evaluations", Engine: evolve.Config{Baseline: "v1", Candidates: []string{"v2", "noisy"}, Policy: evolve.DefaultPolicy()}}, func(_ context.Context, g int) (evolve.Benchmark, error) { return detectbench.NewGeneration(g) })
++		enc := json.NewEncoder(os.Stdout)
++		enc.SetIndent("", "  ")
++		if encodeErr := enc.Encode(result); encodeErr != nil {
++			return encodeErr
++		}
++		return err
+ 	}
+ 	var mems []memory.Memory
+ 	if *demo {
+diff --git a/core/coordinator/coordinator.go b/core/coordinator/coordinator.go
+--- a/core/coordinator/coordinator.go
++++ b/core/coordinator/coordinator.go
+@@ -120,8 +120,23 @@
+ 	sem := make(chan struct{}, limit)
+ 	var wg sync.WaitGroup
+ 	for i, task := range tasks {
++		results[i].Task = task
++		if err := ctx.Err(); err != nil {
++			results[i].Err = err
++			continue
++		}
++		select {
++		case sem <- struct{}{}:
++		case <-ctx.Done():
++			results[i].Err = ctx.Err()
++			continue
++		}
++		if err := ctx.Err(); err != nil {
++			<-sem
++			results[i].Err = err
++			continue
++		}
+ 		wg.Add(1)
+-		sem <- struct{}{}
+ 		go func(i int, task string) {
+ 			defer wg.Done()
+ 			defer func() { <-sem }()
+diff --git a/core/coordinator/coordinator_test.go b/core/coordinator/coordinator_test.go
+--- a/core/coordinator/coordinator_test.go
++++ b/core/coordinator/coordinator_test.go
+@@ -6,6 +6,7 @@
+ 
+ import (
+ 	"context"
++	"errors"
+ 	"iter"
+ 	"strings"
+ 	"sync/atomic"
+@@ -15,6 +16,37 @@
+ 	"github.com/nexus-ia/nexus/core/permission"
+ 	"github.com/nexus-ia/nexus/core/tool"
+ )
++
++type startCounter struct{ starts atomic.Int32 }
++
++func (*startCounter) PreToolUse(context.Context, string, []byte) (bool, string, []byte) {
++	return false, "", nil
++}
++func (*startCounter) PostToolUse(context.Context, string, []byte, []byte, bool) {}
++func (*startCounter) Stop(context.Context, []llm.Message) (bool, []string, string) {
++	return false, nil, ""
++}
++func (h *startCounter) FireSubagentStart(context.Context, string) { h.starts.Add(1) }
++
++func TestCancelledCoordinatorDoesNotStartSubagents(t *testing.T) {
++	hooks := &startCounter{}
++	c := &Config{Provider: &echoProvider{}, Hooks: hooks, MaxParallel: 1}
++	ctx, cancel := context.WithCancel(t.Context())
++	cancel()
++	results := c.RunParallel(ctx, []string{"one", "two", "three"})
++	if hooks.starts.Load() != 0 {
++		t.Fatalf("started %d subagents after cancellation", hooks.starts.Load())
++	}
++	for i, r := range results {
++		if r.Task != []string{"one", "two", "three"}[i] || !errors.Is(r.Err, context.Canceled) {
++			t.Fatalf("cancelled result lost identity/cause: %+v", r)
++		}
++	}
++	res, err := c.AgentTool().Call(ctx, []byte(`{"agent_type":"worker","prompt":"cancelled"}`), &tool.ToolContext{})
++	if err != nil || !res.IsError || hooks.starts.Load() != 0 {
++		t.Fatalf("cancelled direct subagent started: %v %+v", err, res)
++	}
++}
+ 
+ // echoProvider answers each worker with text derived from the task's last user
+ // message, so we can verify distinct workers ran.
+diff --git a/core/subagent/subagent.go b/core/subagent/subagent.go
+--- a/core/subagent/subagent.go
++++ b/core/subagent/subagent.go
+@@ -114,6 +114,9 @@
+ 
+ // run executes a subagent to completion and returns its final text.
+ func run(ctx context.Context, cfg Config, def Definition, agentType, prompt, workDir string) (string, error) {
++	if err := ctx.Err(); err != nil {
++		return "", err
++	}
+ 	if cfg.Hooks != nil {
+ 		if hs, ok := cfg.Hooks.(interface {
+ 			FireSubagentStart(context.Context, string)
+diff --git a/core/tool/builtins_test.go b/core/tool/builtins_test.go
+--- a/core/tool/builtins_test.go
++++ b/core/tool/builtins_test.go
+@@ -14,6 +14,7 @@
+ 	"os"
+ 	"path/filepath"
+ 	"strings"
++	"sync/atomic"
+ 	"testing"
+ )
+ 
+@@ -248,22 +249,38 @@
+ }
+ 
+ // TestWebFetchProxyFallback proves a proxied fetch that fails for a proxy-caused
+-// reason (here: the proxy port is dead → connection refused) retries once directly
+-// (no proxy) and reaches the target. A successful fetch is not annotated.
++// reason retries once directly and reaches the target. The proxy closes an
++// accepted connection to produce EOF; an arbitrary fixed "closed" port can be
++// filtered by the host and time out instead of refusing the connection.
+ func TestWebFetchProxyFallback(t *testing.T) {
++	var proxyCalls, targetCalls atomic.Int32
+ 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
++		targetCalls.Add(1)
+ 		w.Header().Set("content-type", "text/html")
+ 		w.Write([]byte(`<html><body><h1>Direct OK</h1></body></html>`))
+ 	}))
+ 	defer srv.Close()
++	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
++		proxyCalls.Add(1)
++		conn, _, err := w.(http.Hijacker).Hijack()
++		if err != nil {
++			t.Errorf("hijack proxy connection: %v", err)
++			return
++		}
++		_ = conn.Close()
++	}))
++	defer proxy.Close()
+ 	raw, _ := json.Marshal(map[string]any{"url": srv.URL})
+-	res, err := NewWebFetch(WebFetchConfig{Proxy: "http://127.0.0.1:1"}).Call(context.Background(), raw, &ToolContext{})
++	res, err := NewWebFetch(WebFetchConfig{Proxy: proxy.URL}).Call(context.Background(), raw, &ToolContext{})
+ 	if err != nil {
+ 		t.Fatalf("webfetch: %v", err)
+ 	}
+ 	out := res.Flatten()
+ 	if !strings.Contains(out, "Direct OK") {
+ 		t.Fatalf("direct fallback should have fetched the page: %q", out)
++	}
++	if proxyCalls.Load() != 1 || targetCalls.Load() != 1 {
++		t.Fatalf("expected one failed proxy request and one direct request: proxy=%d target=%d", proxyCalls.Load(), targetCalls.Load())
+ 	}
+ }
+ 
+diff --git a/evolve/engine.go b/evolve/engine.go
+--- a/evolve/engine.go
++++ b/evolve/engine.go
+@@ -24,6 +24,9 @@
+ 
+ type Case struct {
+ 	ID string `json:"id"`
++	// InputDigest identifies canonical evaluator-owned input. Generation labs
++	// require it to reject exact replay across train, holdout and generations.
++	InputDigest string `json:"input_digest,omitempty"`
+ 	// Group identifies the independent unit, not a paraphrase or repeated trial.
+ 	Group    string `json:"group"`
+ 	Split    string `json:"split"`
+diff --git a/evolve/experiment.go b/evolve/experiment.go
+new file mode 100644
+--- /dev/null
++++ b/evolve/experiment.go
+@@ -0,0 +1,209 @@
++// Original NEXUS generation laboratory for registered, compiled strategies.
++// This runner executes no generated code, changes no permissions and never
++// connects selected strategies to the production agent runtime.
++package evolve
++
++import (
++	"context"
++	"errors"
++	"fmt"
++	"time"
++)
++
++type ExperimentConfig struct {
++	AgentID          string
++	Generations      int
++	Patience         int
++	EvaluationBudget int
++	Timeout          time.Duration
++	CostUnit         string
++	Engine           Config
++}
++type Generation struct {
++	Number             int      `json:"number"`
++	AgentID            string   `json:"agent_id"`
++	Strategy           string   `json:"strategy"`
++	Cases              int      `json:"cases"`
++	InitialPassed      int      `json:"initial_passed"`
++	Passed             int      `json:"passed"`
++	Regressions        int      `json:"regressions"`
++	SuccessRate        float64  `json:"success_rate"`
++	GainFromInitial    float64  `json:"gain_from_initial"`
++	RegressionRate     float64  `json:"regression_rate"`
++	HoldoutSuccessRate float64  `json:"holdout_success_rate"`
++	CriticalFailures   int      `json:"critical_failures"`
++	Evaluations        int      `json:"evaluations"`
++	Cost               int64    `json:"cost"`
++	ElapsedNS          int64    `json:"elapsed_ns"`
++	Tokens             *int64   `json:"tokens"`          // nil: this benchmark does not measure tokens
++	SkillsAcquired     []string `json:"skills_acquired"` // no skills are invented by selection
++	Evidence           Report   `json:"evidence"`
++}
++type Experiment struct {
++	AgentID                string       `json:"agent_id"`
++	InitialStrategy        string       `json:"initial_strategy"`
++	CostUnit               string       `json:"cost_unit"`
++	Generations            []Generation `json:"generations"`
++	Evaluations            int          `json:"evaluations"`
++	LastImprovedGeneration int          `json:"last_improved_generation"`
++	StoppedAtGeneration    int          `json:"stopped_at_generation"`
++	StopReason             string       `json:"stop_reason"`
++}
++
++// BenchmarkFactory is supplied by the evaluator owner, not the candidate.
++// It must reserve fresh input/groups for every generation. Hash uniqueness
++// rejects exact replay; it does not establish statistical independence.
++type BenchmarkFactory func(context.Context, int) (Benchmark, error)
++
++var ErrEvaluationBudget = errors.New("experiment evaluation budget exhausted")
++
++type budgetBenchmark struct {
++	Benchmark
++	used  *int
++	limit int
++	cases []Case
++}
++
++func (b budgetBenchmark) Cases() []Case { return append([]Case(nil), b.cases...) }
++
++func (b budgetBenchmark) Evaluate(ctx context.Context, strategy, id string) (Outcome, error) {
++	if err := ctx.Err(); err != nil {
++		return Outcome{}, err
++	}
++	if *b.used >= b.limit {
++		return Outcome{}, ErrEvaluationBudget
++	}
++	*b.used = *b.used + 1
++	return b.Benchmark.Evaluate(ctx, strategy, id)
++}
++
++// RunExperiment repeatedly compares the host-registered variants with the
++// existing independent scorer. Budgets, evaluator, catalog and policy are fixed
++// before the first generation. Benchmarks are trusted compiled host code; this
++// API is not a sandbox for arbitrary plugins or a model-training pipeline.
++func RunExperiment(ctx context.Context, cfg ExperimentConfig, factory BenchmarkFactory) (Experiment, error) {
++	out := Experiment{AgentID: cfg.AgentID, InitialStrategy: cfg.Engine.Baseline, CostUnit: cfg.CostUnit, Generations: []Generation{}}
++	if cfg.AgentID == "" || len(cfg.AgentID) > 128 || cfg.Generations < 1 || cfg.Generations > 32 || cfg.Patience < 1 || cfg.Patience > cfg.Generations || cfg.EvaluationBudget < 1 || cfg.EvaluationBudget > 8192 || cfg.Timeout <= 0 || cfg.Timeout > time.Hour || cfg.CostUnit == "" || cfg.Engine.Dir != "" || factory == nil {
++		return out, fmt.Errorf("invalid isolated experiment configuration")
++	}
++	cfg.Engine.Candidates = append([]string(nil), cfg.Engine.Candidates...)
++	if _, err := New(cfg.Engine); err != nil {
++		return out, err
++	}
++	ctx, cancel := context.WithTimeout(ctx, cfg.Timeout)
++	defer cancel()
++	active := cfg.Engine.Baseline
++	idle := 0
++	seenInputs, seenGroups := map[string]bool{}, map[string]bool{}
++	for number := 1; number <= cfg.Generations; number++ {
++		if err := ctx.Err(); err != nil {
++			out.StopReason = "cancelled"
++			return out, err
++		}
++		if out.Evaluations >= cfg.EvaluationBudget {
++			out.StopReason = "evaluation_budget"
++			return out, ErrEvaluationBudget
++		}
++		started := time.Now()
++		b, err := factory(ctx, number)
++		if err != nil {
++			out.StopReason = "evaluator_failed"
++			return out, err
++		}
++		if b == nil {
++			out.StopReason = "invalid_evaluator"
++			return out, fmt.Errorf("missing generation evaluator")
++		}
++		cases := b.Cases()
++		if err := validateCases(cases); err != nil {
++			out.StopReason = "invalid_cases"
++			return out, err
++		}
++		for _, c := range cases {
++			if !validDigest(c.InputDigest) || seenInputs[c.InputDigest] || seenGroups[c.Group] {
++				out.StopReason = "replayed_or_unidentified_input"
++				return out, fmt.Errorf("generation input/group is missing or repeated")
++			}
++			seenInputs[c.InputDigest] = true
++			seenGroups[c.Group] = true
++		}
++		e, err := New(cfg.Engine)
++		if err != nil {
++			return out, err
++		}
++		e.state.Active = active // memory-only experiment; no production state directory
++		before := out.Evaluations
++		report, err := e.Run(ctx, budgetBenchmark{Benchmark: b, used: &out.Evaluations, limit: cfg.EvaluationBudget, cases: append([]Case(nil), cases...)})
++		out.StoppedAtGeneration = number
++		if err != nil {
++			if errors.Is(err, ErrEvaluationBudget) {
++				out.StopReason = "evaluation_budget"
++			} else {
++				out.StopReason = "evaluation_failed"
++			}
++			return out, err
++		}
++		if report.Decision == "insufficient" {
++			out.StopReason = "insufficient_evidence"
++			return out, nil
++		}
++		g := Generation{Number: number, AgentID: cfg.AgentID, Strategy: report.Active, Cases: len(cases), Evaluations: out.Evaluations - before, ElapsedNS: time.Since(started).Nanoseconds(), SkillsAcquired: []string{}, Evidence: report}
++		results := map[string]map[string]Outcome{}
++		for _, trial := range report.Trials {
++			if results[trial.Strategy] == nil {
++				results[trial.Strategy] = map[string]Outcome{}
++			}
++			results[trial.Strategy][trial.Case.ID] = trial.Outcome
++			g.Cost += trial.Outcome.Cost
++		}
++		holdout, holdoutPassed := 0, 0
++		for _, c := range cases {
++			initial, okInitial := results[cfg.Engine.Baseline][c.ID]
++			current, okCurrent := results[report.Active][c.ID]
++			if !okInitial || !okCurrent {
++				out.StopReason = "incomplete_evidence"
++				return out, fmt.Errorf("missing scored case")
++			}
++			if initial.Passed {
++				g.InitialPassed++
++			}
++			if current.Passed {
++				g.Passed++
++			}
++			if initial.Passed && !current.Passed {
++				g.Regressions++
++			}
++			if c.Critical && !current.Passed {
++				g.CriticalFailures++
++			}
++			if c.Split == Holdout {
++				holdout++
++				if current.Passed {
++					holdoutPassed++
++				}
++			}
++		}
++		if g.Cases > 0 {
++			g.SuccessRate = float64(g.Passed) / float64(g.Cases)
++			g.GainFromInitial = float64(g.Passed-g.InitialPassed) / float64(g.Cases)
++			g.RegressionRate = float64(g.Regressions) / float64(g.Cases)
++		}
++		if holdout > 0 {
++			g.HoldoutSuccessRate = float64(holdoutPassed) / float64(holdout)
++		}
++		out.Generations = append(out.Generations, g)
++		if report.Decision == "promoted" {
++			out.LastImprovedGeneration = number
++			idle = 0
++		} else {
++			idle++
++		}
++		active = report.Active
++		if idle >= cfg.Patience {
++			out.StopReason = "plateau"
++			return out, nil
++		}
++	}
++	out.StopReason = "generation_limit"
++	return out, nil
++}
+diff --git a/evolve/experiment_test.go b/evolve/experiment_test.go
+new file mode 100644
+--- /dev/null
++++ b/evolve/experiment_test.go
+@@ -0,0 +1,93 @@
++package evolve_test
++
++import (
++	"context"
++	"errors"
++	"fmt"
++	"testing"
++	"time"
++
++	"github.com/nexus-ia/nexus/agents/blue/detectbench"
++	"github.com/nexus-ia/nexus/evolve"
++)
++
++func experimentConfig() evolve.ExperimentConfig {
++	return evolve.ExperimentConfig{AgentID: "blue-lab", Generations: 5, Patience: 2, EvaluationBudget: 512, Timeout: 10 * time.Second, CostUnit: "synthetic-case-evaluations", Engine: evolve.Config{Baseline: "v1", Candidates: []string{"v2", "noisy"}, Policy: evolve.DefaultPolicy()}}
++}
++func freshBenchmark(_ context.Context, g int) (evolve.Benchmark, error) {
++	return detectbench.NewGeneration(g)
++}
++
++func TestGenerationsPromoteRejectRegressionAndStopAtPlateau(t *testing.T) {
++	out, err := evolve.RunExperiment(t.Context(), experimentConfig(), freshBenchmark)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if out.LastImprovedGeneration != 1 || out.StoppedAtGeneration != 3 || out.StopReason != "plateau" || len(out.Generations) != 3 {
++		t.Fatalf("incorrect history: %+v", out)
++	}
++	for _, g := range out.Generations {
++		if g.Strategy != "v2" || g.Cases != 20 || g.Passed != 20 || g.InitialPassed != 8 || g.SuccessRate != 1 || g.HoldoutSuccessRate != 1 || g.Regressions != 0 || g.CriticalFailures != 0 {
++			t.Fatalf("invalid measured metrics: %+v", g)
++		}
++		if g.Tokens != nil || len(g.SkillsAcquired) != 0 {
++			t.Fatal("invented token measurements or acquired skills")
++		}
++		if g.Evidence.Active == "noisy" {
++			t.Fatal("false positive strategy promoted")
++		}
++	}
++	if out.Evaluations != 150 {
++		t.Fatalf("evaluation accounting: %d != 150", out.Evaluations)
++	}
++}
++
++func TestEvaluationBudgetStopsBeforeTheNextScoringCall(t *testing.T) {
++	cfg := experimentConfig()
++	cfg.EvaluationBudget = 20
++	out, err := evolve.RunExperiment(t.Context(), cfg, freshBenchmark)
++	if !errors.Is(err, evolve.ErrEvaluationBudget) || out.Evaluations != 20 || out.StopReason != "evaluation_budget" || len(out.Generations) != 0 {
++		t.Fatalf("budget overrun or partial promotion: %+v %v", out, err)
++	}
++}
++
++type renamedGroups struct {
++	evolve.Benchmark
++	generation int
++}
++
++func (b renamedGroups) Cases() []evolve.Case {
++	cases := b.Benchmark.Cases()
++	for i := range cases {
++		cases[i].Group = fmt.Sprintf("new-name-%d-%d", b.generation, i)
++	}
++	return cases
++}
++
++func TestRenamingCasesDoesNotHideInputReplay(t *testing.T) {
++	b, err := detectbench.NewGeneration(1)
++	if err != nil {
++		t.Fatal(err)
++	}
++	out, err := evolve.RunExperiment(t.Context(), experimentConfig(), func(_ context.Context, g int) (evolve.Benchmark, error) {
++		return renamedGroups{Benchmark: b, generation: g}, nil
++	})
++	if err == nil || out.StopReason != "replayed_or_unidentified_input" || len(out.Generations) != 1 {
++		t.Fatalf("replayed evaluator input accepted: %+v %v", out, err)
++	}
++}
++
++func TestExperimentCannotWriteProductionStateOrRunAfterCancellation(t *testing.T) {
++	cfg := experimentConfig()
++	cfg.Engine.Dir = t.TempDir()
++	if _, err := evolve.RunExperiment(t.Context(), cfg, freshBenchmark); err == nil {
++		t.Fatal("persistent agent state accepted in laboratory")
++	}
++	ctx, cancel := context.WithCancel(t.Context())
++	cancel()
++	calls := 0
++	_, err := evolve.RunExperiment(ctx, experimentConfig(), func(context.Context, int) (evolve.Benchmark, error) { calls++; return nil, nil })
++	if !errors.Is(err, context.Canceled) || calls != 0 {
++		t.Fatal("cancelled experiment created evaluator")
++	}
++}
+diff --git a/lab/security/integration_test.go b/lab/security/integration_test.go
+--- a/lab/security/integration_test.go
++++ b/lab/security/integration_test.go
+@@ -1,15 +1,20 @@
+ package security
+ 
+ import (
++	"context"
+ 	"errors"
+ 	"github.com/google/uuid"
+ 	"github.com/jackc/pgx/v5/pgxpool"
+ 	"github.com/nexus-ia/nexus/abm"
++	"github.com/nexus-ia/nexus/agents/blue/sigma"
++	"github.com/nexus-ia/nexus/agents/blue/telemetry"
+ 	"github.com/nexus-ia/nexus/ans"
+ 	"github.com/nexus-ia/nexus/lab"
++	"github.com/nexus-ia/nexus/lab/network"
+ 	nhi "github.com/nexus-ia/nexus/nhi_manager"
+ 	"os"
+ 	"testing"
++	"time"
+ )
+ 
+ func TestRealServicesRejectRevocationPersistedOutsideCache(t *testing.T) {
+@@ -37,6 +42,7 @@
+ 		t.Fatal(err)
+ 	}
+ 	defer pool.Exec(t.Context(), `DELETE FROM nhi_identities WHERE agent_id=$1`, id)
++	defer pool.Exec(t.Context(), `DELETE FROM nhi_audit WHERE actor_id=$1`, id)
+ 	entry, err := directory.Register(t.Context(), ans.RegisterRequest{Name: id, AgentID: id, AgentType: string(identity.AgentType), DID: identity.DID.String(), CertX509PEM: identity.CertX509PEM, AllowedActions: []string{"blue.analyze"}, AllowedAssets: []string{"10.20.0.3"}})
+ 	if err != nil {
+ 		t.Fatal(err)
+@@ -108,6 +114,35 @@
+ 	}
+ 	// Persist revocation without touching the manager cache. JWT verification must
+ 	// still consult the database before the next action is authorized.
++	// Exercise the new detector with real ANS/NHI, signed audit and ABM. Only the
++	// two missing host controls are strict synthetic-fixture decisions here.
++	scope, _ := network.NewScope("10.20.0.0/24")
++	fixtureCheck := func(_ context.Context, a lab.Action) error {
++		if a != action {
++			return errors.New("fixture action denied")
++		}
++		return nil
++	}
++	detectorAdapter, err := New(Config{Directory: authoritative, Identities: persistentIdentities, Monitor: monitor, CACertPEM: identities.CACertPEM(), Audit: recorder, OPSEC: fixtureCheck, Ethics: fixtureCheck})
++	if err != nil {
++		t.Fatal(err)
++	}
++	gate, err := detectorAdapter.Gate(scope)
++	if err != nil {
++		t.Fatal(err)
++	}
++	rule, err := sigma.Parse([]byte("title: original integration fixture\nid: fixture-rule\nlogsource:\n  category: webserver\ndetection:\n  s:\n    status: 401\n  condition: s\nlevel: medium\n"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	detector, err := telemetry.New(id, gate, []sigma.Rule{rule}, time.Minute)
++	if err != nil {
++		t.Fatal(err)
++	}
++	event := telemetry.Event{TenantID: "fixture-tenant", TaskID: "7", ID: "fixture-event", Asset: "10.20.0.3", ObservedAt: time.Now().UTC(), ReceivedAt: time.Now().UTC(), Source: sigma.LogSource{Category: "webserver"}, Fields: sigma.Event{"status": 401}}
++	if report, err := detector.Analyze(t.Context(), event.TenantID, event.TaskID, []telemetry.Event{event}); err != nil || len(report.Alerts) != 1 {
++		t.Fatalf("real detector pipeline: %v %+v", err, report)
++	}
+ 	revoked := *identity
+ 	revoked.Revoke("test revocation from another process")
+ 	if err := identities.Store().SaveIdentity(t.Context(), &revoked); err != nil {
+@@ -115,6 +150,9 @@
+ 	}
+ 	if err := adapter.CheckIdentity(t.Context(), action); err == nil {
+ 		t.Fatal("database revocation was ignored")
++	}
++	if report, err := detector.Analyze(t.Context(), event.TenantID, event.TaskID, []telemetry.Event{event}); err == nil || len(report.Alerts) != 0 {
++		t.Fatal("detector ignored persisted revocation")
+ 	}
+ 	// A stale writer must never undo an already persisted revocation.
+ 	if err := identities.Store().SaveIdentity(t.Context(), identity); err != nil {
+diff --git a/orchestrator/server/level12_security_test.go b/orchestrator/server/level12_security_test.go
+--- a/orchestrator/server/level12_security_test.go
++++ b/orchestrator/server/level12_security_test.go
+@@ -5,6 +5,7 @@
+ 	"encoding/json"
+ 	"fmt"
+ 	"os"
++	"sync"
+ 	"testing"
+ 
+ 	"github.com/google/uuid"
+@@ -61,7 +62,21 @@
+ 	if err != nil {
+ 		t.Fatal(err)
+ 	}
+-	cfg := security.Config{Audit: audit, Directory: authoritative, Identities: currentIdentities, Monitor: monitor, CACertPEM: identities.CACertPEM()}
++	// Preserve the first denial from the real pipeline. Rechecking only the recon
++	// identity after a failure can succeed and obscure a denial in another worker.
++	var firstDenial string
++	var denialMu sync.Mutex
++	recordAudit := func(ctx context.Context, action lab.Action, decision error) error {
++		if decision != nil {
++			denialMu.Lock()
++			if firstDenial == "" {
++				firstDenial = fmt.Sprintf("%s: %v", action.Name, decision)
++			}
++			denialMu.Unlock()
++		}
++		return audit(ctx, action, decision)
++	}
++	cfg := security.Config{Audit: recordAudit, Directory: authoritative, Identities: currentIdentities, Monitor: monitor, CACertPEM: identities.CACertPEM()}
+ 	scope, err := network.NewScope("10.20.0.0/24")
+ 	if err != nil {
+ 		t.Fatal(err)
+@@ -129,7 +144,10 @@
+ 		adapter, _ := security.New(cfg)
+ 		gate, _ := adapter.Gate(scope)
+ 		detail := gate.Authorize(t.Context(), lab.Action{AgentID: ids[swarm.Recon], TaskID: fmt.Sprint(taskID), Name: "swarm.recon", Target: "10.20.0.3"})
+-		t.Fatalf("secure pipeline: %d %s detail=%v", response.Code, response.Body.String(), detail)
++		denialMu.Lock()
++		denial := firstDenial
++		denialMu.Unlock()
++		t.Fatalf("secure pipeline: %d %s detail=%v first_denial=%s", response.Code, response.Body.String(), detail, denial)
+ 	}
+ 	var run level12.Run
+ 	if err := json.Unmarshal(response.Body.Bytes(), &run); err != nil || len(run.Workers) != 8 {

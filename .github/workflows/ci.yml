@@ -54,5 +54,81 @@ jobs:
       - name: go vet
         run: go vet ./...
 
+      - name: Probar control de vulnerabilidades por artefacto
+        run: python3 -m unittest discover -s scripts -p 'test_audit_go_binary.py' -v
+
+      - name: Instalar govulncheck fijado
+        env:
+          GOBIN: ${{ runner.temp }}/nexus-tools
+          GOTELEMETRY: "off"
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+
+      - name: Rechazar símbolos vulnerables en binarios principales
+        env:
+          NEXUS_AUDIT_DIR: ${{ runner.temp }}/nexus-audit
+          NEXUS_SCANNER: ${{ runner.temp }}/nexus-tools/govulncheck
+        run: |
+          mkdir -p "$NEXUS_AUDIT_DIR"
+          go build -o "$NEXUS_AUDIT_DIR/nexus" ./cmd/nexus
+          go build -o "$NEXUS_AUDIT_DIR/nexus-scan" ./cmd/nexus-scan
+          python3 scripts/audit_go_binary.py "$NEXUS_AUDIT_DIR/nexus" --scanner "$NEXUS_SCANNER"
+          python3 scripts/audit_go_binary.py "$NEXUS_AUDIT_DIR/nexus-scan" --scanner "$NEXUS_SCANNER"
+
       - name: Tests (cortos)
         run: go test -short -count=1 -timeout 120s ./...
+
+  release-lab:
+    name: Laboratorio · binario real · PostgreSQL · HTTP
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nexus_test
+          POSTGRES_PASSWORD: release-lab-only
+          POSTGRES_DB: nexus_lab_release
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexus_test -d nexus_lab_release"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NEXUS_LAB_PG_DSN: postgres://nexus_test:release-lab-only@127.0.0.1:5432/nexus_lab_release?sslmode=disable
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_MOCK: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Probar límites del laboratorio
+        run: python3 -m unittest discover -s lab/benchmark -p 'test_release_smoke.py' -v
+      - name: Instalar frontend sin scripts de instalación
+        working-directory: web
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Compilar exportación real
+        working-directory: web
+        run: npm run build:static
+      - name: Compilar candidato con interfaz embebida
+        run: |
+          mkdir -p orchestrator/server/webui/dist
+          cp -a web/out/. orchestrator/server/webui/dist/
+          go build -tags embedui -o "$RUNNER_TEMP/nexus-candidate" ./cmd/nexus
+      - name: Probar proceso real, autenticación, persistencia y reinicio
+        run: python3 lab/benchmark/release_smoke.py --binary "$RUNNER_TEMP/nexus-candidate" --report "$RUNNER_TEMP/nexus-release-smoke.json"
+      - name: Conservar resultado del laboratorio
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-release-smoke
+          path: ${{ runner.temp }}/nexus-release-smoke.json
+          if-no-files-found: warn

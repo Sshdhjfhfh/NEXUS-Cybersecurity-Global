@@ -24,6 +24,9 @@ const (
 
 type Case struct {
 	ID string `json:"id"`
+	// InputDigest identifies canonical evaluator-owned input. Generation labs
+	// require it to reject exact replay across train, holdout and generations.
+	InputDigest string `json:"input_digest,omitempty"`
 	// Group identifies the independent unit, not a paraphrase or repeated trial.
 	Group    string `json:"group"`
 	Split    string `json:"split"`

@@ -1,15 +1,20 @@
 package security
 
 import (
+	"context"
 	"errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nexus-ia/nexus/abm"
+	"github.com/nexus-ia/nexus/agents/blue/sigma"
+	"github.com/nexus-ia/nexus/agents/blue/telemetry"
 	"github.com/nexus-ia/nexus/ans"
 	"github.com/nexus-ia/nexus/lab"
+	"github.com/nexus-ia/nexus/lab/network"
 	nhi "github.com/nexus-ia/nexus/nhi_manager"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestRealServicesRejectRevocationPersistedOutsideCache(t *testing.T) {
@@ -37,6 +42,7 @@ func TestRealServicesRejectRevocationPersistedOutsideCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer pool.Exec(t.Context(), `DELETE FROM nhi_identities WHERE agent_id=$1`, id)
+	defer pool.Exec(t.Context(), `DELETE FROM nhi_audit WHERE actor_id=$1`, id)
 	entry, err := directory.Register(t.Context(), ans.RegisterRequest{Name: id, AgentID: id, AgentType: string(identity.AgentType), DID: identity.DID.String(), CertX509PEM: identity.CertX509PEM, AllowedActions: []string{"blue.analyze"}, AllowedAssets: []string{"10.20.0.3"}})
 	if err != nil {
 		t.Fatal(err)
@@ -108,6 +114,35 @@ func TestRealServicesRejectRevocationPersistedOutsideCache(t *testing.T) {
 	}
 	// Persist revocation without touching the manager cache. JWT verification must
 	// still consult the database before the next action is authorized.
+	// Exercise the new detector with real ANS/NHI, signed audit and ABM. Only the
+	// two missing host controls are strict synthetic-fixture decisions here.
+	scope, _ := network.NewScope("10.20.0.0/24")
+	fixtureCheck := func(_ context.Context, a lab.Action) error {
+		if a != action {
+			return errors.New("fixture action denied")
+		}
+		return nil
+	}
+	detectorAdapter, err := New(Config{Directory: authoritative, Identities: persistentIdentities, Monitor: monitor, CACertPEM: identities.CACertPEM(), Audit: recorder, OPSEC: fixtureCheck, Ethics: fixtureCheck})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gate, err := detectorAdapter.Gate(scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rule, err := sigma.Parse([]byte("title: original integration fixture\nid: fixture-rule\nlogsource:\n  category: webserver\ndetection:\n  s:\n    status: 401\n  condition: s\nlevel: medium\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	detector, err := telemetry.New(id, gate, []sigma.Rule{rule}, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	event := telemetry.Event{TenantID: "fixture-tenant", TaskID: "7", ID: "fixture-event", Asset: "10.20.0.3", ObservedAt: time.Now().UTC(), ReceivedAt: time.Now().UTC(), Source: sigma.LogSource{Category: "webserver"}, Fields: sigma.Event{"status": 401}}
+	if report, err := detector.Analyze(t.Context(), event.TenantID, event.TaskID, []telemetry.Event{event}); err != nil || len(report.Alerts) != 1 {
+		t.Fatalf("real detector pipeline: %v %+v", err, report)
+	}
 	revoked := *identity
 	revoked.Revoke("test revocation from another process")
 	if err := identities.Store().SaveIdentity(t.Context(), &revoked); err != nil {
@@ -115,6 +150,9 @@ func TestRealServicesRejectRevocationPersistedOutsideCache(t *testing.T) {
 	}
 	if err := adapter.CheckIdentity(t.Context(), action); err == nil {
 		t.Fatal("database revocation was ignored")
+	}
+	if report, err := detector.Analyze(t.Context(), event.TenantID, event.TaskID, []telemetry.Event{event}); err == nil || len(report.Alerts) != 0 {
+		t.Fatal("detector ignored persisted revocation")
 	}
 	// A stale writer must never undo an already persisted revocation.
 	if err := identities.Store().SaveIdentity(t.Context(), identity); err != nil {

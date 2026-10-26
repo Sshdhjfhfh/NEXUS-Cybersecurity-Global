@@ -1,0 +1,961 @@
+{
+  "scope": "29 manifest-matched components from initial snapshot; not an installed-image or symbol scan",
+  "source_query_date": "2026-10-26T15:30:09.583924Z",
+  "components": [
+    {
+      "ref": "pkg:golang/github.com/klauspost/compress@v1.18.6",
+      "query": {
+        "package": {
+          "name": "github.com/klauspost/compress",
+          "ecosystem": "Go"
+        },
+        "version": "v1.18.6"
+      },
+      "vulnerability_ids": [
+        "GHSA-259r-337f-4rfw",
+        "GO-2026-5841"
+      ],
+      "name": "github.com/klauspost/compress",
+      "version": "v1.18.6",
+      "manifest_locations": [],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "not imported by default cmd/nexus or cmd/nexus-scan dependency graph; symbol reachability and deployed artifacts not scanned",
+      "priority": "P2 confirm other builds and tool binaries before updating",
+      "published_fixed_versions": [
+        "1.18.7"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:golang/github.com/refraction-networking/utls@v1.7.1",
+      "query": {
+        "package": {
+          "name": "github.com/refraction-networking/utls",
+          "ecosystem": "Go"
+        },
+        "version": "v1.7.1"
+      },
+      "vulnerability_ids": [
+        "GHSA-7m29-f4hw-g2vx",
+        "GHSA-rrxv-pmq9-x67r",
+        "GO-2026-4509",
+        "GO-2026-4512"
+      ],
+      "name": "github.com/refraction-networking/utls",
+      "version": "v1.7.1",
+      "manifest_locations": [],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "not imported by default cmd/nexus or cmd/nexus-scan dependency graph; symbol reachability and deployed artifacts not scanned",
+      "priority": "P2 confirm other builds and tool binaries before updating",
+      "published_fixed_versions": [
+        "1.8.1",
+        "1.8.2"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:golang/github.com/yuin/goldmark@v1.7.4",
+      "query": {
+        "package": {
+          "name": "github.com/yuin/goldmark",
+          "ecosystem": "Go"
+        },
+        "version": "v1.7.4"
+      },
+      "vulnerability_ids": [
+        "GO-2026-5320"
+      ],
+      "name": "github.com/yuin/goldmark",
+      "version": "v1.7.4",
+      "manifest_locations": [],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "not imported by default cmd/nexus or cmd/nexus-scan dependency graph; symbol reachability and deployed artifacts not scanned",
+      "priority": "P2 confirm other builds and tool binaries before updating",
+      "published_fixed_versions": [
+        "1.7.17"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:golang/golang.org/x/crypto@v0.58.0",
+      "query": {
+        "package": {
+          "name": "golang.org/x/crypto",
+          "ecosystem": "Go"
+        },
+        "version": "v0.58.0"
+      },
+      "vulnerability_ids": [
+        "GO-2026-5932"
+      ],
+      "name": "golang.org/x/crypto",
+      "version": "v0.58.0",
+      "manifest_locations": [],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "not imported by default cmd/nexus or cmd/nexus-scan dependency graph; symbol reachability and deployed artifacts not scanned",
+      "priority": "P2 confirm other builds and tool binaries before updating",
+      "published_fixed_versions": [],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/%40hono/node-server@1.19.14",
+      "query": {
+        "package": {
+          "name": "@hono/node-server",
+          "ecosystem": "npm"
+        },
+        "version": "1.19.14"
+      },
+      "vulnerability_ids": [
+        "GHSA-frvp-7c67-39w9"
+      ],
+      "name": "@hono/node-server",
+      "version": "1.19.14",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/@hono/node-server"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "transitive frontend/tool/skill dependency; installed runtime and untrusted-input reachability not established from lockfile alone",
+      "priority": "P1 trace tools and artifact inclusion before changing versions",
+      "published_fixed_versions": [
+        "1.19.15",
+        "2.0.5"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/%40modelcontextprotocol/sdk@1.29.0",
+      "query": {
+        "package": {
+          "name": "@modelcontextprotocol/sdk",
+          "ecosystem": "npm"
+        },
+        "version": "1.29.0"
+      },
+      "vulnerability_ids": [
+        "GHSA-22jm-h49p-29qw",
+        "GHSA-46jr-4wx8-v453",
+        "GHSA-6prh-2h8m-c8cw",
+        "GHSA-6qxp-vccf-f47h",
+        "GHSA-rvq5-wwqv-78pq"
+      ],
+      "name": "@modelcontextprotocol/sdk",
+      "version": "1.29.0",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/@modelcontextprotocol/sdk"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "transitive frontend/tool/skill dependency; installed runtime and untrusted-input reachability not established from lockfile alone",
+      "priority": "P1 trace tools and artifact inclusion before changing versions",
+      "published_fixed_versions": [
+        "1.31.0",
+        "1.32.0"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/baseline-browser-mapping@2.10.40",
+      "query": {
+        "package": {
+          "name": "baseline-browser-mapping",
+          "ecosystem": "npm"
+        },
+        "version": "2.10.40"
+      },
+      "vulnerability_ids": [
+        "GHSA-w5vr-8v7q-w6rv"
+      ],
+      "name": "baseline-browser-mapping",
+      "version": "2.10.40",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/baseline-browser-mapping"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "CSS/browser build tool chain; no standalone application API exposure established; malicious build inputs remain relevant",
+      "priority": "P1/P2 test patched build dependencies",
+      "published_fixed_versions": [
+        "2.11.0"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/body-parser@2.3.0",
+      "query": {
+        "package": {
+          "name": "body-parser",
+          "ecosystem": "npm"
+        },
+        "version": "2.3.0"
+      },
+      "vulnerability_ids": [
+        "GHSA-27r3-jxmh-p828"
+      ],
+      "name": "body-parser",
+      "version": "2.3.0",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/body-parser"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "transitive frontend/tool/skill dependency; installed runtime and untrusted-input reachability not established from lockfile alone",
+      "priority": "P1 trace tools and artifact inclusion before changing versions",
+      "published_fixed_versions": [
+        "1.20.9",
+        "2.4.0"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/brace-expansion@5.0.7",
+      "query": {
+        "package": {
+          "name": "brace-expansion",
+          "ecosystem": "npm"
+        },
+        "version": "5.0.7"
+      },
+      "vulnerability_ids": [
+        "GHSA-6j4f-fj2g-mc7p",
+        "GHSA-mh99-v99m-4gvg",
+        "GHSA-q2hr-2g5m-vwhr",
+        "GHSA-qhr7-859c-m2p7",
+        "GHSA-rgw5-rvv9-x895"
+      ],
+      "name": "brace-expansion",
+      "version": "5.0.7",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/brace-expansion"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "transitive frontend/tool/skill dependency; installed runtime and untrusted-input reachability not established from lockfile alone",
+      "priority": "P1 trace tools and artifact inclusion before changing versions",
+      "published_fixed_versions": [
+        "1.1.17",
+        "1.1.18",
+        "1.1.19",
+        "1.1.20",
+        "1.1.21",
+        "2.1.3",
+        "2.1.4",
+        "2.1.5",
+        "2.1.6",
+        "2.1.7",
+        "3.0.3",
+        "3.0.6",
+        "3.0.7",
+        "3.0.8",
+        "3.0.9",
+        "5.0.10",
+        "5.0.11",
+        "5.0.12",
+        "5.0.8",
+        "5.0.9"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/browserslist@4.28.4",
+      "query": {
+        "package": {
+          "name": "browserslist",
+          "ecosystem": "npm"
+        },
+        "version": "4.28.4"
+      },
+      "vulnerability_ids": [
+        "GHSA-73wf-gq98-2v4g",
+        "GHSA-c83g-rgw3-j3cx"
+      ],
+      "name": "browserslist",
+      "version": "4.28.4",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/browserslist"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "CSS/browser build tool chain; no standalone application API exposure established; malicious build inputs remain relevant",
+      "priority": "P1/P2 test patched build dependencies",
+      "published_fixed_versions": [
+        "4.28.7"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/fast-uri@3.1.3",
+      "query": {
+        "package": {
+          "name": "fast-uri",
+          "ecosystem": "npm"
+        },
+        "version": "3.1.3"
+      },
+      "vulnerability_ids": [
+        "GHSA-333x-w4r6-6crp",
+        "GHSA-5jgf-p345-68v8",
+        "GHSA-7p8r-x3mc-p8w7",
+        "GHSA-f65p-4m7j-42xc",
+        "GHSA-fph4-wmhf-6fwf",
+        "GHSA-hrr3-gc8f-f4qj",
+        "GHSA-jqff-g426-hqxp",
+        "GHSA-qw65-cvwx-89v3",
+        "GHSA-v2hh-gcrm-f6hx",
+        "GHSA-w74x-v6f9-j3xg",
+        "GHSA-wjr9-j795-jxcr",
+        "GHSA-xhq7-xmqj-769h"
+      ],
+      "name": "fast-uri",
+      "version": "3.1.3",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/fast-uri"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "transitive frontend/tool/skill dependency; installed runtime and untrusted-input reachability not established from lockfile alone",
+      "priority": "P1 trace tools and artifact inclusion before changing versions",
+      "published_fixed_versions": [
+        "2.4.3",
+        "2.4.4",
+        "2.4.5",
+        "2.4.6",
+        "2.4.7",
+        "2.4.8",
+        "3.1.4",
+        "3.1.5",
+        "3.1.6",
+        "3.1.7",
+        "3.1.8",
+        "3.1.9",
+        "4.1.1",
+        "4.1.2",
+        "4.1.3",
+        "4.1.4",
+        "4.1.5",
+        "4.2.3"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/hono@4.12.27",
+      "query": {
+        "package": {
+          "name": "hono",
+          "ecosystem": "npm"
+        },
+        "version": "4.12.27"
+      },
+      "vulnerability_ids": [
+        "GHSA-54fx-42gc-7vw4",
+        "GHSA-5r4p-p66f-jhc7",
+        "GHSA-79qm-7rj5-m7r9",
+        "GHSA-8j4g-w8fx-2239",
+        "GHSA-crvj-82cr-hjcx",
+        "GHSA-f23p-vx2j-j53r",
+        "GHSA-g6gw-c38x-mqfc",
+        "GHSA-gqvv-2mrq-wpjv",
+        "GHSA-hxh3-vqpv-xpqv"
+      ],
+      "name": "hono",
+      "version": "4.12.27",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/hono"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "transitive frontend/tool/skill dependency; installed runtime and untrusted-input reachability not established from lockfile alone",
+      "priority": "P1 trace tools and artifact inclusion before changing versions",
+      "published_fixed_versions": [
+        "4.12.34",
+        "4.13.11",
+        "4.13.5",
+        "4.13.7"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/ip-address@10.2.0",
+      "query": {
+        "package": {
+          "name": "ip-address",
+          "ecosystem": "npm"
+        },
+        "version": "10.2.0"
+      },
+      "vulnerability_ids": [
+        "GHSA-22jq-vg5j-6vgg",
+        "GHSA-2vr4-cq9g-pvrc",
+        "GHSA-4xrf-jv44-h6hh",
+        "GHSA-h3mg-xc3c-68pw",
+        "GHSA-j6r3-76f7-8jcv",
+        "GHSA-mwp4-54f8-5fhr",
+        "GHSA-rpw4-54j3-4h4q",
+        "GHSA-rxp7-6hxx-x8q5"
+      ],
+      "name": "ip-address",
+      "version": "10.2.0",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/ip-address",
+        "resources/skills/api-recon/scripts/package-lock.json:node_modules/ip-address"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "transitive frontend/tool/skill dependency; installed runtime and untrusted-input reachability not established from lockfile alone",
+      "priority": "P1 trace tools and artifact inclusion before changing versions",
+      "published_fixed_versions": [
+        "10.2.1",
+        "10.2.2",
+        "10.3.1",
+        "10.5.1",
+        "10.7.1",
+        "10.7.4"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/js-yaml@4.3.0",
+      "query": {
+        "package": {
+          "name": "js-yaml",
+          "ecosystem": "npm"
+        },
+        "version": "4.3.0"
+      },
+      "vulnerability_ids": [
+        "GHSA-2883-xcg3-v3hh",
+        "GHSA-5p4m-2wfm-xmqj"
+      ],
+      "name": "js-yaml",
+      "version": "4.3.0",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/js-yaml"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "transitive frontend/tool/skill dependency; installed runtime and untrusted-input reachability not established from lockfile alone",
+      "priority": "P1 trace tools and artifact inclusion before changing versions",
+      "published_fixed_versions": [
+        "3.15.1",
+        "3.15.2",
+        "4.3.1",
+        "4.3.2"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/nanoid@3.3.15",
+      "query": {
+        "package": {
+          "name": "nanoid",
+          "ecosystem": "npm"
+        },
+        "version": "3.3.15"
+      },
+      "vulnerability_ids": [
+        "GHSA-28wg-ghj8-5hjv",
+        "GHSA-2v37-7h3g-55p8"
+      ],
+      "name": "nanoid",
+      "version": "3.3.15",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/nanoid"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "transitive frontend/tool/skill dependency; installed runtime and untrusted-input reachability not established from lockfile alone",
+      "priority": "P1 trace tools and artifact inclusion before changing versions",
+      "published_fixed_versions": [
+        "3.3.16",
+        "3.3.18",
+        "5.1.16",
+        "5.1.6"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/next@16.2.9",
+      "query": {
+        "package": {
+          "name": "next",
+          "ecosystem": "npm"
+        },
+        "version": "16.2.9"
+      },
+      "vulnerability_ids": [
+        "GHSA-2464-fhr4-w9xw",
+        "GHSA-2xp9-vwfh-vxw4",
+        "GHSA-39w2-rjm5-chcv",
+        "GHSA-4633-3j49-mh5q",
+        "GHSA-4c39-4ccg-62r3",
+        "GHSA-4jqv-mc3x-m676",
+        "GHSA-673q-mjm6-r5xr",
+        "GHSA-68g3-v927-f742",
+        "GHSA-6gpp-xcg3-4w24",
+        "GHSA-89xv-2m56-2m9x",
+        "GHSA-955p-x3mx-jcvp",
+        "GHSA-cjq9-62q9-8jv4",
+        "GHSA-f87g-xv8r-7p7x",
+        "GHSA-m99w-x7hq-7vfj",
+        "GHSA-mcj8-r9mp-w47p",
+        "GHSA-p293-qw3h-jr36",
+        "GHSA-p3m5-59mp-jv5r",
+        "GHSA-p9j2-gv94-2wf4",
+        "GHSA-q8wf-6r8g-63ch",
+        "GHSA-vcvr-r3jv-pc5j"
+      ],
+      "name": "next",
+      "version": "16.2.9",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/next"
+      ],
+      "direct_frontend_dependency": true,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "static-export build dependency; Next server/image API not served by default Go image; build/dev/alternative deployments still require advisory-by-advisory review",
+      "priority": "P1 validate build chain and alternative deployment; no blanket suppression",
+      "published_fixed_versions": [
+        "15.5.21",
+        "15.5.24",
+        "15.5.27",
+        "15.5.28",
+        "16.2.11",
+        "16.3.3",
+        "16.3.6",
+        "16.3.8",
+        "16.4.1"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/postcss@8.4.31",
+      "query": {
+        "package": {
+          "name": "postcss",
+          "ecosystem": "npm"
+        },
+        "version": "8.4.31"
+      },
+      "vulnerability_ids": [
+        "GHSA-6g55-p6wh-862q",
+        "GHSA-fxqj-rqcc-2cmp",
+        "GHSA-qx2v-qp2m-jg93",
+        "GHSA-r28c-9q8g-f849"
+      ],
+      "name": "postcss",
+      "version": "8.4.31",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/next/node_modules/postcss"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": true,
+      "exposure_assessment": "CSS/browser build tool chain; no standalone application API exposure established; malicious build inputs remain relevant",
+      "priority": "P1/P2 test patched build dependencies",
+      "published_fixed_versions": [
+        "8.5.10",
+        "8.5.12",
+        "8.5.18",
+        "8.5.23"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/postcss@8.5.16",
+      "query": {
+        "package": {
+          "name": "postcss",
+          "ecosystem": "npm"
+        },
+        "version": "8.5.16"
+      },
+      "vulnerability_ids": [
+        "GHSA-fxqj-rqcc-2cmp",
+        "GHSA-r28c-9q8g-f849"
+      ],
+      "name": "postcss",
+      "version": "8.5.16",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/postcss"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": true,
+      "exposure_assessment": "CSS/browser build tool chain; no standalone application API exposure established; malicious build inputs remain relevant",
+      "priority": "P1/P2 test patched build dependencies",
+      "published_fixed_versions": [
+        "8.5.18",
+        "8.5.23"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/postcss-selector-parser@7.1.4",
+      "query": {
+        "package": {
+          "name": "postcss-selector-parser",
+          "ecosystem": "npm"
+        },
+        "version": "7.1.4"
+      },
+      "vulnerability_ids": [
+        "GHSA-rj75-hqrm-r3gf"
+      ],
+      "name": "postcss-selector-parser",
+      "version": "7.1.4",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/postcss-selector-parser"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "CSS/browser build tool chain; no standalone application API exposure established; malicious build inputs remain relevant",
+      "priority": "P1/P2 test patched build dependencies",
+      "published_fixed_versions": [
+        "6.1.5",
+        "7.1.6"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/proxy-addr@2.0.7",
+      "query": {
+        "package": {
+          "name": "proxy-addr",
+          "ecosystem": "npm"
+        },
+        "version": "2.0.7"
+      },
+      "vulnerability_ids": [
+        "GHSA-jqcg-44mw-7w3h"
+      ],
+      "name": "proxy-addr",
+      "version": "2.0.7",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/proxy-addr"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "transitive frontend/tool/skill dependency; installed runtime and untrusted-input reachability not established from lockfile alone",
+      "priority": "P1 trace tools and artifact inclusion before changing versions",
+      "published_fixed_versions": [
+        "2.0.8"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/qs@6.15.3",
+      "query": {
+        "package": {
+          "name": "qs",
+          "ecosystem": "npm"
+        },
+        "version": "6.15.3"
+      },
+      "vulnerability_ids": [
+        "GHSA-4mjr-xmp4-gh2g",
+        "GHSA-x5fp-wj9c-mxmx"
+      ],
+      "name": "qs",
+      "version": "6.15.3",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/qs"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "transitive frontend/tool/skill dependency; installed runtime and untrusted-input reachability not established from lockfile alone",
+      "priority": "P1 trace tools and artifact inclusion before changing versions",
+      "published_fixed_versions": [
+        "6.16.0"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/zod@3.25.76",
+      "query": {
+        "package": {
+          "name": "zod",
+          "ecosystem": "npm"
+        },
+        "version": "3.25.76"
+      },
+      "vulnerability_ids": [
+        "GHSA-mrhx-c7xc-m3w5"
+      ],
+      "name": "zod",
+      "version": "3.25.76",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/shadcn/node_modules/zod"
+      ],
+      "direct_frontend_dependency": true,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "schema library used by frontend and/or tools; assess each installed version and untrusted parse paths; no demonstrated exploit",
+      "priority": "P1 review source and artifact use",
+      "published_fixed_versions": [
+        "4.6.6"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/sharp@0.34.5",
+      "query": {
+        "package": {
+          "name": "sharp",
+          "ecosystem": "npm"
+        },
+        "version": "0.34.5"
+      },
+      "vulnerability_ids": [
+        "GHSA-f88m-g3jw-g9cj",
+        "GHSA-rgj7-g3m4-5g8c",
+        "GHSA-wq5f-xc86-pv6w"
+      ],
+      "name": "sharp",
+      "version": "0.34.5",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/sharp"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "static-export build dependency; Next server/image API not served by default Go image; build/dev/alternative deployments still require advisory-by-advisory review",
+      "priority": "P1 validate build chain and alternative deployment; no blanket suppression",
+      "published_fixed_versions": [
+        "0.35.0",
+        "0.35.4",
+        "0.35.5"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/source-map-js@1.2.1",
+      "query": {
+        "package": {
+          "name": "source-map-js",
+          "ecosystem": "npm"
+        },
+        "version": "1.2.1"
+      },
+      "vulnerability_ids": [
+        "GHSA-68fv-2mgg-jv7q"
+      ],
+      "name": "source-map-js",
+      "version": "1.2.1",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/source-map-js"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "CSS/browser build tool chain; no standalone application API exposure established; malicious build inputs remain relevant",
+      "priority": "P1/P2 test patched build dependencies",
+      "published_fixed_versions": [
+        "1.2.2"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/undici@7.28.0",
+      "query": {
+        "package": {
+          "name": "undici",
+          "ecosystem": "npm"
+        },
+        "version": "7.28.0"
+      },
+      "vulnerability_ids": [
+        "GHSA-2gqq-gqf2-x968",
+        "GHSA-2jfj-6hjv-fm6j",
+        "GHSA-3wwx-pv8p-q78v",
+        "GHSA-3xpg-4rpp-hhhm",
+        "GHSA-4cwx-7wf7-3272",
+        "GHSA-4qv8-2p9j-2685",
+        "GHSA-8436-99hf-9mmv",
+        "GHSA-8xcm-r25x-g524",
+        "GHSA-f72v-6w45-q472",
+        "GHSA-jr45-8vmc-qm54",
+        "GHSA-m8rv-5g2x-5cg5",
+        "GHSA-pmjh-fq2x-6v4x",
+        "GHSA-r53p-7pc4-xj5r",
+        "GHSA-rfgv-xxqx-mfg5",
+        "GHSA-rx4f-c7p8-82vq",
+        "GHSA-v3r7-h72x-cjcm",
+        "GHSA-w293-vg96-wgc3",
+        "GHSA-xjj6-f33q-929c"
+      ],
+      "name": "undici",
+      "version": "7.28.0",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/undici"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "transitive frontend/tool/skill dependency; installed runtime and untrusted-input reachability not established from lockfile alone",
+      "priority": "P1 trace tools and artifact inclusion before changing versions",
+      "published_fixed_versions": [
+        "6.28.0",
+        "6.28.1",
+        "6.29.1",
+        "7.29.0",
+        "7.29.1",
+        "7.30.1",
+        "8.10.2",
+        "8.12.2",
+        "8.9.0"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/zod@4.4.3",
+      "query": {
+        "package": {
+          "name": "zod",
+          "ecosystem": "npm"
+        },
+        "version": "4.4.3"
+      },
+      "vulnerability_ids": [
+        "GHSA-mrhx-c7xc-m3w5"
+      ],
+      "name": "zod",
+      "version": "4.4.3",
+      "manifest_locations": [
+        "web/package-lock.json:node_modules/zod"
+      ],
+      "direct_frontend_dependency": true,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "schema library used by frontend and/or tools; assess each installed version and untrusted parse paths; no demonstrated exploit",
+      "priority": "P1 review source and artifact use",
+      "published_fixed_versions": [
+        "4.6.6"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/basic-ftp@5.3.1",
+      "query": {
+        "package": {
+          "name": "basic-ftp",
+          "ecosystem": "npm"
+        },
+        "version": "5.3.1"
+      },
+      "vulnerability_ids": [
+        "GHSA-c475-qrg2-pj4r"
+      ],
+      "name": "basic-ftp",
+      "version": "5.3.1",
+      "manifest_locations": [
+        "resources/skills/api-recon/scripts/package-lock.json:node_modules/basic-ftp"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "transitive frontend/tool/skill dependency; installed runtime and untrusted-input reachability not established from lockfile alone",
+      "priority": "P1 trace tools and artifact inclusion before changing versions",
+      "published_fixed_versions": [
+        "6.2.1"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/extract-zip@2.0.1",
+      "query": {
+        "package": {
+          "name": "extract-zip",
+          "ecosystem": "npm"
+        },
+        "version": "2.0.1"
+      },
+      "vulnerability_ids": [
+        "GHSA-7pqw-9j4j-h8q3",
+        "GHSA-jmr9-qjv8-65gv"
+      ],
+      "name": "extract-zip",
+      "version": "2.0.1",
+      "manifest_locations": [
+        "resources/skills/api-recon/scripts/package-lock.json:node_modules/extract-zip"
+      ],
+      "direct_frontend_dependency": false,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "transitive frontend/tool/skill dependency; installed runtime and untrusted-input reachability not established from lockfile alone",
+      "priority": "P1 trace tools and artifact inclusion before changing versions",
+      "published_fixed_versions": [],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    },
+    {
+      "ref": "pkg:npm/zod@3.23.8",
+      "query": {
+        "package": {
+          "name": "zod",
+          "ecosystem": "npm"
+        },
+        "version": "3.23.8"
+      },
+      "vulnerability_ids": [
+        "GHSA-mrhx-c7xc-m3w5"
+      ],
+      "name": "zod",
+      "version": "3.23.8",
+      "manifest_locations": [
+        "resources/skills/api-recon/scripts/package-lock.json:node_modules/zod"
+      ],
+      "direct_frontend_dependency": true,
+      "direct_frontend_dev_dependency": false,
+      "exposure_assessment": "schema library used by frontend and/or tools; assess each installed version and untrusted parse paths; no demonstrated exploit",
+      "priority": "P1 review source and artifact use",
+      "published_fixed_versions": [
+        "4.6.6"
+      ],
+      "withdrawn_ids": [],
+      "decision": "retain visible; no suppression; targeted update only after affected range, reachable code and regression checks"
+    }
+  ],
+  "advisory_fetch_errors": {
+    "GHSA-73wf-gq98-2v4g": {
+      "error": "<urlopen error [Errno -3] Temporary failure in name resolution>"
+    }
+  },
+  "advisory_detail_counts": {
+    "total_ids": 110,
+    "osv_details_retrieved": 109,
+    "osv_fetch_errors": 1
+  },
+  "alternative_primary_sources": [
+    {
+      "advisory": "GHSA-73wf-gq98-2v4g",
+      "url": "https://github.com/advisories/GHSA-73wf-gq98-2v4g",
+      "package": "browserslist",
+      "affected": "<=4.28.6",
+      "patched": "4.28.7",
+      "note": "OSV fetch error preserved; GitHub Advisory independently checked"
+    }
+  ],
+  "version_warning": "published_fixed_versions may span branches and separate advisories; not a consolidated upgrade recommendation"
+}

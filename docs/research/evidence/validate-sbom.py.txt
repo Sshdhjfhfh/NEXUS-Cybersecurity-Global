@@ -1,0 +1,28 @@
+import hashlib
+import json
+import pathlib
+import urllib.request
+import jsonschema
+
+out=pathlib.Path('/tmp/nexus-inventory')
+store={}
+sources=[]
+for name in ['bom-1.6.schema.json','spdx.schema.json','jsf-0.82.schema.json']:
+    url='https://raw.githubusercontent.com/CycloneDX/specification/master/schema/'+name
+    with urllib.request.urlopen(url,timeout=25) as response:
+        data=response.read()
+    schema=json.loads(data)
+    (out/name).write_bytes(data)
+    sources.append({'url':url,'sha256':hashlib.sha256(data).hexdigest()})
+    for prefix in ['http://cyclonedx.org/schema/','https://cyclonedx.org/schema/','https://raw.githubusercontent.com/CycloneDX/specification/master/schema/']:
+        store[prefix+name]=schema
+    if '$id' in schema:store[schema['$id']]=schema
+schema=json.loads((out/'bom-1.6.schema.json').read_text())
+resolver=jsonschema.RefResolver.from_schema(schema,store=store)
+validator=jsonschema.Draft7Validator(schema,resolver=resolver)
+errors=list(validator.iter_errors(json.loads((out/'SBOM.cdx.json').read_text())))
+report={'schema':schema.get('$schema'),'sources':sources,'errors':[{'path':list(e.path),'message':e.message} for e in errors]}
+(out/'sbom-schema-validation.json').write_text(json.dumps(report,indent=2)+'\n')
+print('CycloneDX schema errors:',len(errors))
+for err in errors[:10]:print(list(err.path),err.message[:250])
+raise SystemExit(bool(errors))

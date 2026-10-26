@@ -7,15 +7,16 @@
 // file alongside them. This package contains only original NEXUS code; it loads
 // rules from a directory you supply, so no third-party rule content is embedded.
 //
-// Supported today: single-document rules with named selections (field maps and
-// lists), the modifiers contains/startswith/endswith/re/all, list values (OR),
-// and conditions using and/or/not/parentheses plus "all of"/"N of" them/prefix*.
-// Advanced features (correlation, timeframe, numeric "N of" counting, near) are
-// intentionally out of scope for this first increment.
+// Supported: single-document rules, field maps/lists, wildcards, null, exists,
+// contains/startswith/endswith/re/all/cased, regex flags i/m/s, and boolean/count
+// conditions. Unsupported features (including timeframe and correlation) fail
+// validation explicitly rather than approximating their meaning.
 package sigma
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -26,9 +27,9 @@ import (
 
 // LogSource identifies the telemetry a rule applies to.
 type LogSource struct {
-	Product  string `yaml:"product"`
-	Service  string `yaml:"service"`
-	Category string `yaml:"category"`
+	Product  string `yaml:"product" json:"product,omitempty"`
+	Service  string `yaml:"service" json:"service,omitempty"`
+	Category string `yaml:"category" json:"category,omitempty"`
 }
 
 // Rule is a parsed Sigma detection rule.
@@ -38,6 +39,8 @@ type Rule struct {
 	Status      string         `yaml:"status"`
 	Description string         `yaml:"description"`
 	Author      string         `yaml:"author"`
+	License     string         `yaml:"license"`
+	References  []string       `yaml:"references"`
 	Level       string         `yaml:"level"`
 	Tags        []string       `yaml:"tags"`
 	LogSource   LogSource      `yaml:"logsource"`
@@ -59,14 +62,22 @@ func (r Rule) Condition() (string, error) {
 
 // Parse decodes a single Sigma rule from YAML.
 func Parse(data []byte) (Rule, error) {
+	if len(data) > MaxRuleBytes {
+		return Rule{}, fmt.Errorf("sigma rule size limit exceeded")
+	}
 	var r Rule
-	if err := yaml.Unmarshal(data, &r); err != nil {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	if err := decoder.Decode(&r); err != nil {
 		return Rule{}, err
 	}
 	if r.Title == "" || r.Detection == nil {
 		return Rule{}, fmt.Errorf("invalid sigma rule: missing title or detection")
 	}
-	if _, err := r.Condition(); err != nil {
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		return Rule{}, fmt.Errorf("sigma requires exactly one YAML document")
+	}
+	if _, err := r.Compile(); err != nil {
 		return Rule{}, err
 	}
 	return r, nil
@@ -74,12 +85,17 @@ func Parse(data []byte) (Rule, error) {
 
 // LoadDir loads every *.yml / *.yaml rule under dir (recursive). Rules that fail
 // to parse are skipped; their errors are returned alongside the valid rules so a
-// handful of malformed community rules never abort the whole load.
+// handful of malformed community rules never abort the whole load. Traversal
+// errors are reported too, distinguishing an inaccessible tree from an empty one.
 func LoadDir(dir string) ([]Rule, []error) {
 	var rules []Rule
 	var errs []error
 	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", path, err))
+			return nil
+		}
+		if d.IsDir() {
 			return nil
 		}
 		switch strings.ToLower(filepath.Ext(path)) {

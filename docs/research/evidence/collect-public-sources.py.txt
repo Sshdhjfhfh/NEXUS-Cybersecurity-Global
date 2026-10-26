@@ -1,0 +1,68 @@
+import concurrent.futures
+import datetime
+import json
+import pathlib
+import urllib.error
+import urllib.parse
+import urllib.request
+
+OUT = pathlib.Path('/tmp/nexus-public-research')
+OUT.mkdir(exist_ok=True)
+REPOS = '''vxcontrol/pentagi usestrix/strix pursuingf/CyberEvolver apache/caldera investigato/pentestgpt aliasrobotics/cai 0x4m4/hexstrike-ai SigmaHQ/sigma elastic/detection-rules Infini-AI-Lab/SED modelscope/AgentEvolver SigmaHQ/pySigma mitre-attack/attack-stix-data redcanaryco/atomic-red-team langchain-ai/langgraph microsoft/autogen google/oss-fuzz wazuh/wazuh'''.split()
+
+def get(url):
+    req = urllib.request.Request(url, headers={'User-Agent': 'NEXUS-read-only-research', 'Accept': 'application/vnd.github+json'})
+    with urllib.request.urlopen(req, timeout=45) as response:
+        return response.read()
+
+def api(path):
+    return json.loads(get('https://api.github.com/' + path))
+
+def inspect(repo):
+    dest = OUT / repo.replace('/', '__')
+    dest.mkdir(exist_ok=True)
+    result = {'requested': repo, 'retrieved_at': datetime.datetime.now(datetime.timezone.utc).isoformat()}
+    try:
+        meta = api('repos/' + repo)
+        result['metadata'] = {k: meta.get(k) for k in ['full_name', 'html_url', 'description', 'pushed_at', 'updated_at', 'archived', 'disabled', 'default_branch', 'language', 'license', 'size', 'open_issues_count']}
+        canonical = meta['full_name']
+        commits = api('repos/' + canonical + '/commits?per_page=1')
+        commit = commits[0]
+        sha = commit['sha']
+        result['commit'] = {'sha': sha, 'url': commit['html_url'], 'author_date': commit['commit']['author']['date'], 'committer_date': commit['commit']['committer']['date']}
+        tree = api('repos/' + canonical + '/git/trees/' + sha + '?recursive=1')
+        paths = [item['path'] for item in tree.get('tree', []) if item['type'] == 'blob']
+        result['tree_truncated'] = tree.get('truncated')
+        result['test_paths'] = [p for p in paths if ('test' in p.lower() or p.startswith('.github/workflows/'))][:100]
+        result['manifest_paths'] = [p for p in paths if pathlib.PurePosixPath(p).name in ['go.mod', 'pyproject.toml', 'package.json', 'requirements.txt', 'Cargo.toml']][:35]
+        result['license_paths'] = [p for p in paths if pathlib.PurePosixPath(p).name.lower().startswith(('license', 'notice', 'copying'))][:60]
+        wanted = [p for p in paths if '/' not in p and (p.lower().startswith(('readme', 'license', 'notice', 'copying')) or p in result['manifest_paths'])]
+        wanted += [p for p in result['manifest_paths'] if p not in wanted][:2]
+        result['files'] = []
+        for path in wanted[:10]:
+            url = f'https://raw.githubusercontent.com/{canonical}/{sha}/{path}'
+            try:
+                content = get(url)
+                (dest / path.replace('/', '__')).write_bytes(content)
+                result['files'].append({'path': path, 'url': url, 'bytes': len(content)})
+            except Exception as exc:
+                result.setdefault('file_errors', []).append({'path': path, 'error': str(exc)})
+        (dest / 'paths.json').write_text(json.dumps(paths, indent=2))
+    except Exception as exc:
+        result['error'] = str(exc)
+    (dest / 'metadata.json').write_text(json.dumps(result, indent=2))
+    return result
+
+with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+    results = list(pool.map(inspect, REPOS))
+(OUT / 'repositories.json').write_text(json.dumps(results, indent=2))
+for r in results:
+    m = r.get('metadata', {})
+    print(json.dumps({'requested': r['requested'], 'canonical': m.get('full_name'), 'license': (m.get('license') or {}).get('spdx_id'), 'pushed_at': m.get('pushed_at'), 'commit': r.get('commit'), 'archived': m.get('archived'), 'test_paths': len(r.get('test_paths', [])), 'error': r.get('error')}, ensure_ascii=False))
+for query in ['agentic cybersecurity in:name,description', 'security agent benchmark in:name,description']:
+    try:
+        data = api('search/repositories?' + urllib.parse.urlencode({'q': query, 'sort': 'updated', 'per_page': 5}))
+        (OUT / ('search-' + query.split()[0] + '.json')).write_text(json.dumps(data, indent=2))
+        print('SEARCH', query, [(x['full_name'], x['html_url']) for x in data['items']])
+    except Exception as exc:
+        print('SEARCH ERROR', query, str(exc))

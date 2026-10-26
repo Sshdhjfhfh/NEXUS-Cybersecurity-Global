@@ -1,0 +1,64 @@
+[
+  {
+    "snapshot": "search-security.json",
+    "total_count": 278,
+    "items": [
+      {
+        "name": "deepmehta11/researchaudio-scorecard",
+        "url": "https://github.com/deepmehta11/researchaudio-scorecard",
+        "description": "Free browser-local AI evaluation tools, benchmark audits, agent security checklists, and cost calculators by ResearchAudio"
+      },
+      {
+        "name": "umerjavaidkh/AI-Governance-and-Eval",
+        "url": "https://github.com/umerjavaidkh/AI-Governance-and-Eval",
+        "description": "An open-source collection of tools for AI evaluation, agent security, and responsible AI governance. Discover curated repositories for LLM benchmarking, RAG evaluation, adversarial testing, bias detection, explainability, privacy protection, and production monitoring. Features human-verified recommendations, provenance-aware ranking, and automated "
+      },
+      {
+        "name": "GangGreenTemperTatum/stealthbench",
+        "url": "https://github.com/GangGreenTemperTatum/stealthbench",
+        "description": "StealthBench is a benchmark for evaluating whether autonomous agents operate with the operational security (OPSEC) discipline that separates a successful security engagement from one that gets detected and shut down."
+      },
+      {
+        "name": "lorenzo9uerra/ariadne",
+        "url": "https://github.com/lorenzo9uerra/ariadne",
+        "description": "A small benchmark for studying how LLM agents solve security challenges"
+      },
+      {
+        "name": "opena2a-org/oasb",
+        "url": "https://github.com/opena2a-org/oasb",
+        "description": "Open Agent Security Benchmark - 223 attack scenarios, product-agnostic adapter interface, MITRE ATLAS mapped"
+      }
+    ]
+  },
+  {
+    "snapshot": "search-agentic.json",
+    "total_count": 1820,
+    "items": [
+      {
+        "name": "IsaacDevX/ITU-AI-Readiness-Solo",
+        "url": "https://github.com/IsaacDevX/ITU-AI-Readiness-Solo",
+        "description": "An AI Policy Agent for Nigerian cybersecurity laws. Built for the ITU AI for Good Hackathon 2026. Integrates NDPA, NCA, NSS, and NAIS into a searchable Knowledge Base."
+      },
+      {
+        "name": "Baounna/ai-student-hub",
+        "url": "https://github.com/Baounna/ai-student-hub",
+        "description": "Bilingual AI & cybersecurity publication run by an autonomous agent pipeline \u2014 21 first-party sources, Claude-drafted, behind a hardened security layer."
+      },
+      {
+        "name": "secwexen/aapp-mart",
+        "url": "https://github.com/secwexen/aapp-mart",
+        "description": "AAPP-MART is a cybersecurity engine featuring AI-powered autonomous attack path prediction and multi-agent red team simulation. These capabilities include adversary emulation, threat modeling, security validation, risk assessment, and MITRE ATT&CK alignment."
+      },
+      {
+        "name": "Stefan-Paun/Stefan-Paun.github.io",
+        "url": "https://github.com/Stefan-Paun/Stefan-Paun.github.io",
+        "description": "Portfolio von Stefan Paun \u2013 KI-Agents & Cybersecurity"
+      },
+      {
+        "name": "omaromar9091/Security-Analyst",
+        "url": "https://github.com/omaromar9091/Security-Analyst",
+        "description": "cybersecurity analysis skill for any AI model or agent \u2014 recon, code vulnerabilities, AI-generated code review, threat analysis, social engineering, remediation."
+      }
+    ]
+  }
+]

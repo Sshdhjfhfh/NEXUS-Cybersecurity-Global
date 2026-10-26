@@ -120,8 +120,23 @@ func (c *Config) RunParallel(ctx context.Context, tasks []string) []Result {
 	sem := make(chan struct{}, limit)
 	var wg sync.WaitGroup
 	for i, task := range tasks {
+		results[i].Task = task
+		if err := ctx.Err(); err != nil {
+			results[i].Err = err
+			continue
+		}
+		select {
+		case sem <- struct{}{}:
+		case <-ctx.Done():
+			results[i].Err = ctx.Err()
+			continue
+		}
+		if err := ctx.Err(); err != nil {
+			<-sem
+			results[i].Err = err
+			continue
+		}
 		wg.Add(1)
-		sem <- struct{}{}
 		go func(i int, task string) {
 			defer wg.Done()
 			defer func() { <-sem }()

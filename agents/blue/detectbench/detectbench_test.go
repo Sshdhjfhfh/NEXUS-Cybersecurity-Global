@@ -7,10 +7,38 @@ import (
 	"github.com/nexus-ia/nexus/evolve"
 )
 
+func TestFixturesHaveNoExactReplayAndDigestsCoverContent(t *testing.T) {
+	seen := map[string]bool{}
+	for generation := 0; generation < 3; generation++ {
+		b, err := NewGeneration(generation)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, c := range b.Cases() {
+			if len(c.InputDigest) != 64 || seen[c.InputDigest] {
+				t.Fatal("identical input reused across split/generation")
+			}
+			seen[c.InputDigest] = true
+		}
+		prior := b.Digest()
+		id := b.Cases()[0].ID
+		b.events[id]["independent-evidence"] = "changed"
+		if b.fingerprint() == prior {
+			t.Fatal("digest omits event input")
+		}
+		delete(b.events[id], "independent-evidence")
+		b.rulesets["v1"][0].Description = "changed"
+		if b.fingerprint() == prior {
+			t.Fatal("digest omits rule contents")
+		}
+	}
+}
+
 // TestVerifiedImprovementPromoted shows the honest evolution loop: a ruleset
 // (v2) that genuinely detects more attacks than the incumbent (v1), without
 // regressing on benign traffic, is promoted — and only after passing an
-// independent holdout split with statistical significance.
+// held-out synthetic fixture split with the configured statistical gate. The
+// synthetic families themselves are not independent population measurements.
 func TestVerifiedImprovementPromoted(t *testing.T) {
 	b, err := New()
 	if err != nil {

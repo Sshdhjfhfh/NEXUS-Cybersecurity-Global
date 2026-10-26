@@ -31,7 +31,7 @@ RUN NEXT_EXPORT=1 npm run build:static
 # ───────────────────────────────────────────────────────────────
 # STAGE 2: Backend (Go binary con frontend embebido)
 # ───────────────────────────────────────────────────────────────
-FROM golang:1.26.3-alpine AS backend
+FROM golang:1.26.10-alpine AS backend
 
 WORKDIR /app
 

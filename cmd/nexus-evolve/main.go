@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"time"
 
+	"github.com/nexus-ia/nexus/agents/blue/detectbench"
 	"github.com/nexus-ia/nexus/core/memory"
 	"github.com/nexus-ia/nexus/evolve"
 	"github.com/nexus-ia/nexus/evolve/recall"
@@ -24,12 +26,43 @@ func main() {
 
 func run() error {
 	demo := flag.Bool("demo", false, "Evaluar el corpus sintético español del laboratorio")
+	detectionLab := flag.Bool("detection-lab", false, "Ejecutar generaciones de reglas sobre eventos sintéticos, sin activar cambios productivos")
+	generationLimit := flag.Int("generations", 5, "Máximo de generaciones del laboratorio de detección")
+	evaluationBudget := flag.Int("evaluation-budget", 512, "Presupuesto global de evaluaciones de casos")
 	memoryDir := flag.String("memory-dir", "", "Directorio de memoria que se evaluará sin modificar sus notas")
 	stateDir := flag.String("state-dir", "", "Directorio privado donde guardar las decisiones (opcional)")
 	jsonOutput := flag.Bool("json", false, "Mostrar el informe completo como JSON")
 	flag.Parse()
-	if (*demo) == (*memoryDir != "") || flag.NArg() != 0 {
-		return fmt.Errorf("indica -demo o -memory-dir, exclusivamente")
+	modes := 0
+	if *demo {
+		modes++
+	}
+	if *memoryDir != "" {
+		modes++
+	}
+	if *detectionLab {
+		modes++
+	}
+	if modes != 1 || flag.NArg() != 0 {
+		return fmt.Errorf("indica -demo, -memory-dir o -detection-lab, exclusivamente")
+	}
+	if *detectionLab {
+		if *stateDir != "" {
+			return fmt.Errorf("el laboratorio no modifica estados de agentes; omite -state-dir")
+		}
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer stop()
+		patience := 2
+		if *generationLimit == 1 {
+			patience = 1
+		}
+		result, err := evolve.RunExperiment(ctx, evolve.ExperimentConfig{AgentID: "blue-detection-lab", Generations: *generationLimit, Patience: patience, EvaluationBudget: *evaluationBudget, Timeout: time.Minute, CostUnit: "synthetic-case-evaluations", Engine: evolve.Config{Baseline: "v1", Candidates: []string{"v2", "noisy"}, Policy: evolve.DefaultPolicy()}}, func(_ context.Context, g int) (evolve.Benchmark, error) { return detectbench.NewGeneration(g) })
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if encodeErr := enc.Encode(result); encodeErr != nil {
+			return encodeErr
+		}
+		return err
 	}
 	var mems []memory.Memory
 	if *demo {

@@ -1,9 +1,8 @@
 // Package detectbench provides a deterministic detection benchmark for the
 // evolve engine. "Generations" are detection rulesets (Sigma); "cases" are
-// labeled telemetry events (malicious vs benign). It gives the honest,
-// measurable basis for the claim "the blue agent improved": a new ruleset is
-// only better if an independent train/holdout score shows it detects more
-// attacks WITHOUT regressing on benign traffic.
+// labeled synthetic telemetry events. These fixtures verify the mechanics of
+// selection and regression gates; they do not establish real-world detection
+// accuracy, independent population samples or general agent capability.
 //
 // It runs no network, no LLM, and executes no generated code — it only scores
 // rulesets against fixed labeled events, which is exactly what the evolve engine
@@ -14,6 +13,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -71,6 +71,7 @@ level: low
 // Bench implements evolve.Benchmark for detection rulesets.
 type Bench struct {
 	rulesets  map[string][]sigma.Rule
+	compiled  map[string][]*sigma.CompiledRule
 	cases     []evolve.Case
 	events    map[string]sigma.Event
 	malicious map[string]bool
@@ -82,6 +83,16 @@ type Bench struct {
 //   - "v2":    improved, also detects exposed .git directories (a real gain).
 //   - "noisy": overbroad, flags everything (false positives on benign traffic).
 func New() (*Bench, error) {
+	return NewGeneration(0)
+}
+
+// NewGeneration supplies fresh, deterministic fixture inputs for an isolated
+// generation. Families are still synthetic and related; distinct hashes are
+// not evidence of statistical independence or broad skill transfer.
+func NewGeneration(generation int) (*Bench, error) {
+	if generation < 0 || generation > 1000000 {
+		return nil, fmt.Errorf("invalid fixture generation")
+	}
 	parse := func(y string) (sigma.Rule, error) { return sigma.Parse([]byte(y)) }
 	php, err := parse(rulePHP)
 	if err != nil {
@@ -111,21 +122,33 @@ func New() (*Bench, error) {
 	}
 
 	mk := func(split, kind string, i int) {
-		id := fmt.Sprintf("%s-%s-%d", split, kind, i)
+		id := fmt.Sprintf("g%d-%s-%s-%d", generation, split, kind, i)
 		var ev sigma.Event
 		var mal, critical bool
 		switch kind {
 		case "webshell": // malicious: exposed .php web shell
-			ev = sigma.Event{"uri": fmt.Sprintf("/uploads/shell%d.php", i)}
+			ev = sigma.Event{"uri": fmt.Sprintf("/uploads/g%d/shell%d.php", generation, i)}
+			if split == evolve.Holdout {
+				ev = sigma.Event{"uri": fmt.Sprintf("/replay/g%d/artifact%d.php", generation, i)}
+			}
 			mal = true
 		case "gitleak": // malicious: exposed .git directory (v1 misses this)
-			ev = sigma.Event{"path": fmt.Sprintf("/srv/.git/config%d", i)}
+			ev = sigma.Event{"path": fmt.Sprintf("/srv/g%d/.git/config%d", generation, i)}
+			if split == evolve.Holdout {
+				paths := []string{"HEAD", "logs/HEAD", "refs/heads/main", "objects/info/packs", "info/exclude", "hooks/pre-commit.sample"}
+				ev = sigma.Event{"path": fmt.Sprintf("/replay/g%d/.git/%s", generation, paths[i])}
+			}
 			mal = true
 		case "benign": // benign: a must-not-alert case (marked Critical)
-			ev = sigma.Event{"uri": fmt.Sprintf("/index%d.html", i), "path": fmt.Sprintf("/home/u%d", i)}
+			ev = sigma.Event{"uri": fmt.Sprintf("/g%d/index%d.html", generation, i), "path": fmt.Sprintf("/home/g%d/u%d", generation, i)}
+			if split == evolve.Holdout {
+				ev = sigma.Event{"uri": fmt.Sprintf("/g%d/help/%d", generation, i), "path": fmt.Sprintf("/var/g%d/content/%d", generation, i)}
+			}
 			critical = true
 		}
-		b.cases = append(b.cases, evolve.Case{ID: id, Group: id, Split: split, Critical: critical})
+		raw, _ := json.Marshal(ev)
+		inputHash := sha256.Sum256(raw)
+		b.cases = append(b.cases, evolve.Case{ID: id, InputDigest: hex.EncodeToString(inputHash[:]), Group: id, Split: split, Critical: critical})
 		b.events[id] = ev
 		b.malicious[id] = mal
 	}
@@ -142,20 +165,32 @@ func New() (*Bench, error) {
 		}
 	}
 
-	ids := make([]string, 0, len(b.cases))
-	for _, c := range b.cases {
-		ids = append(ids, c.ID)
+	b.compiled = map[string][]*sigma.CompiledRule{}
+	for id, rules := range b.rulesets {
+		for _, rule := range rules {
+			c, err := rule.Compile()
+			if err != nil {
+				return nil, err
+			}
+			b.compiled[id] = append(b.compiled[id], c)
+		}
 	}
-	sort.Strings(ids)
-	h := sha256.New()
-	for _, id := range ids {
-		fmt.Fprintf(h, "%s=%t;", id, b.malicious[id])
-	}
-	b.digest = hex.EncodeToString(h.Sum(nil))
+	b.digest = b.fingerprint()
 	return b, nil
 }
 
-func (b *Bench) Version() string      { return "detectbench/1" }
+func (b *Bench) fingerprint() string {
+	raw, _ := json.Marshal(struct {
+		Rules  map[string][]sigma.Rule
+		Cases  []evolve.Case
+		Events map[string]sigma.Event
+		Labels map[string]bool
+	}{b.rulesets, b.cases, b.events, b.malicious})
+	hash := sha256.Sum256(raw)
+	return hex.EncodeToString(hash[:])
+}
+
+func (b *Bench) Version() string      { return "detectbench/2" }
 func (b *Bench) Digest() string       { return b.digest }
 func (b *Bench) Cases() []evolve.Case { return append([]evolve.Case(nil), b.cases...) }
 
@@ -171,8 +206,11 @@ func (b *Bench) Strategies() []string {
 
 // Evaluate runs a strategy's ruleset against one case's event and scores it:
 // a case passes when the ruleset's detection verdict matches the true label.
-func (b *Bench) Evaluate(_ context.Context, strategyID, caseID string) (evolve.Outcome, error) {
-	rules, ok := b.rulesets[strategyID]
+func (b *Bench) Evaluate(ctx context.Context, strategyID, caseID string) (evolve.Outcome, error) {
+	if err := ctx.Err(); err != nil {
+		return evolve.Outcome{}, err
+	}
+	rules, ok := b.compiled[strategyID]
 	if !ok {
 		return evolve.Outcome{}, fmt.Errorf("detectbench: unknown strategy %q", strategyID)
 	}
@@ -182,16 +220,12 @@ func (b *Bench) Evaluate(_ context.Context, strategyID, caseID string) (evolve.O
 	}
 	detected := false
 	for _, r := range rules {
-		m, err := r.Match(ev)
-		if err != nil {
-			return evolve.Outcome{}, err
-		}
-		if m {
+		if r.Match(ev) {
 			detected = true
 			break
 		}
 	}
 	passed := detected == b.malicious[caseID]
-	sum := sha256.Sum256([]byte(strategyID + "|" + caseID + "|" + fmt.Sprint(detected)))
+	sum := sha256.Sum256([]byte(b.digest + "|" + strategyID + "|" + caseID + "|" + fmt.Sprint(detected)))
 	return evolve.Outcome{Passed: passed, Cost: 1, EvidenceDigest: hex.EncodeToString(sum[:])}, nil
 }

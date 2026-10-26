@@ -1,0 +1,594 @@
+[
+  {
+    "repository": "vxcontrol/pentagi",
+    "commit": "cffed9485aa1cca70762cd08a57ac62a80406258",
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/vxcontrol/pentagi/cffed9485aa1cca70762cd08a57ac62a80406258/LICENSE",
+    "sha256": "8faba2b47ad7f593df409ac0c145bb55421edd45b72324df868d2178d5c617c7",
+    "bytes": 1080
+  },
+  {
+    "repository": "vxcontrol/pentagi",
+    "commit": "cffed9485aa1cca70762cd08a57ac62a80406258",
+    "path": "NOTICE",
+    "url": "https://raw.githubusercontent.com/vxcontrol/pentagi/cffed9485aa1cca70762cd08a57ac62a80406258/NOTICE",
+    "sha256": "0427eee069bdc669839539492ba3ed301f2e501058ddbdadaf5aaafd5444025f",
+    "bytes": 485
+  },
+  {
+    "repository": "vxcontrol/pentagi",
+    "commit": "cffed9485aa1cca70762cd08a57ac62a80406258",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/vxcontrol/pentagi/cffed9485aa1cca70762cd08a57ac62a80406258/README.md",
+    "sha256": "b184808b1e84df1dc806e3a4216f84f70dc0330a122d757bae342cde71268147",
+    "bytes": 254513
+  },
+  {
+    "repository": "vxcontrol/pentagi",
+    "commit": "cffed9485aa1cca70762cd08a57ac62a80406258",
+    "path": "backend/go.mod",
+    "url": "https://raw.githubusercontent.com/vxcontrol/pentagi/cffed9485aa1cca70762cd08a57ac62a80406258/backend/go.mod",
+    "sha256": "acdf02a01e8711ba1c9a4e0df460d530d6df5414d9e8b64a1f409a00a9b6feb4",
+    "bytes": 11185
+  },
+  {
+    "repository": "vxcontrol/pentagi",
+    "commit": "cffed9485aa1cca70762cd08a57ac62a80406258",
+    "path": "frontend/package.json",
+    "url": "https://raw.githubusercontent.com/vxcontrol/pentagi/cffed9485aa1cca70762cd08a57ac62a80406258/frontend/package.json",
+    "sha256": "f869b32bc0c4a0403a9adc83f798de695eafc08143df02f4bde8004b4125df50",
+    "bytes": 5766
+  },
+  {
+    "repository": "usestrix/strix",
+    "commit": "200a501f15a24a4152f92897a6b72af238ee69ef",
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/usestrix/strix/200a501f15a24a4152f92897a6b72af238ee69ef/LICENSE",
+    "sha256": "7db9697134251e314bd8d39257fe170c98b3e2ad9b2ed67e97acaf9613e7b9e3",
+    "bytes": 11345
+  },
+  {
+    "repository": "usestrix/strix",
+    "commit": "200a501f15a24a4152f92897a6b72af238ee69ef",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/usestrix/strix/200a501f15a24a4152f92897a6b72af238ee69ef/README.md",
+    "sha256": "aee603ea1f943129f3a6394f8e294c61270a2dd9cd5ca000a5fa2364886635f2",
+    "bytes": 17941
+  },
+  {
+    "repository": "usestrix/strix",
+    "commit": "200a501f15a24a4152f92897a6b72af238ee69ef",
+    "path": "pyproject.toml",
+    "url": "https://raw.githubusercontent.com/usestrix/strix/200a501f15a24a4152f92897a6b72af238ee69ef/pyproject.toml",
+    "sha256": "be53003c51b197736b17c6b1b48fbd57087283566c9d40b0e6cbb705058646d0",
+    "bytes": 14936
+  },
+  {
+    "repository": "usestrix/strix",
+    "commit": "200a501f15a24a4152f92897a6b72af238ee69ef",
+    "path": "strix/interface/tui/go.mod",
+    "url": "https://raw.githubusercontent.com/usestrix/strix/200a501f15a24a4152f92897a6b72af238ee69ef/strix/interface/tui/go.mod",
+    "sha256": "02c11f47bb9ab47f822b83b0363bcbda0a5f91d0633a2feb97d501c43a273063",
+    "bytes": 1259
+  },
+  {
+    "repository": "usestrix/strix",
+    "commit": "200a501f15a24a4152f92897a6b72af238ee69ef",
+    "path": "strix/interface/viewer/frontend/package.json",
+    "url": "https://raw.githubusercontent.com/usestrix/strix/200a501f15a24a4152f92897a6b72af238ee69ef/strix/interface/viewer/frontend/package.json",
+    "sha256": "330e25310e3d453ba4af9e04533e74be9e924ae183d5e3ed312611951b2c3d65",
+    "bytes": 831
+  },
+  {
+    "repository": "pursuingf/CyberEvolver",
+    "commit": "948c5ad03b7f7b9ebcd8d798845d48fd12267506",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/pursuingf/CyberEvolver/948c5ad03b7f7b9ebcd8d798845d48fd12267506/README.md",
+    "sha256": "bd2cc5c3e54ee12e8ad3a55ee9a73da835d1391803daec4f3d65f663410bcf82",
+    "bytes": 8376
+  },
+  {
+    "repository": "pursuingf/CyberEvolver",
+    "commit": "948c5ad03b7f7b9ebcd8d798845d48fd12267506",
+    "path": "bench_hub/benchmarks/cvebench/common/docker/selenium-base/pyproject.toml",
+    "url": "https://raw.githubusercontent.com/pursuingf/CyberEvolver/948c5ad03b7f7b9ebcd8d798845d48fd12267506/bench_hub/benchmarks/cvebench/common/docker/selenium-base/pyproject.toml",
+    "sha256": "942b1c267584e7573fd62998ada51830dd6ee7b359c36e565187450af9f3e7ec",
+    "bytes": 215
+  },
+  {
+    "repository": "pursuingf/CyberEvolver",
+    "commit": "948c5ad03b7f7b9ebcd8d798845d48fd12267506",
+    "path": "bench_hub/benchmarks/cvebench/common/evaluations/pyproject.toml",
+    "url": "https://raw.githubusercontent.com/pursuingf/CyberEvolver/948c5ad03b7f7b9ebcd8d798845d48fd12267506/bench_hub/benchmarks/cvebench/common/evaluations/pyproject.toml",
+    "sha256": "b1eb2f0bf919839744a52388977406dda797562b269cf967e2d1e1a24645e8f2",
+    "bytes": 414
+  },
+  {
+    "repository": "apache/caldera",
+    "commit": "cb8d6a8160e0f4990af323a7c071d5e8482b42c7",
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/apache/caldera/cb8d6a8160e0f4990af323a7c071d5e8482b42c7/LICENSE",
+    "sha256": "59899c6091b540582ed617e8eeaac4919dc985ccfc35459ee9752b699be5205b",
+    "bytes": 10172
+  },
+  {
+    "repository": "apache/caldera",
+    "commit": "cb8d6a8160e0f4990af323a7c071d5e8482b42c7",
+    "path": "NOTICE",
+    "url": "https://raw.githubusercontent.com/apache/caldera/cb8d6a8160e0f4990af323a7c071d5e8482b42c7/NOTICE",
+    "sha256": "e5ff05e8ae94249cde48d30da20bf4227a5a32a084b3058714f8e87213e14ede",
+    "bytes": 164
+  },
+  {
+    "repository": "apache/caldera",
+    "commit": "cb8d6a8160e0f4990af323a7c071d5e8482b42c7",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/apache/caldera/cb8d6a8160e0f4990af323a7c071d5e8482b42c7/README.md",
+    "sha256": "24ebae88cdfdedcb3158b30e2e67168e43ace1263a07d74c4a2c19604bb60302",
+    "bytes": 10537
+  },
+  {
+    "repository": "apache/caldera",
+    "commit": "cb8d6a8160e0f4990af323a7c071d5e8482b42c7",
+    "path": "package.json",
+    "url": "https://raw.githubusercontent.com/apache/caldera/cb8d6a8160e0f4990af323a7c071d5e8482b42c7/package.json",
+    "sha256": "a41f09a86d3c7457aa383fd9ee0d41aa369ec4984c0b02abe534e3a0c8916892",
+    "bytes": 671
+  },
+  {
+    "repository": "apache/caldera",
+    "commit": "cb8d6a8160e0f4990af323a7c071d5e8482b42c7",
+    "path": "requirements.txt",
+    "url": "https://raw.githubusercontent.com/apache/caldera/cb8d6a8160e0f4990af323a7c071d5e8482b42c7/requirements.txt",
+    "sha256": "9577c94e27183899e60d6779d0bf26ed9e6120666cc8025a81311629e76c8e6a",
+    "bytes": 557
+  },
+  {
+    "repository": "investigato/pentestgpt",
+    "commit": "e8b1bb77d1ac00329675cec3b060aba971ec1ac8",
+    "path": "LICENSE.md",
+    "url": "https://raw.githubusercontent.com/investigato/pentestgpt/e8b1bb77d1ac00329675cec3b060aba971ec1ac8/LICENSE.md",
+    "sha256": "980fb30b5ba64d63bf64e774924402aa99f87cf222f72d28dd4ec9530cbcca25",
+    "bytes": 1063
+  },
+  {
+    "repository": "investigato/pentestgpt",
+    "commit": "e8b1bb77d1ac00329675cec3b060aba971ec1ac8",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/investigato/pentestgpt/e8b1bb77d1ac00329675cec3b060aba971ec1ac8/README.md",
+    "sha256": "b34dc3723a713b89e005c1db302a90f8a2557818353a75187351f3071cb0cd19",
+    "bytes": 12085
+  },
+  {
+    "repository": "investigato/pentestgpt",
+    "commit": "e8b1bb77d1ac00329675cec3b060aba971ec1ac8",
+    "path": "pyproject.toml",
+    "url": "https://raw.githubusercontent.com/investigato/pentestgpt/e8b1bb77d1ac00329675cec3b060aba971ec1ac8/pyproject.toml",
+    "sha256": "a5ad701f477e1f1cd0007f0d904ddb1dbdfaf99f2a88a70c5bee697d23b13d87",
+    "bytes": 4132
+  },
+  {
+    "repository": "investigato/pentestgpt",
+    "commit": "e8b1bb77d1ac00329675cec3b060aba971ec1ac8",
+    "path": "pentestgpt_agent/pyproject.toml",
+    "url": "https://raw.githubusercontent.com/investigato/pentestgpt/e8b1bb77d1ac00329675cec3b060aba971ec1ac8/pentestgpt_agent/pyproject.toml",
+    "sha256": "353f943814f403a30812e528b04430bdc22db8e6d61d9e41793a6a906d8586db",
+    "bytes": 1460
+  },
+  {
+    "repository": "aliasrobotics/cai",
+    "commit": "6dc79257777f5f1c9500b4d2319935d34a47412e",
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/aliasrobotics/cai/6dc79257777f5f1c9500b4d2319935d34a47412e/LICENSE",
+    "sha256": "446b387b531149e29e46f45220ae18062c5ad31e4fe355441803e25718af99c9",
+    "bytes": 1068
+  },
+  {
+    "repository": "aliasrobotics/cai",
+    "commit": "6dc79257777f5f1c9500b4d2319935d34a47412e",
+    "path": "LICENSE-MIT",
+    "url": "https://raw.githubusercontent.com/aliasrobotics/cai/6dc79257777f5f1c9500b4d2319935d34a47412e/LICENSE-MIT",
+    "sha256": "13df7812ca53ecaae1cb4a868844bb598373047ae1d580e4debfbef1dd5b6915",
+    "bytes": 1063
+  },
+  {
+    "repository": "aliasrobotics/cai",
+    "commit": "6dc79257777f5f1c9500b4d2319935d34a47412e",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/aliasrobotics/cai/6dc79257777f5f1c9500b4d2319935d34a47412e/README.md",
+    "sha256": "9b8abf6d98f5d0323f6db1e30d1b2ccb75da144d6b9cd4d15beb0f38aa81d554",
+    "bytes": 44187
+  },
+  {
+    "repository": "aliasrobotics/cai",
+    "commit": "6dc79257777f5f1c9500b4d2319935d34a47412e",
+    "path": "pyproject.toml",
+    "url": "https://raw.githubusercontent.com/aliasrobotics/cai/6dc79257777f5f1c9500b4d2319935d34a47412e/pyproject.toml",
+    "sha256": "8f67f7bbe885bff297ca5a8b5806d39d80db3d6438082a24a9afd187b1ef63be",
+    "bytes": 7431
+  },
+  {
+    "repository": "aliasrobotics/cai",
+    "commit": "6dc79257777f5f1c9500b4d2319935d34a47412e",
+    "path": ".devcontainer/requirements.txt",
+    "url": "https://raw.githubusercontent.com/aliasrobotics/cai/6dc79257777f5f1c9500b4d2319935d34a47412e/.devcontainer/requirements.txt",
+    "sha256": "3dd2e34a72c4f2a5a4f8a7ba163aaf27a0a009367523d663034d72052c43c5a5",
+    "bytes": 67
+  },
+  {
+    "repository": "aliasrobotics/cai",
+    "commit": "6dc79257777f5f1c9500b4d2319935d34a47412e",
+    "path": "src/cai/caibench/artifacts/chunky/blog/requirements.txt",
+    "url": "https://raw.githubusercontent.com/aliasrobotics/cai/6dc79257777f5f1c9500b4d2319935d34a47412e/src/cai/caibench/artifacts/chunky/blog/requirements.txt",
+    "sha256": "a399c2f5f646a4b6d1a91b4b66854ad0aef1f7f6986a055e8ca93cb37e6d70bf",
+    "bytes": 335
+  },
+  {
+    "repository": "0x4m4/hexstrike-ai",
+    "commit": "d689933ff579d839c676c82b231f8e98326c5f04",
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/0x4m4/hexstrike-ai/d689933ff579d839c676c82b231f8e98326c5f04/LICENSE",
+    "sha256": "53c8aba3da4c01bea9f848e7ca19b9efa48ada268b1b688114a465989831f2b0",
+    "bytes": 1099
+  },
+  {
+    "repository": "0x4m4/hexstrike-ai",
+    "commit": "d689933ff579d839c676c82b231f8e98326c5f04",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/0x4m4/hexstrike-ai/d689933ff579d839c676c82b231f8e98326c5f04/README.md",
+    "sha256": "362d1d09f5d454d8d77eb08d42f9306afe84c48bc46f99a93fd29796a5787fa1",
+    "bytes": 31084
+  },
+  {
+    "repository": "0x4m4/hexstrike-ai",
+    "commit": "d689933ff579d839c676c82b231f8e98326c5f04",
+    "path": "requirements.txt",
+    "url": "https://raw.githubusercontent.com/0x4m4/hexstrike-ai/d689933ff579d839c676c82b231f8e98326c5f04/requirements.txt",
+    "sha256": "16eaaad37d7f006a177ec5998836f902203c46a2156e5eeb454ddae1a378d633",
+    "bytes": 4077
+  },
+  {
+    "repository": "SigmaHQ/sigma",
+    "commit": "05d1031f537e830b76da53bae2400c5814c89165",
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/SigmaHQ/sigma/05d1031f537e830b76da53bae2400c5814c89165/LICENSE",
+    "sha256": "4213ed7e21d9435b0aa0aa7d11016e6ab3e4664fa71738ff507306fadce79597",
+    "bytes": 384
+  },
+  {
+    "repository": "SigmaHQ/sigma",
+    "commit": "05d1031f537e830b76da53bae2400c5814c89165",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/SigmaHQ/sigma/05d1031f537e830b76da53bae2400c5814c89165/README.md",
+    "sha256": "3e321fa527d6f8608ba0682c2f6639ff615437fa57437eb92577a43d5f19e84a",
+    "bytes": 12943
+  },
+  {
+    "repository": "elastic/detection-rules",
+    "commit": "52ef7a06c71a513f4209844c025ec8eb341871eb",
+    "path": "LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/elastic/detection-rules/52ef7a06c71a513f4209844c025ec8eb341871eb/LICENSE.txt",
+    "sha256": "48255018b41fc0e965b1115af7e6779bc218bb8a6747d561da800d5022622aa2",
+    "bytes": 3860
+  },
+  {
+    "repository": "elastic/detection-rules",
+    "commit": "52ef7a06c71a513f4209844c025ec8eb341871eb",
+    "path": "NOTICE.txt",
+    "url": "https://raw.githubusercontent.com/elastic/detection-rules/52ef7a06c71a513f4209844c025ec8eb341871eb/NOTICE.txt",
+    "sha256": "4c659d9dfb38891293d98128208c0faedb3199e73885e017d1ae6c041bc50a43",
+    "bytes": 3028
+  },
+  {
+    "repository": "elastic/detection-rules",
+    "commit": "52ef7a06c71a513f4209844c025ec8eb341871eb",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/elastic/detection-rules/52ef7a06c71a513f4209844c025ec8eb341871eb/README.md",
+    "sha256": "d7a3468cfa4fb40e378242bc5723455c0253898eb3c8d486c02f71a67a45e054",
+    "bytes": 11709
+  },
+  {
+    "repository": "elastic/detection-rules",
+    "commit": "52ef7a06c71a513f4209844c025ec8eb341871eb",
+    "path": "pyproject.toml",
+    "url": "https://raw.githubusercontent.com/elastic/detection-rules/52ef7a06c71a513f4209844c025ec8eb341871eb/pyproject.toml",
+    "sha256": "af1e82914255f7653c40b8ca86016acd5da042360710c48c5555899a6df58933",
+    "bytes": 5779
+  },
+  {
+    "repository": "elastic/detection-rules",
+    "commit": "52ef7a06c71a513f4209844c025ec8eb341871eb",
+    "path": "lib/kibana/pyproject.toml",
+    "url": "https://raw.githubusercontent.com/elastic/detection-rules/52ef7a06c71a513f4209844c025ec8eb341871eb/lib/kibana/pyproject.toml",
+    "sha256": "3fd4529c77dc3ca2d884b67ae447e8d147e146ea671ad381ec56b09d529a5f98",
+    "bytes": 902
+  },
+  {
+    "repository": "elastic/detection-rules",
+    "commit": "52ef7a06c71a513f4209844c025ec8eb341871eb",
+    "path": "lib/kql/pyproject.toml",
+    "url": "https://raw.githubusercontent.com/elastic/detection-rules/52ef7a06c71a513f4209844c025ec8eb341871eb/lib/kql/pyproject.toml",
+    "sha256": "badac86816386226d6687161be960c02fb4fdf4b9d67c0cd60cb0a8092e76e1d",
+    "bytes": 940
+  },
+  {
+    "repository": "Infini-AI-Lab/SED",
+    "commit": "7cda0834511df386b9e1c57632dfa537e1d0fdab",
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/Infini-AI-Lab/SED/7cda0834511df386b9e1c57632dfa537e1d0fdab/LICENSE",
+    "sha256": "ea37020da8161f83d97c5a1f223b2e5b9ce6c170994dc01e773d830e2a90a539",
+    "bytes": 1068
+  },
+  {
+    "repository": "Infini-AI-Lab/SED",
+    "commit": "7cda0834511df386b9e1c57632dfa537e1d0fdab",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/Infini-AI-Lab/SED/7cda0834511df386b9e1c57632dfa537e1d0fdab/README.md",
+    "sha256": "0d6fddc84a73aed69ce7bac9b1699d2d18dd6e85da8f8640ea9feae983fa8826",
+    "bytes": 9697
+  },
+  {
+    "repository": "Infini-AI-Lab/SED",
+    "commit": "7cda0834511df386b9e1c57632dfa537e1d0fdab",
+    "path": "pyproject.toml",
+    "url": "https://raw.githubusercontent.com/Infini-AI-Lab/SED/7cda0834511df386b9e1c57632dfa537e1d0fdab/pyproject.toml",
+    "sha256": "39f05d432ec9aedf8b78bfddf84f2891dc838e7d6b4c27b49f91a3e963f84a2f",
+    "bytes": 423
+  },
+  {
+    "repository": "Infini-AI-Lab/SED",
+    "commit": "7cda0834511df386b9e1c57632dfa537e1d0fdab",
+    "path": "requirements.txt",
+    "url": "https://raw.githubusercontent.com/Infini-AI-Lab/SED/7cda0834511df386b9e1c57632dfa537e1d0fdab/requirements.txt",
+    "sha256": "51ad1d4a6661d930b118ab665d6f67bebaf82715f648ec1d8d4ab4aca91d9ed9",
+    "bytes": 310
+  },
+  {
+    "repository": "modelscope/AgentEvolver",
+    "commit": "a5a8db8689d6493b028107dcb4c27415441581dc",
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/modelscope/AgentEvolver/a5a8db8689d6493b028107dcb4c27415441581dc/LICENSE",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "bytes": 11357
+  },
+  {
+    "repository": "modelscope/AgentEvolver",
+    "commit": "a5a8db8689d6493b028107dcb4c27415441581dc",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/modelscope/AgentEvolver/a5a8db8689d6493b028107dcb4c27415441581dc/README.md",
+    "sha256": "f2d2d358d3914d8c5b4831914ece3f7241d30d555aa25f947025c7ef1f4154ab",
+    "bytes": 11070
+  },
+  {
+    "repository": "modelscope/AgentEvolver",
+    "commit": "a5a8db8689d6493b028107dcb4c27415441581dc",
+    "path": "requirements.txt",
+    "url": "https://raw.githubusercontent.com/modelscope/AgentEvolver/a5a8db8689d6493b028107dcb4c27415441581dc/requirements.txt",
+    "sha256": "72d1d550c7be1b26831ba2701ea4721084e2c5f36c1421af59c4ee4e65775d9e",
+    "bytes": 4095
+  },
+  {
+    "repository": "modelscope/AgentEvolver",
+    "commit": "a5a8db8689d6493b028107dcb4c27415441581dc",
+    "path": "env_service/environments/appworld/requirements.txt",
+    "url": "https://raw.githubusercontent.com/modelscope/AgentEvolver/a5a8db8689d6493b028107dcb4c27415441581dc/env_service/environments/appworld/requirements.txt",
+    "sha256": "1eebe5f1ec3b83650cb16e410722c06a9975d461143a3c0148830aca68b4f05d",
+    "bytes": 41
+  },
+  {
+    "repository": "modelscope/AgentEvolver",
+    "commit": "a5a8db8689d6493b028107dcb4c27415441581dc",
+    "path": "env_service/environments/bfcl/requirements.txt",
+    "url": "https://raw.githubusercontent.com/modelscope/AgentEvolver/a5a8db8689d6493b028107dcb4c27415441581dc/env_service/environments/bfcl/requirements.txt",
+    "sha256": "874a0d94a7b8fdb27fe3fa6838d983571f3958f9386c60d7a4d1843f70d342d3",
+    "bytes": 31
+  },
+  {
+    "repository": "SigmaHQ/pySigma",
+    "commit": "54e4077532d1ae654ed565b5a61b75e76e8f725a",
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/SigmaHQ/pySigma/54e4077532d1ae654ed565b5a61b75e76e8f725a/LICENSE",
+    "sha256": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331",
+    "bytes": 26526
+  },
+  {
+    "repository": "SigmaHQ/pySigma",
+    "commit": "54e4077532d1ae654ed565b5a61b75e76e8f725a",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/SigmaHQ/pySigma/54e4077532d1ae654ed565b5a61b75e76e8f725a/README.md",
+    "sha256": "560e9fef82ce0ee6541b8a71692da38409e9d799d1b6f261ffb33c31b549ac87",
+    "bytes": 4080
+  },
+  {
+    "repository": "SigmaHQ/pySigma",
+    "commit": "54e4077532d1ae654ed565b5a61b75e76e8f725a",
+    "path": "pyproject.toml",
+    "url": "https://raw.githubusercontent.com/SigmaHQ/pySigma/54e4077532d1ae654ed565b5a61b75e76e8f725a/pyproject.toml",
+    "sha256": "b6ba1a0cf0f1276316e606314984cfba80bf82ee6f109e8be806e1c685a96437",
+    "bytes": 1458
+  },
+  {
+    "repository": "mitre-attack/attack-stix-data",
+    "commit": "c2494b29dd268c46a5d0ea0990553e4327cd2253",
+    "path": "LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/c2494b29dd268c46a5d0ea0990553e4327cd2253/LICENSE.txt",
+    "sha256": "738144f7fb054722a4ef9d3367c51710341dc12fc574c6ac3a41daaaecd8bf5e",
+    "bytes": 1354
+  },
+  {
+    "repository": "mitre-attack/attack-stix-data",
+    "commit": "c2494b29dd268c46a5d0ea0990553e4327cd2253",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/c2494b29dd268c46a5d0ea0990553e4327cd2253/README.md",
+    "sha256": "dc0317fd9f727bb878861bd6122d8da4928203bbad0f950b7b70009a5a7dbd5f",
+    "bytes": 5278
+  },
+  {
+    "repository": "mitre-attack/attack-stix-data",
+    "commit": "c2494b29dd268c46a5d0ea0990553e4327cd2253",
+    "path": "util/requirements.txt",
+    "url": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/c2494b29dd268c46a5d0ea0990553e4327cd2253/util/requirements.txt",
+    "sha256": "45a8c78e438eec44159769d4bba9391694d6925b8bba06fb67a1503584aa8d3d",
+    "bytes": 52
+  },
+  {
+    "repository": "redcanaryco/atomic-red-team",
+    "commit": "1edbe50b8f49560110e6cf85161c1ef75a5732b7",
+    "path": "LICENSE.txt",
+    "url": "https://raw.githubusercontent.com/redcanaryco/atomic-red-team/1edbe50b8f49560110e6cf85161c1ef75a5732b7/LICENSE.txt",
+    "sha256": "65af6027045d23175366eab50e460ab3ee7790e591cb84cc32c78ac63a4c90e1",
+    "bytes": 1078
+  },
+  {
+    "repository": "redcanaryco/atomic-red-team",
+    "commit": "1edbe50b8f49560110e6cf85161c1ef75a5732b7",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/redcanaryco/atomic-red-team/1edbe50b8f49560110e6cf85161c1ef75a5732b7/README.md",
+    "sha256": "92329594b87ced70a36fb6c4472bcec017a84ab83cc84dcbb0b1e635122c3ac4",
+    "bytes": 2472
+  },
+  {
+    "repository": "redcanaryco/atomic-red-team",
+    "commit": "1edbe50b8f49560110e6cf85161c1ef75a5732b7",
+    "path": "pyproject.toml",
+    "url": "https://raw.githubusercontent.com/redcanaryco/atomic-red-team/1edbe50b8f49560110e6cf85161c1ef75a5732b7/pyproject.toml",
+    "sha256": "bb4e7ad76c38e2b05da0c5098d62b63f5dbfd45b36cae08ce98b5415d5ad403b",
+    "bytes": 446
+  },
+  {
+    "repository": "langchain-ai/langgraph",
+    "commit": "1adeafeaf32ea5162790845ba82f51aba9899bea",
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/langchain-ai/langgraph/1adeafeaf32ea5162790845ba82f51aba9899bea/LICENSE",
+    "sha256": "d9bb52f2e3540d60ff50d8f0f5b6ba649b7fd346948c4c3d086c8afb120763c7",
+    "bytes": 1072
+  },
+  {
+    "repository": "langchain-ai/langgraph",
+    "commit": "1adeafeaf32ea5162790845ba82f51aba9899bea",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/langchain-ai/langgraph/1adeafeaf32ea5162790845ba82f51aba9899bea/README.md",
+    "sha256": "3a13e257af1216962d53d72414a7f44ac1fc5cea34d994bdff60ea2a3b045933",
+    "bytes": 6395
+  },
+  {
+    "repository": "langchain-ai/langgraph",
+    "commit": "1adeafeaf32ea5162790845ba82f51aba9899bea",
+    "path": "libs/checkpoint-conformance/pyproject.toml",
+    "url": "https://raw.githubusercontent.com/langchain-ai/langgraph/1adeafeaf32ea5162790845ba82f51aba9899bea/libs/checkpoint-conformance/pyproject.toml",
+    "sha256": "a7899189cc8949d8058bd448ab33b19b964dbd984d8f950487cd12b517184222",
+    "bytes": 2169
+  },
+  {
+    "repository": "langchain-ai/langgraph",
+    "commit": "1adeafeaf32ea5162790845ba82f51aba9899bea",
+    "path": "libs/checkpoint-postgres/pyproject.toml",
+    "url": "https://raw.githubusercontent.com/langchain-ai/langgraph/1adeafeaf32ea5162790845ba82f51aba9899bea/libs/checkpoint-postgres/pyproject.toml",
+    "sha256": "96a04258147410f4c3406a3c66944eb1cba6ae5776d258ec925f3f6acab1edae",
+    "bytes": 2059
+  },
+  {
+    "repository": "microsoft/autogen",
+    "commit": "004749e6b7102c8fd317b9b1499ce5807223c278",
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/microsoft/autogen/004749e6b7102c8fd317b9b1499ce5807223c278/LICENSE",
+    "sha256": "7e7170e3cebf88a9f60c7b8421418323c09304da1af4d5e90f4da1dc1c8a2661",
+    "bytes": 18650
+  },
+  {
+    "repository": "microsoft/autogen",
+    "commit": "004749e6b7102c8fd317b9b1499ce5807223c278",
+    "path": "LICENSE-CODE",
+    "url": "https://raw.githubusercontent.com/microsoft/autogen/004749e6b7102c8fd317b9b1499ce5807223c278/LICENSE-CODE",
+    "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+    "bytes": 1141
+  },
+  {
+    "repository": "microsoft/autogen",
+    "commit": "004749e6b7102c8fd317b9b1499ce5807223c278",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/microsoft/autogen/004749e6b7102c8fd317b9b1499ce5807223c278/README.md",
+    "sha256": "60fa90168565070a61b0f28296ff590bd6853da2477141f5ed0775007c20d7f2",
+    "bytes": 21521
+  },
+  {
+    "repository": "microsoft/autogen",
+    "commit": "004749e6b7102c8fd317b9b1499ce5807223c278",
+    "path": "python/packages/agbench/benchmarks/GAIA/Templates/MagenticOne/requirements.txt",
+    "url": "https://raw.githubusercontent.com/microsoft/autogen/004749e6b7102c8fd317b9b1499ce5807223c278/python/packages/agbench/benchmarks/GAIA/Templates/MagenticOne/requirements.txt",
+    "sha256": "9619afd867c8ed66d33b68ac55efafc4c288037a112bf3963873f46fa9134599",
+    "bytes": 155
+  },
+  {
+    "repository": "microsoft/autogen",
+    "commit": "004749e6b7102c8fd317b9b1499ce5807223c278",
+    "path": "python/packages/agbench/benchmarks/GAIA/Templates/ParallelAgents/requirements.txt",
+    "url": "https://raw.githubusercontent.com/microsoft/autogen/004749e6b7102c8fd317b9b1499ce5807223c278/python/packages/agbench/benchmarks/GAIA/Templates/ParallelAgents/requirements.txt",
+    "sha256": "9619afd867c8ed66d33b68ac55efafc4c288037a112bf3963873f46fa9134599",
+    "bytes": 155
+  },
+  {
+    "repository": "google/oss-fuzz",
+    "commit": "a6d41d14b5293cf2d06e5572813c5995e06c09c3",
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/google/oss-fuzz/a6d41d14b5293cf2d06e5572813c5995e06c09c3/LICENSE",
+    "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+    "bytes": 11357
+  },
+  {
+    "repository": "google/oss-fuzz",
+    "commit": "a6d41d14b5293cf2d06e5572813c5995e06c09c3",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/google/oss-fuzz/a6d41d14b5293cf2d06e5572813c5995e06c09c3/README.md",
+    "sha256": "a5882f5b00b769b0d66d398da6fdf786d29dd8226d168fbddfec1dd922c7f9d9",
+    "bytes": 4679
+  },
+  {
+    "repository": "google/oss-fuzz",
+    "commit": "a6d41d14b5293cf2d06e5572813c5995e06c09c3",
+    "path": "infra/base-images/base-builder/jcc/go.mod",
+    "url": "https://raw.githubusercontent.com/google/oss-fuzz/a6d41d14b5293cf2d06e5572813c5995e06c09c3/infra/base-images/base-builder/jcc/go.mod",
+    "sha256": "6ba80c0d3fec6c20749a2a47954f72003ffc7b4b6565870361eb4067025a5535",
+    "bytes": 38
+  },
+  {
+    "repository": "google/oss-fuzz",
+    "commit": "a6d41d14b5293cf2d06e5572813c5995e06c09c3",
+    "path": "infra/base-images/base-builder/sanitizers/pysecsan/pyproject.toml",
+    "url": "https://raw.githubusercontent.com/google/oss-fuzz/a6d41d14b5293cf2d06e5572813c5995e06c09c3/infra/base-images/base-builder/sanitizers/pysecsan/pyproject.toml",
+    "sha256": "6afa7a0f5cb3b4fcc6ef4f14702fe7116982dbacdda1532d2f89fdb96fbea71c",
+    "bytes": 654
+  },
+  {
+    "repository": "wazuh/wazuh",
+    "commit": "dcb722fae3e85719eaaa006a45751c77819469e5",
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/wazuh/wazuh/dcb722fae3e85719eaaa006a45751c77819469e5/LICENSE",
+    "sha256": "acf29a5c3b4b89e06ec75623eea6c206541d014e4bd1db43ee88934e3fe7bd90",
+    "bytes": 26121
+  },
+  {
+    "repository": "wazuh/wazuh",
+    "commit": "dcb722fae3e85719eaaa006a45751c77819469e5",
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/wazuh/wazuh/dcb722fae3e85719eaaa006a45751c77819469e5/README.md",
+    "sha256": "6fce527aeea895a9411497bb18a97a3c25acdefe75fa533299a9e320c5dd2030",
+    "bytes": 20116
+  },
+  {
+    "repository": "wazuh/wazuh",
+    "commit": "dcb722fae3e85719eaaa006a45751c77819469e5",
+    "path": ".github/actions/check_files/requirements.txt",
+    "url": "https://raw.githubusercontent.com/wazuh/wazuh/dcb722fae3e85719eaaa006a45751c77819469e5/.github/actions/check_files/requirements.txt",
+    "sha256": "507e5cb774b0f36c4ac9ea3494553824e86ea1c747825a8272afe5f6323ee5e3",
+    "bytes": 14
+  },
+  {
+    "repository": "wazuh/wazuh",
+    "commit": "dcb722fae3e85719eaaa006a45751c77819469e5",
+    "path": "docs/tools/package.json",
+    "url": "https://raw.githubusercontent.com/wazuh/wazuh/dcb722fae3e85719eaaa006a45751c77819469e5/docs/tools/package.json",
+    "sha256": "911a9737d82e517353f32c981dc3e8ac1ab9e670b914a660fcbc6c4da1be3970",
+    "bytes": 163
+  }
+]

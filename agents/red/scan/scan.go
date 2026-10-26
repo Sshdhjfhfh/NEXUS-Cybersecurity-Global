@@ -15,6 +15,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -26,6 +27,7 @@ import (
 type Scanner struct {
 	HTTPXBin  string
 	NucleiBin string
+	CrawlBin  string
 	gate      lab.Authorizer
 	agentID   string
 }
@@ -35,7 +37,7 @@ func New(gate lab.Authorizer, agentID string) (*Scanner, error) {
 	if gate == nil || strings.TrimSpace(agentID) == "" {
 		return nil, fmt.Errorf("scanner requires a laboratory authorizer and agent id")
 	}
-	return &Scanner{HTTPXBin: "httpx", NucleiBin: "nuclei", gate: gate, agentID: agentID}, nil
+	return &Scanner{HTTPXBin: "httpx", NucleiBin: "nuclei", CrawlBin: "katana", gate: gate, agentID: agentID}, nil
 }
 
 // Probe is a live web endpoint discovered by httpx.
@@ -139,14 +141,36 @@ type NucleiOptions struct {
 // Nuclei runs detection templates against one authorized target and returns the
 // vulnerabilities/exposures found, ready to report to the audited organization.
 func (s *Scanner) Nuclei(ctx context.Context, taskID, target string, opt NucleiOptions) ([]Finding, error) {
-	if err := s.authorize(ctx, taskID, "red.nuclei", target); err != nil {
-		return nil, fmt.Errorf("authorization denied for %q: %w", target, err)
+	return s.NucleiTargets(ctx, taskID, []string{target}, opt)
+}
+
+// NucleiTargets runs nuclei against several authorized targets at once. Every
+// target is authorized before the scan starts; one out-of-scope target aborts
+// the whole run.
+func (s *Scanner) NucleiTargets(ctx context.Context, taskID string, targets []string, opt NucleiOptions) ([]Finding, error) {
+	if len(targets) == 0 {
+		return nil, nil
+	}
+	for _, t := range targets {
+		if err := s.authorize(ctx, taskID, "red.nuclei", t); err != nil {
+			return nil, fmt.Errorf("authorization denied for %q: %w", t, err)
+		}
 	}
 	bin, err := exec.LookPath(s.NucleiBin)
 	if err != nil {
 		return nil, fmt.Errorf("nuclei not found on PATH: %w", err)
 	}
-	args := []string{"-jsonl", "-silent", "-no-color", "-disable-update-check", "-u", target}
+	listFile, err := os.CreateTemp("", "nexus-targets-*.txt")
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(listFile.Name())
+	if _, err := listFile.WriteString(strings.Join(targets, "\n") + "\n"); err != nil {
+		listFile.Close()
+		return nil, err
+	}
+	listFile.Close()
+	args := []string{"-jsonl", "-silent", "-no-color", "-disable-update-check", "-l", listFile.Name()}
 	if len(opt.Severities) > 0 {
 		args = append(args, "-severity", strings.Join(opt.Severities, ","))
 	}
@@ -210,4 +234,66 @@ func parseNuclei(data []byte) ([]Finding, error) {
 		findings = append(findings, f)
 	}
 	return findings, sc.Err()
+}
+
+// Crawl uses katana to discover URLs under an authorized target, expanding the
+// attack surface before scanning. depth <= 0 defaults to 2. Returned URLs are
+// deduplicated and ready to feed into NucleiTargets.
+func (s *Scanner) Crawl(ctx context.Context, taskID, target string, depth int) ([]string, error) {
+	if err := s.authorize(ctx, taskID, "red.katana", target); err != nil {
+		return nil, fmt.Errorf("authorization denied for %q: %w", target, err)
+	}
+	if depth <= 0 {
+		depth = 2
+	}
+	bin, err := exec.LookPath(s.CrawlBin)
+	if err != nil {
+		return nil, fmt.Errorf("katana not found on PATH: %w", err)
+	}
+	cmd := exec.CommandContext(ctx, bin, "-jsonl", "-silent", "-no-color", "-d", fmt.Sprintf("%d", depth), "-u", target)
+	var out, errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("katana run: %w: %s", err, strings.TrimSpace(errb.String()))
+	}
+	return parseKatana(out.Bytes()), nil
+}
+
+func parseKatana(data []byte) []string {
+	seen := map[string]bool{}
+	var urls []string
+	sc := bufio.NewScanner(bytes.NewReader(data))
+	sc.Buffer(make([]byte, 0, 64*1024), 2*1024*1024)
+	for sc.Scan() {
+		line := bytes.TrimSpace(sc.Bytes())
+		if len(line) == 0 {
+			continue
+		}
+		var raw struct {
+			Endpoint string `json:"endpoint"`
+			URL      string `json:"url"`
+			Request  struct {
+				Endpoint string `json:"endpoint"`
+				URL      string `json:"url"`
+			} `json:"request"`
+		}
+		if err := json.Unmarshal(line, &raw); err != nil {
+			continue
+		}
+		u := firstNonEmpty(raw.Request.Endpoint, raw.Request.URL, raw.Endpoint, raw.URL)
+		if u != "" && !seen[u] {
+			seen[u] = true
+			urls = append(urls, u)
+		}
+	}
+	return urls
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
 }

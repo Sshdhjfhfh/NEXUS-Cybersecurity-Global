@@ -26,6 +26,8 @@ func main() {
 	tags := flag.String("tags", "", "comma-separated nuclei tags to scope the scan, e.g. exposure,misconfig (optional)")
 	templates := flag.String("templates", "", "path to a nuclei-templates checkout (optional; overrides auto-update)")
 	format := flag.String("format", "json", "report format: json or md")
+	recon := flag.Bool("recon", false, "crawl the target first (katana) and scan the discovered URLs too")
+	depth := flag.Int("depth", 2, "crawl depth when -recon is set")
 	skipNuclei := flag.Bool("skip-nuclei", false, "run only httpx discovery (no vulnerability templates)")
 	flag.Parse()
 
@@ -67,6 +69,20 @@ func main() {
 	}
 	rep.Probes = probes
 
+	// Build the target list: the base target, plus any URLs discovered by the
+	// crawler when -recon is set. This is the "recon chain" — discover more
+	// surface, then scan all of it.
+	targets := []string{*target}
+	if *recon {
+		discovered, err := scanner.Crawl(ctx, scope.Engagement, *target, *depth)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "crawl:", err)
+			os.Exit(1)
+		}
+		rep.Discovered = discovered
+		targets = dedupe(append(targets, discovered...))
+	}
+
 	if !*skipNuclei {
 		opt := scan.NucleiOptions{}
 		if s := strings.TrimSpace(*severity); s != "" {
@@ -76,7 +92,7 @@ func main() {
 			opt.Tags = strings.Split(s, ",")
 		}
 		opt.TemplatesDir = strings.TrimSpace(*templates)
-		findings, err := scanner.Nuclei(ctx, scope.Engagement, *target, opt)
+		findings, err := scanner.NucleiTargets(ctx, scope.Engagement, targets, opt)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "nuclei:", err)
 			os.Exit(1)
@@ -99,7 +115,20 @@ type report struct {
 	Target      string         `json:"target"`
 	GeneratedAt string         `json:"generated_at"`
 	Probes      []scan.Probe   `json:"probes"`
+	Discovered  []string       `json:"discovered,omitempty"`
 	Findings    []scan.Finding `json:"findings"`
+}
+
+func dedupe(in []string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, v := range in {
+		if v != "" && !seen[v] {
+			seen[v] = true
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 func (r report) markdown() string {
@@ -117,6 +146,21 @@ func (r report) markdown() string {
 		fmt.Fprintf(&b, "| URL | Estado | Título | Servidor |\n| --- | --- | --- | --- |\n")
 		for _, p := range r.Probes {
 			fmt.Fprintf(&b, "| %s | %d | %s | %s |\n", p.URL, p.Status, p.Title, p.Webserver)
+		}
+		fmt.Fprintln(&b)
+	}
+
+	if len(r.Discovered) > 0 {
+		fmt.Fprintf(&b, "## Superficie descubierta por crawling (%d URLs)\n\n", len(r.Discovered))
+		max := len(r.Discovered)
+		if max > 50 {
+			max = 50
+		}
+		for _, u := range r.Discovered[:max] {
+			fmt.Fprintf(&b, "- %s\n", u)
+		}
+		if len(r.Discovered) > 50 {
+			fmt.Fprintf(&b, "- _… y %d más_\n", len(r.Discovered)-50)
 		}
 		fmt.Fprintln(&b)
 	}

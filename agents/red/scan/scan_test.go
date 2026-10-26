@@ -69,6 +69,28 @@ func TestHTTPXAuthorizesThenProbes(t *testing.T) {
 	}
 }
 
+func TestParseKatana(t *testing.T) {
+	jsonl := `{"timestamp":"t","request":{"method":"GET","endpoint":"http://lab.target/"}}
+{"timestamp":"t","request":{"method":"GET","endpoint":"http://lab.target/admin/login"}}
+{"timestamp":"t","request":{"method":"GET","endpoint":"http://lab.target/"}}
+{"url":"http://lab.target/api/v1/users"}
+`
+	urls := parseKatana([]byte(jsonl))
+	if len(urls) != 3 {
+		t.Fatalf("expected 3 unique urls, got %d: %v", len(urls), urls)
+	}
+	want := map[string]bool{
+		"http://lab.target/":             true,
+		"http://lab.target/admin/login":  true,
+		"http://lab.target/api/v1/users": true,
+	}
+	for _, u := range urls {
+		if !want[u] {
+			t.Errorf("unexpected url %q", u)
+		}
+	}
+}
+
 // TestParseNucleiWebshellAndCVE validates parsing of nuclei JSONL, including an
 // exposed PHP web shell detection and a CVE finding — the kinds of issues we
 // report to the audited organization so they can remediate.

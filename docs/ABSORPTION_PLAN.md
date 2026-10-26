@@ -1,6 +1,11 @@
 
 # Plan de Absorción de ARTEX + norma
 
+> Plan inicial. La continuación de 2026-10-15 reincorpora NOA y conecta la memoria
+> del SDK. Consultar [la integración actual de ARTEX](ARTEX_INTEGRATION.md) para
+> distinguir lo incorporado, lo validado y lo pendiente; las casillas siguientes
+> conservan la planificación histórica, no representan el estado actual.
+
 > **Objetivo**: tener Nexus v6.0-alpha funcionando en 4-6 semanas, sin depender de ARTEX ni norma como módulos externos.
 
 ---

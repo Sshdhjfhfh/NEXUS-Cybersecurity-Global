@@ -11,13 +11,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/nexus-ia/nexus/db"
-	"github.com/nexus-ia/nexus/ethical_boundary/intercept"
 	"github.com/nexus-ia/nexus/core/agent"
 	"github.com/nexus-ia/nexus/core/llm"
 	"github.com/nexus-ia/nexus/core/permission"
 	actool "github.com/nexus-ia/nexus/core/tool"
 	"github.com/nexus-ia/nexus/core/transcript"
+	"github.com/nexus-ia/nexus/db"
+	"github.com/nexus-ia/nexus/ethical_boundary/intercept"
 )
 
 // Planner is the event-driven LLM planner (docs §4.3): each time the asset or
@@ -251,17 +251,11 @@ func intentSummary(ts *db.ExplorationStore, id int64) string {
 // workerOutput returns the finished worker's conclusion for an intent — the last
 // 'result' (else 'text') activity's full detail, truncated. Same source get_worker_output uses.
 func workerOutput(ts *db.ExplorationStore, id int64) string {
-	acts, _, err := ts.ActivityList(&id, 0, 1000)
+	pick, err := latestWorkerOutput(func(since int64, limit int) ([]db.Activity, int64, error) {
+		return ts.ActivityList(&id, since, limit)
+	})
 	if err != nil {
 		return "(取输出失败)"
-	}
-	var pick *db.Activity
-	for i := range acts {
-		if acts[i].Kind == "result" {
-			pick = &acts[i]
-		} else if acts[i].Kind == "text" && pick == nil {
-			pick = &acts[i]
-		}
 	}
 	if pick == nil {
 		return "(该 work 尚无输出记录)"
@@ -407,6 +401,7 @@ func (p *Planner) Plan(ctx context.Context, taskID int64, as *db.AssetStore, ts 
 		settle = wrapupSettlementForTask("planner", nil, clamped)
 	}
 	opts := agentcore.Options{
+		Memory:          scopedMemory(taskDir),
 		Provider:        p.prov,
 		SystemPrompt:    system,
 		DynamicBoundary: boundary,

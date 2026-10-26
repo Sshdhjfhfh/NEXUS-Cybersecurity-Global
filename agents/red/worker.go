@@ -14,14 +14,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nexus-ia/nexus/db"
-	"github.com/nexus-ia/nexus/ethical_boundary/intercept"
 	"github.com/nexus-ia/nexus/core/agent"
 	"github.com/nexus-ia/nexus/core/harness"
 	"github.com/nexus-ia/nexus/core/llm"
 	"github.com/nexus-ia/nexus/core/permission"
 	actool "github.com/nexus-ia/nexus/core/tool"
 	"github.com/nexus-ia/nexus/core/transcript"
+	"github.com/nexus-ia/nexus/db"
+	"github.com/nexus-ia/nexus/ethical_boundary/intercept"
 )
 
 // Worker is an LLM work agent (docs §4.4): it claims ONE intent, completes it
@@ -159,23 +159,6 @@ const settleWrapUpPrompt = "你即将因预算耗尽被终止。不要再运行�
 
 func NewWorker(prov llm.Provider, model, workDir string, tx *transcript.Store, window, maxTurns int, extra ...actool.CoreTool) *Worker {
 	return &Worker{prov: prov, model: model, workDir: workDir, tx: tx, window: window, maxTurns: maxTurns, extraTools: extra}
-}
-
-// defaultToolsExcept returns actool.DefaultTools() minus the named tools (by
-// CoreTool.Name()). Used to trim SDK default tools an agent shouldn't have.
-func defaultToolsExcept(exclude ...string) []actool.CoreTool {
-	drop := make(map[string]bool, len(exclude))
-	for _, n := range exclude {
-		drop[n] = true
-	}
-	all := actool.DefaultTools()
-	out := make([]actool.CoreTool, 0, len(all))
-	for _, t := range all {
-		if !drop[t.Name()] {
-			out = append(out, t)
-		}
-	}
-	return out
 }
 
 func (w *Worker) SetCompactionWindowResolver(fn func() int) { w.windowFn = fn }
@@ -378,9 +361,9 @@ func (w *Worker) execute(ctx context.Context, name string, taskID int64, as *db.
 	// then augment with the agent's visible skills/MCP. During the SDK settlement
 	// phase, Bash is hidden via Settlement.DisabledTools (no local gating needed).
 	base := append(tsx.WorkerTools(), w.extraTools...)
-	// worker 刻意不给 MultiEdit/Glob/Grep：文件精改用 Edit、检索走 Bash(grep/find)，
-	// 收敛工具面、减少低价值调用。其余 SDK 默认工具(Read/Write/Edit/LS/Bash/Sleep)照常。
-	base = append(base, defaultToolsExcept("MultiEdit", "Glob", "Grep")...)
+	// Workers receive the complete general-purpose tool catalog, including file
+	// search and multi-edit, so they can select tools suited to the task.
+	base = append(base, actool.DefaultTools()...)
 	ctx = WithRunInfo(ctx, RunInfo{TaskID: taskID, ExplorationID: explorationID(ts), IntentID: intent.ID})
 	tools, def, cleanup := AugmentTools(ctx, "worker", base)
 	defer cleanup()
@@ -431,6 +414,7 @@ func (w *Worker) execute(ctx context.Context, name string, taskID int64, as *db.
 		settle = wrapupSettlementForTask("worker", []string{"Bash"}, clamped)
 	}
 	opts := agentcore.Options{
+		Memory:          scopedMemory(ensureRunDir(w.workDir, taskID, 0)),
 		Provider:        w.prov,
 		SystemPrompt:    system,
 		DynamicBoundary: boundary,

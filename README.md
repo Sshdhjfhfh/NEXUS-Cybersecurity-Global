@@ -64,6 +64,13 @@ La validación de la interfaz española está en [Nivel 0](docs/NIVEL0_VALIDATIO
 El [estado real del proyecto](docs/PROJECT_STATUS.md) distingue lo implementado,
 lo integrado y lo que falta para completar la especificación v6.0.
 
+La [incorporación de ARTEX](docs/ARTEX_INTEGRATION.md) describe la memoria por tarea,
+la compresión recuperable, su adaptación al español y las validaciones pendientes.
+
+La [mejora continua](docs/EVOLVE.md) añade evaluación automática de estrategias de
+recuperación de memoria, promoción con casos reservados y reversión ante regresiones.
+Puede comprobarse sin un modelo ni red con `go run ./cmd/nexus-evolve -demo`.
+
 El laboratorio defensivo está en `/function/lab`. Sus adaptadores de identidad y
 supervisión están en `lab/security`; la composición del host usa
 `Server.ConfigureLevel12Security`. El arranque permanece bloqueado hasta conectar

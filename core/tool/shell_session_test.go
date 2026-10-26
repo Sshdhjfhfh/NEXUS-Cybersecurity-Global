@@ -6,6 +6,7 @@ package tool
 
 import (
 	"context"
+	"encoding/json"
 	"regexp"
 	"strings"
 	"testing"
@@ -133,5 +134,85 @@ func TestReadSinceIncremental(t *testing.T) {
 	out2, _, _ := s.readSince(cur, 0, 8192, false)
 	if out2 != "line3\n" {
 		t.Fatalf("incremental got %q", out2)
+	}
+}
+
+func TestWaitCompleteIgnoresPreviousPrompt(t *testing.T) {
+	s := &ptySession{notifyCh: make(chan struct{}, 1), done: make(chan struct{})}
+	s.append([]byte("old output\n>>> ")) // leave its notification queued
+	before := s.outputCursor()
+	got := s.waitComplete(context.Background(), time.Second, 0, 30*time.Millisecond,
+		regexp.MustCompile(`>>> $`), "", before)
+	if got != "timeout" {
+		t.Fatalf("old prompt completed a new command: %s", got)
+	}
+}
+
+func TestWaitCompleteUsesOnlyNewOutput(t *testing.T) {
+	s := &ptySession{notifyCh: make(chan struct{}, 1), done: make(chan struct{})}
+	s.append([]byte("old output\n>>> "))
+	before := s.outputCursor()
+	// Output may arrive before waitComplete starts and coalesce with the old ping.
+	s.append([]byte("new output\n>>> "))
+	got := s.waitComplete(context.Background(), time.Second, 0, time.Second,
+		regexp.MustCompile(`>>> $`), "", before)
+	if got != "prompt" {
+		t.Fatalf("missed new prompt: %s", got)
+	}
+	out, _, _ := s.readSince(before, 0, 8192, false)
+	if out != "new output\n>>> " {
+		t.Fatalf("unexpected command output: %q", out)
+	}
+}
+
+func TestTailAfterHandlesRingEviction(t *testing.T) {
+	s := &ptySession{notifyCh: make(chan struct{}, 1)}
+	s.append([]byte(strings.Repeat("x", sessRingCap+20)))
+	before := s.outputCursor()
+	s.append([]byte("fresh"))
+	if got := s.tailAfter(before, 4096); got != "fresh" {
+		t.Fatalf("fresh output: %q", got)
+	}
+	if got := s.tailAfter(0, 3); got != "esh" {
+		t.Fatalf("bounded tail: %q", got)
+	}
+}
+
+func TestShellSendWaitsForCurrentCommand(t *testing.T) {
+	if !ptySupported() {
+		t.Skip("no PTY on this platform")
+	}
+	m, err := NewManager("test-current-command")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer m.Cleanup()
+	s, err := m.openSession(`stty -echo; printf 'READY> '; while IFS= read -r line; do sleep 0.05; printf 'ACK:%s\nREADY> ' "$line"; done`,
+		t.TempDir(), nil, 24, 80, "interactive", regexp.MustCompile(`READY> $`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if by := s.waitComplete(context.Background(), time.Second, 0, 3*time.Second, s.prompt, "", 0); by != "prompt" {
+		t.Fatalf("startup: %s", by)
+	}
+	// Reproduce a queued old-output ping before a slower command can respond.
+	select {
+	case s.notifyCh <- struct{}{}:
+	default:
+	}
+	in, _ := json.Marshal(map[string]any{"session_id": s.id, "text": "hello", "submit": true, "quiet_ms": 1000, "timeout_ms": 3000})
+	res, err := NewShellSend().Call(context.Background(), in, &ToolContext{Tasks: m})
+	if err != nil || res.IsError {
+		t.Fatalf("send: %s, %v", res.Flatten(), err)
+	}
+	var got struct {
+		Output string `json:"output"`
+		DoneBy string `json:"done_by"`
+	}
+	if err := json.Unmarshal([]byte(res.Flatten()), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.DoneBy != "prompt" || !strings.Contains(got.Output, "ACK:hello") {
+		t.Fatalf("returned before current command: %+v", got)
 	}
 }

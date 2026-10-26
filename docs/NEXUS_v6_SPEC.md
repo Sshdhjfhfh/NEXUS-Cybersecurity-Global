@@ -43,6 +43,11 @@
 - `memory/` — ChromaDB
 - `knowledge_bus/` — Redis Streams cifrado
 
+Primera implementación de `evolve/`: evaluación de estrategias acotadas,
+promoción y reversión, conectadas a recuperación de memoria por título.
+Ver [alcance y pruebas](EVOLVE.md). No equivale a implementar todavía todos los
+componentes previstos para este nivel.
+
 ### Nivel 4 — Colectivo + Frontera científica
 - `graph_rag/` — extiende doble graph de ARTEX
 - `vckg/` — Vulnerability Causal Knowledge Graph
@@ -104,7 +109,11 @@ Absorber en `core/`:
 - `hook` → `core/hook/`
 - `plan` → `core/plan/` (reescrito para swarm)
 
-Descartar: `llm/`, `noa/`, `noaadapter/`, `cmd/`, `examples/`.
+El plan inicial descartaba `llm/`, `noa/`, `noaadapter/`, `cmd/` y `examples/`.
+La continuación del 2026-10-15 reincorpora `noa/` y `noaadapter/` como compresión
+experimental recuperable. Su alcance, adaptación al español y validación están
+en [la integración de ARTEX](ARTEX_INTEGRATION.md). La memoria integrada actualmente
+usa Markdown; la reescritura con ChromaDB sigue pendiente.
 
 ### De ARTEX
 Absorber:

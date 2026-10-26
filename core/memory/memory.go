@@ -10,13 +10,18 @@
 package memory
 
 import (
+	"context"
 	"fmt"
+	"golang.org/x/text/unicode/norm"
+	"hash/fnv"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 // Type classifies a memory.
@@ -42,6 +47,13 @@ type Memory struct {
 // Store is a memory directory.
 type Store struct {
 	Dir string
+	// Ranker is an optional host-owned retrieval policy. It does not grant tools
+	// access to the evaluator or to another task's memory.
+	Ranker Ranker
+}
+
+type Ranker interface {
+	Rank(context.Context, []Memory, string, int) []Memory
 }
 
 // NewStore roots a store at dir (created on first write).
@@ -49,17 +61,74 @@ func NewStore(dir string) *Store { return &Store{Dir: dir} }
 
 const indexFile = "MEMORY.md"
 
-func (s *Store) ensure() error { return os.MkdirAll(s.Dir, 0o755) }
+func (s *Store) ensure() error {
+	if err := os.MkdirAll(s.Dir, 0o700); err != nil {
+		return err
+	}
+	return s.validateDir()
+}
 
-var slugRe = regexp.MustCompile(`[^a-z0-9]+`)
+// validateDir is also used on reads: an existing store must not redirect a
+// task's memory to another directory. Reading an absent store never creates it.
+func (s *Store) validateDir() error {
+	info, err := os.Lstat(filepath.Clean(s.Dir))
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("memory: store must be a directory, not a symlink")
+	}
+	return nil
+}
+
+// Striped locks serialize writers across Store instances without retaining one
+// mutex per historical task. Atomic renames keep readers free of partial files.
+var storeLocks [64]sync.Mutex
+
+func (s *Store) lock() func() {
+	path, _ := filepath.Abs(s.Dir)
+	hash := fnv.New32a()
+	_, _ = hash.Write([]byte(path))
+	mu := &storeLocks[hash.Sum32()%uint32(len(storeLocks))]
+	mu.Lock()
+	return mu.Unlock
+}
+
+func atomicWrite(path string, data []byte) error {
+	f, err := os.CreateTemp(filepath.Dir(path), ".memory-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	if _, err = f.Write(data); err != nil {
+		f.Close()
+		return err
+	}
+	if err = f.Sync(); err != nil {
+		f.Close()
+		return err
+	}
+	if err = f.Close(); err != nil {
+		return err
+	}
+	return os.Rename(f.Name(), path)
+}
+
+var slugRe = regexp.MustCompile(`[^\p{L}\p{N}]+`)
 
 func slug(name string) string {
-	s := slugRe.ReplaceAllString(strings.ToLower(name), "-")
+	s := slugRe.ReplaceAllString(strings.ToLower(norm.NFC.String(name)), "-")
 	return strings.Trim(s, "-")
 }
 
 // Scan reads every memory file (excluding the index), newest first.
 func (s *Store) Scan() ([]Memory, error) {
+	if err := s.validateDir(); err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
 	entries, err := os.ReadDir(s.Dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -69,7 +138,7 @@ func (s *Store) Scan() ([]Memory, error) {
 	}
 	var out []Memory
 	for _, e := range entries {
-		if e.IsDir() || e.Name() == indexFile || !strings.HasSuffix(e.Name(), ".md") {
+		if e.IsDir() || e.Type()&os.ModeSymlink != 0 || e.Name() == indexFile || !strings.HasSuffix(e.Name(), ".md") {
 			continue
 		}
 		m, err := s.readFile(filepath.Join(s.Dir, e.Name()))
@@ -83,11 +152,24 @@ func (s *Store) Scan() ([]Memory, error) {
 
 // Read returns the memory with the given name (or its slug).
 func (s *Store) Read(name string) (Memory, error) {
+	if slug(name) == "" {
+		return Memory{}, fmt.Errorf("memory: invalid name")
+	}
 	p := filepath.Join(s.Dir, slug(name)+".md")
 	return s.readFile(p)
 }
 
 func (s *Store) readFile(path string) (Memory, error) {
+	if err := s.validateDir(); err != nil {
+		return Memory{}, err
+	}
+	info, err := os.Lstat(path)
+	if err != nil {
+		return Memory{}, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > 65536 {
+		return Memory{}, fmt.Errorf("memory: invalid file")
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return Memory{}, err
@@ -105,6 +187,19 @@ func (s *Store) readFile(path string) (Memory, error) {
 
 // Save writes a memory file and rebuilds the MEMORY.md index.
 func (s *Store) Save(m Memory) error {
+	unlock := s.lock()
+	defer unlock()
+	if slug(m.Name) == "" || strings.ContainsAny(m.Name+m.Description, "\r\n") {
+		return fmt.Errorf("memory: invalid metadata")
+	}
+	if !utf8.ValidString(m.Name+m.Description+m.Content) || len(renderFrontmatter(m)) > 65536 {
+		return fmt.Errorf("memory: invalid or oversized content")
+	}
+	switch m.Type {
+	case "", TypeUser, TypeFeedback, TypeProject, TypeReference:
+	default:
+		return fmt.Errorf("memory: invalid type")
+	}
 	if err := s.ensure(); err != nil {
 		return err
 	}
@@ -112,23 +207,28 @@ func (s *Store) Save(m Memory) error {
 		return fmt.Errorf("memory: name is required")
 	}
 	path := filepath.Join(s.Dir, slug(m.Name)+".md")
-	if err := os.WriteFile(path, []byte(renderFrontmatter(m)), 0o644); err != nil {
+	if err := atomicWrite(path, []byte(renderFrontmatter(m))); err != nil {
 		return err
 	}
 	return s.rebuildIndex()
 }
 
 // Index returns the MEMORY.md content (an index of memories), building it from a
-// scan if the file is absent.
+// scan if the file is absent or is not a regular file.
 func (s *Store) Index() string {
-	if data, err := os.ReadFile(filepath.Join(s.Dir, indexFile)); err == nil {
-		return string(data)
+	if err := s.validateDir(); err == nil {
+		path := filepath.Join(s.Dir, indexFile)
+		if info, err := os.Lstat(path); err == nil && info.Mode().IsRegular() {
+			if data, err := os.ReadFile(path); err == nil {
+				return string(data)
+			}
+		}
 	}
 	return s.buildIndex()
 }
 
 func (s *Store) rebuildIndex() error {
-	return os.WriteFile(filepath.Join(s.Dir, indexFile), []byte(s.buildIndex()), 0o644)
+	return atomicWrite(filepath.Join(s.Dir, indexFile), []byte(s.buildIndex()))
 }
 
 func (s *Store) buildIndex() string {

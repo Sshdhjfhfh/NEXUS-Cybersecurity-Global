@@ -1,0 +1,8 @@
+# Override para la simulación 1 (18-oct-2026): proyecto y cola nuevos, sin tocar
+# capacidad-20261016. Se usa junto a compose.capability.yml vía NEXUS_BENCHMARK_OVERRIDE.
+name: nexus-sim1-20261018
+services:
+  model:
+    volumes:
+      - ./session_bridge.py:/opt/session_bridge.py:ro
+      - ./artifacts/sim1-20261018/queue:/queue

@@ -1,0 +1,10 @@
+ClientOnly 1
+SocksPort 0.0.0.0:9050 IsolateSOCKSAuth
+SafeSocks 1
+ClientUseIPv6 0
+ClientRejectInternalAddresses 1
+DataDirectory /var/lib/tor
+Log notice stdout
+SafeLogging 1
+AvoidDiskWrites 1
+ControlPort 0

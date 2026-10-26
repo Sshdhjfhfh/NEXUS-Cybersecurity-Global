@@ -1,0 +1,63 @@
+name: nexus-capability-20261016
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: benchmark
+      POSTGRES_PASSWORD: isolated-benchmark-only
+      POSTGRES_DB: benchmark
+    volumes: [database:/var/lib/postgresql/data]
+    networks: [lab]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U benchmark -d benchmark']
+      interval: 2s
+      timeout: 2s
+      retries: 15
+  nexus:
+    image: nexus-benchmark-full:20261016
+    environment:
+      NEXUS_PG_DSN: postgres://benchmark:isolated-benchmark-only@db:5432/benchmark?sslmode=disable
+      NEXUS_MEMORY_ENABLED: 'true'
+      NEXUS_EVOLVE_ENABLED: 'true'
+    volumes:
+      - task-data:/app/data
+    networks: [lab]
+    depends_on:
+      db: {condition: service_healthy}
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 2g
+    pids_limit: 256
+  target:
+    image: nexus-phantom:local
+    user: '1000:1000'
+    command: [python3, /opt/target_advanced.py]
+    volumes: ['./target_advanced.py:/opt/target_advanced.py:ro']
+    tmpfs: ['/state:mode=1777,size=16m']
+    networks: [lab]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    pids_limit: 64
+    mem_limit: 128m
+  model:
+    image: nexus-phantom:local
+    user: '1000:1000'
+    command: [python3, /opt/session_bridge.py]
+    environment:
+      NEXUS_BRIDGE_RESPONSE_SECONDS: '${NEXUS_BRIDGE_RESPONSE_SECONDS:-600}'
+    volumes:
+      - ./session_bridge.py:/opt/session_bridge.py:ro
+      - ./artifacts/capacidad-20261016/queue:/queue
+    networks: [lab]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    pids_limit: 64
+    mem_limit: 128m
+networks:
+  lab:
+    internal: true
+volumes:
+  database: {}
+  task-data: {}

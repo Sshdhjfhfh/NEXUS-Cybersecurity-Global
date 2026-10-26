@@ -1,0 +1,6 @@
+*
+!Dockerfile
+!torrc
+!wireguard.py
+!artifacts/
+!artifacts/phantom-proxy

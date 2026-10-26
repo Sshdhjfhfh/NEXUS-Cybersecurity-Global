@@ -1,0 +1,52 @@
+name: nexus-agent-benchmark
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: benchmark
+      POSTGRES_PASSWORD: isolated-benchmark-only
+      POSTGRES_DB: benchmark
+    networks: [lab]
+    tmpfs: [/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U benchmark -d benchmark']
+      interval: 2s
+      timeout: 2s
+      retries: 15
+  nexus:
+    image: nexus-ia/orchestrator:v6.0.0
+    environment:
+      NEXUS_PG_DSN: postgres://benchmark:isolated-benchmark-only@db:5432/benchmark?sslmode=disable
+    networks: [lab]
+    ports: ['127.0.0.1:8791:8787']
+    depends_on:
+      db: {condition: service_healthy}
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  target:
+    image: nexus-phantom:local
+    user: '1000:1000'
+    command: [python3, /opt/target.py]
+    volumes: ['./target.py:/opt/target.py:ro']
+    networks: [lab]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    pids_limit: 64
+    mem_limit: 64m
+  model:
+    image: nexus-phantom:local
+    user: '1000:1000'
+    command: [python3, /opt/model_gateway.py]
+    volumes: ['./model_gateway.py:/opt/model_gateway.py:ro']
+    extra_hosts: ['host.docker.internal:host-gateway']
+    networks: [lab, model]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    pids_limit: 64
+    mem_limit: 128m
+networks:
+  lab:
+    internal: true
+  model: {}

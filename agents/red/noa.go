@@ -1,53 +1,56 @@
-// Nexus IA v6.0 — Absorbido de ARTEX/agent
-// Upstream: github.com/mhtsec/ARTEX/agent
-// Licencia: AGPL-3.0
-//
-// ⚠️ REESCRITO: La versión original dependía de norma/noaadapter
-// (feature experimental de compresión de contexto). Nexus IA
-// implementará su propio sistema de compresión en el módulo
-// `core/compaction/` cuando sea necesario. Por ahora este módulo
-// es un stub inerte que no interfiere con el sistema.
+// Nexus IA — Integración de la compresión de contexto de ARTEX/norma.
+// Fuente: mhtsec/ARTEX a9d11cb852eadad00669e4f6a05ee59cbbd14860.
 
 package agent
 
 import (
 	"log"
+	"path/filepath"
+
+	"github.com/nexus-ia/nexus/core/agent"
+	"github.com/nexus-ia/nexus/core/noaadapter"
 )
 
-// noaWarn returns a diagnostics sink tagging non-fatal noa messages.
-// Mantenido para compatibilidad de API con el código absorbido.
+// noaWarn returns a diagnostics sink tagging non-fatal noa messages with the
+// session, routed through the package logger (agents have no per-instance one).
 func noaWarn(session string) func(string) {
-	return func(msg string) {
-		log.Printf("[noa-stub] %s: %s", session, msg)
-	}
+	return func(msg string) { log.Printf("[noa] %s: %s", session, msg) }
 }
 
-// enableNoa es un stub inerte. La funcionalidad de NOA (compresión de
-// contexto dirigida por modelo) está deshabilitada en Nexus IA v6.0.
+// noa 是 norma v0.4.0 引入的「模型驱动上下文压缩」机制,作为平台实验功能由用户在
+// 系统设置中开关。它与内置 compaction 互斥:noaadapter.Enable 是唯一入口,一次挂上
+// 上下文接管器(Compactor)、Compress 工具与三段常驻提示词,不调用 Enable 即为关闭
+// (内置 compaction 照常工作)。开关由每个 agent 注入的 noaEnabledFn 解析,每 run 读
+// 一次,故切换只影响之后启动的 run,无需重建 agent。
+
+// enableNoa 在解析器报告开启时把 noa 接入 opts。archiveRoot 是压缩原文的持久化基目录
+// (取全局 workDir,各 agent 统一落在 <workDir>/noa 下,不随任务/意图目录分散),sessionID
+// 命名其下的归档子目录(全局唯一,故同一基目录内不冲突)。
 //
-// En el futuro, cuando implementemos nuestro propio sistema de
-// compresión avanzada, esta función lo conectará. Por ahora, no hace
-// nada y deja que el sistema de compaction estándar (`core/compaction/`)
-// siga funcionando.
-//
-// Parámetros (ignorados en el stub):
-//   - opts: opciones del agentcore
-//   - enabled: función que indica si NOA está habilitado
-//   - archiveRoot: directorio raíz para archivos comprimidos
-//   - sessionID: ID único de la sesión
-//   - onWarn: callback para warnings
-func enableNoa(
-	opts any,
-	enabled func() bool,
-	archiveRoot string,
-	sessionID string,
-	onWarn func(string),
-) {
-	if enabled != nil && enabled() {
-		// NOA está habilitado pero no implementado en Nexus IA
-		if onWarn != nil {
-			onWarn("noa: feature no implementada en Nexus IA v6.0, usando compresión estándar")
-		}
+// noa 是实验功能:接入失败不得中断真实任务。发生错误时经 onWarn 上报并回退内置压缩。
+// 启用成功时清掉 opts.Compaction,避免 agentcore 因「两个上下文管理器同时设置」告警。
+func enableNoa(opts *agentcore.Options, enabled func() bool, archiveRoot, sessionID string, onWarn func(string)) {
+	if enabled == nil || !enabled() {
+		return
 	}
-	// No hace nada — deja que core/compaction/ haga su trabajo
+	if opts.OnWarn == nil {
+		opts.OnWarn = onWarn
+	}
+	contextLimit := 0
+	if opts.Compaction != nil {
+		contextLimit = opts.Compaction.ContextWindow
+	}
+	if err := noaadapter.Enable(opts, noaadapter.Options{
+		ArchiveBaseDir:    filepath.Join(archiveRoot, "noa"),
+		ModelContextLimit: contextLimit,
+		SessionID:         sessionID,
+		OnWarn:            onWarn,
+	}); err != nil {
+		if onWarn != nil {
+			onWarn("advanced compaction unavailable; using standard compaction: " + err.Error())
+		}
+		return
+	}
+	// Compactor 覆盖 Compaction,但两者并存时 agentcore 每次会告警;明确清掉。
+	opts.Compaction = nil
 }

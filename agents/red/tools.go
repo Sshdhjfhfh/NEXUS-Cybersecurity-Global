@@ -1833,23 +1833,11 @@ func (t *ToolSet) getWorkerOutput() actool.CoreTool {
 			if intentNode == nil || intentNode.Kind != db.KindIntent {
 				return actool.Errorf("intent_id 不属于本任务或其直接关联任务"), nil
 			}
-			acts, _, err := t.ts.ActivityListWithSources(id, 0, 1000)
+			pick, err := latestWorkerOutput(func(since int64, limit int) ([]db.Activity, int64, error) {
+				return t.ts.ActivityListWithSources(id, since, limit)
+			})
 			if err != nil {
 				return actool.Errorf(err.Error()), nil
-			}
-			var chosen, fallback *db.Activity
-			for i := range acts {
-				switch acts[i].Kind {
-				case "result":
-					chosen = &acts[i]
-					fallback = &acts[i]
-				case "text":
-					fallback = &acts[i]
-				}
-			}
-			pick := chosen
-			if pick == nil {
-				pick = fallback
 			}
 			if pick == nil {
 				if intentNode.Inherited {

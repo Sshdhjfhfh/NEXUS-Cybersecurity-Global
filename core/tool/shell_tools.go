@@ -151,7 +151,7 @@ func NewShellOpen() CoreTool {
 		quiet, grace := ms(a.QuietMs, sessDefQuietMs), ms(a.StartupGraceMs, sessDefGraceMs)
 		switch mode {
 		case "interactive":
-			by := s.waitComplete(ctx, quiet, grace, ms(0, sessWaitCapMs), pr, "")
+			by := s.waitComplete(ctx, quiet, grace, ms(0, sessWaitCapMs), pr, "", 0)
 			out, cur, _ := s.readSince(0, 0, sessDefReadByte*4, false)
 			return jsonResult(map[string]any{"session_id": s.id, "state": "running", "done_by": by, "output": out, "cursor": cur, "running": s.running()})
 		case "dispatch":
@@ -206,7 +206,6 @@ func NewShellSend() CoreTool {
 		if !s.running() {
 			return Errorf("会话已结束(exit " + fmtExit(s.exit()) + ")，用 shell_read 读取尾部输出或 shell_close"), nil
 		}
-		before := s.total
 		// build & write input in order: text, submit(\r), keys, hex, paste
 		var payload []byte
 		if a.Text != "" {
@@ -233,6 +232,7 @@ func NewShellSend() CoreTool {
 		if len(payload) == 0 {
 			return Errorf("没有可发送的输入(text/submit/keys/hex/paste 至少给一个)"), nil
 		}
+		before := s.outputCursor()
 		if _, err := s.ptmx.Write(payload); err != nil {
 			return Errorf("写入失败: " + err.Error()), nil
 		}
@@ -246,7 +246,7 @@ func NewShellSend() CoreTool {
 				pr = re
 			}
 		}
-		by := s.waitComplete(ctx, ms(a.QuietMs, sessDefQuietMs), 0, ms(a.TimeoutMs, sessWaitCapMs), pr, "")
+		by := s.waitComplete(ctx, ms(a.QuietMs, sessDefQuietMs), 0, ms(a.TimeoutMs, sessWaitCapMs), pr, "", before)
 		out, cur, omitted := s.readSince(before, 0, sessDefReadByte, false)
 		return jsonResult(map[string]any{"session_id": s.id, "output": out, "done_by": by, "cursor": cur, "running": s.running(), "omitted": omitted})
 	})

@@ -1,0 +1,6 @@
+{
+  "source": "synthetic-demo-fixture",
+  "rationale": "Probar el delimitador final de un formato ficticio NEXUS sin introducir semillas que ya fallen.",
+  "seeds_base64": ["TkVYVVM/", "SEVMTE8="],
+  "dictionary": ["NEXUS", "!", "?"]
+}

@@ -69,7 +69,7 @@ type ptySession struct {
 	lastOut  time.Time
 	exitedAt time.Time
 
-	readCur  int64 // tool-side read cursor (shell_read without since_cursor continues here)
+	readCur  int64         // tool-side read cursor (shell_read without since_cursor continues here)
 	notifyCh chan struct{} // pinged on new output
 	done     chan struct{} // closed when the process exits
 }
@@ -83,6 +83,12 @@ func (s *ptySession) setReadCursor(c int64) {
 	s.mu.Lock()
 	s.readCur = c
 	s.mu.Unlock()
+}
+
+func (s *ptySession) outputCursor() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.total
 }
 
 // --- ring buffer + output ---
@@ -106,12 +112,25 @@ func (s *ptySession) append(p []byte) {
 }
 
 func (s *ptySession) tailStr(n int) string {
+	return s.tailAfter(0, n)
+}
+
+// tailAfter excludes output from before the current input. A queued notification
+// for an old prompt must not complete a newly submitted command.
+func (s *ptySession) tailAfter(cursor int64, n int) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if n <= 0 || n > len(s.buf) {
-		return string(s.buf)
+	if cursor >= s.total {
+		return ""
 	}
-	return string(s.buf[len(s.buf)-n:])
+	start := s.total - int64(len(s.buf))
+	if cursor > start {
+		start = cursor
+	}
+	if n > 0 && s.total-start > int64(n) {
+		start = s.total - int64(n)
+	}
+	return string(s.buf[start-(s.total-int64(len(s.buf))):])
 }
 
 // readSince returns the output produced after absolute cursor c, advancing the
@@ -195,7 +214,7 @@ func (s *ptySession) exit() *int {
 // waitComplete blocks until a completion signal: prompt/sentinel match on the tail,
 // output silence for quiet, the process exits, or the deadline/ctx fires. Returns the
 // reason. grace delays the first quiet check so a slow-starting program isn't judged done.
-func (s *ptySession) waitComplete(ctx context.Context, quiet, grace, timeout time.Duration, prompt *regexp.Regexp, sentinel string) string {
+func (s *ptySession) waitComplete(ctx context.Context, quiet, grace, timeout time.Duration, prompt *regexp.Regexp, sentinel string, after int64) string {
 	dl := time.NewTimer(timeout)
 	defer dl.Stop()
 	first := quiet
@@ -213,7 +232,10 @@ func (s *ptySession) waitComplete(ctx context.Context, quiet, grace, timeout tim
 		case <-dl.C:
 			return "timeout"
 		case <-s.notifyCh:
-			tail := s.tailStr(4096)
+			tail := s.tailAfter(after, 4096)
+			if tail == "" {
+				continue
+			}
 			if prompt != nil && prompt.MatchString(tail) {
 				return "prompt"
 			}
@@ -358,8 +380,8 @@ func (m *Manager) readLoop(s *ptySession) {
 // dispatchWaiter (dispatch mode) waits for the first completion signal and enqueues a
 // task-notification with the tail, so the model is woken between turns to review it.
 func (m *Manager) dispatchWaiter(s *ptySession, quiet, grace, timeout time.Duration) {
-	by := s.waitComplete(m.rootCtx, quiet, grace, timeout, s.prompt, "")
-	from := s.total - 4096
+	by := s.waitComplete(m.rootCtx, quiet, grace, timeout, s.prompt, "", 0)
+	from := s.outputCursor() - 4096
 	if from < 0 {
 		from = 0
 	}
@@ -390,7 +412,7 @@ func (m *Manager) monitorWaiter(s *ptySession, pats []*regexp.Regexp) {
 		case <-m.rootCtx.Done():
 			return
 		case <-s.done:
-			from := s.total - 4096
+			from := s.outputCursor() - 4096
 			if from < 0 {
 				from = 0
 			}

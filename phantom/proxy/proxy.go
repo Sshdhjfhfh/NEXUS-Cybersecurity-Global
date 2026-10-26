@@ -1,7 +1,7 @@
 // Nexus IA v6.0 — Phantom Proxy (SOCKS5 puro)
 //
-// Proxy SOCKS5 implementado en Go puro. Todo el tráfico pasa por:
-//   cliente → proxy → onion → mixnet → destino
+// SOCKS5 TCP server. An explicit transport is required; no direct fallback.
+// Network guarantees depend on the configured transport.
 //
 // Características:
 //   - SOCKS5 completo (RFC 1928 + RFC 1929 auth)
@@ -10,11 +10,13 @@
 //   - Compatible con cualquier cliente SOCKS5
 //
 // El PDF lo describe así:
-//   'SOCKS5 puro en Go. Todo tráfico → onion → mixnet.
-//    Circuit breaker >1000 req/s. Traffic padding entre peticiones.'
+//
+//	'SOCKS5 puro en Go. Todo tráfico → onion → mixnet.
+//	 Circuit breaker >1000 req/s. Traffic padding entre peticiones.'
 package proxy
 
 import (
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"io"
@@ -48,15 +50,15 @@ const (
 	AddrIPv6   = 0x04
 
 	// Reply codes
-	RepSuccess           = 0x00
-	RepGeneralFailure    = 0x01
-	RepConnNotAllowed    = 0x02
-	RepNetworkUnreach    = 0x03
-	RepHostUnreach       = 0x04
-	RepConnRefused       = 0x05
-	RepTTLExpired        = 0x06
-	RepCmdNotSupported   = 0x07
-	RepAddrNotSupported  = 0x08
+	RepSuccess          = 0x00
+	RepGeneralFailure   = 0x01
+	RepConnNotAllowed   = 0x02
+	RepNetworkUnreach   = 0x03
+	RepHostUnreach      = 0x04
+	RepConnRefused      = 0x05
+	RepTTLExpired       = 0x06
+	RepCmdNotSupported  = 0x07
+	RepAddrNotSupported = 0x08
 )
 
 // ═══════════════════════════════════════════════════════════════
@@ -77,7 +79,7 @@ type Config struct {
 	CircuitBreakerWindow time.Duration
 
 	// Traffic padding
-	EnablePadding bool
+	EnablePadding   bool
 	PaddingMinBytes int
 	PaddingMaxBytes int
 
@@ -89,6 +91,7 @@ type Config struct {
 	HandshakeTimeout time.Duration
 	ConnectTimeout   time.Duration
 	IdleTimeout      time.Duration
+	MaxConnections   int
 }
 
 // Dialer es la interfaz para conectar a un destino.
@@ -103,12 +106,13 @@ func DefaultConfig() Config {
 		ListenAddr:           "127.0.0.1:1080",
 		MaxRequestsPerSecond: 1000,
 		CircuitBreakerWindow: 1 * time.Second,
-		EnablePadding:        true,
+		EnablePadding:        false, // Transport owns padding; never corrupt application bytes.
 		PaddingMinBytes:      16,
 		PaddingMaxBytes:      256,
 		HandshakeTimeout:     10 * time.Second,
 		ConnectTimeout:       30 * time.Second,
 		IdleTimeout:          5 * time.Minute,
+		MaxConnections:       256,
 	}
 }
 
@@ -120,16 +124,15 @@ func DefaultConfig() Config {
 type Proxy struct {
 	cfg      Config
 	listener net.Listener
-	direct   net.Dialer
 
 	// Rate limiting
 	requestCount atomic.Uint64
 	lastReset    atomic.Int64
 
 	// Estado
-	mu       sync.RWMutex
-	closed   bool
-	conns    map[net.Conn]struct{}
+	mu     sync.RWMutex
+	closed bool
+	conns  map[net.Conn]struct{}
 
 	// Stats
 	stats ProxyStats
@@ -158,10 +161,18 @@ func NewProxy(cfg Config) *Proxy {
 		cfg.CircuitBreakerWindow = 1 * time.Second
 	}
 
+	if cfg.MaxConnections <= 0 {
+		cfg.MaxConnections = 256
+	}
+	if cfg.HandshakeTimeout <= 0 {
+		cfg.HandshakeTimeout = 10 * time.Second
+	}
+	if cfg.IdleTimeout <= 0 {
+		cfg.IdleTimeout = 5 * time.Minute
+	}
 	p := &Proxy{
-		cfg:    cfg,
-		direct: net.Dialer{Timeout: cfg.ConnectTimeout},
-		conns:  make(map[net.Conn]struct{}),
+		cfg:   cfg,
+		conns: make(map[net.Conn]struct{}),
 	}
 	p.lastReset.Store(time.Now().UnixNano())
 	return p
@@ -169,6 +180,15 @@ func NewProxy(cfg Config) *Proxy {
 
 // Start inicia el proxy.
 func (p *Proxy) Start() error {
+	if p.cfg.Dialer == nil {
+		return errors.New("explicit transport required: direct egress is disabled")
+	}
+	if p.cfg.EnablePadding {
+		return errors.New("proxy padding is unsupported: configure padding on the encrypted transport")
+	}
+	if (p.cfg.Username == "") != (p.cfg.Password == "") || len(p.cfg.Username) > 255 || len(p.cfg.Password) > 255 {
+		return errors.New("invalid SOCKS credentials")
+	}
 	ln, err := net.Listen("tcp", p.cfg.ListenAddr)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
@@ -209,6 +229,11 @@ func (p *Proxy) acceptLoop() {
 
 		// Track connection
 		p.mu.Lock()
+		if p.closed || len(p.conns) >= p.cfg.MaxConnections {
+			p.mu.Unlock()
+			_ = conn.Close()
+			continue
+		}
 		p.conns[conn] = struct{}{}
 		p.stats.TotalConnections++
 		p.stats.ActiveConnections = len(p.conns)
@@ -268,10 +293,6 @@ func (p *Proxy) handleConnection(conn net.Conn) {
 
 	// Conectar al destino usando el Dialer (onion, mixnet, etc.)
 	dialer := p.cfg.Dialer
-	if dialer == nil {
-		// Sin dialer custom: usar conexión directa (no recomendado)
-		dialer = &p.direct
-	}
 
 	target, err := dialer.Dial("tcp", targetAddr)
 	if err != nil {
@@ -315,18 +336,19 @@ func (p *Proxy) handshake(conn net.Conn) (string, error) {
 
 	// 2. Elegir método
 	wantAuth := p.cfg.Username != "" || p.cfg.Password != ""
-	useAuth := false
+	accepted := false
 	for _, m := range methods {
 		if wantAuth && m == AuthUserPass {
-			useAuth = true
+			accepted = true
 			break
 		}
 		if !wantAuth && m == AuthNone {
+			accepted = true
 			break
 		}
 	}
 
-	if wantAuth && !useAuth {
+	if !accepted {
 		_, _ = conn.Write([]byte{SOCKS5Version, AuthNoAccept})
 		return "", errors.New("client does not support required auth")
 	}
@@ -347,7 +369,7 @@ func (p *Proxy) handshake(conn net.Conn) (string, error) {
 	if _, err := io.ReadFull(conn, req); err != nil {
 		return "", fmt.Errorf("read request: %w", err)
 	}
-	if req[0] != SOCKS5Version {
+	if req[0] != SOCKS5Version || req[2] != 0 {
 		return "", errors.New("bad version in request")
 	}
 	cmd := req[1]
@@ -394,7 +416,7 @@ func (p *Proxy) doAuth(conn net.Conn) error {
 		return err
 	}
 
-	if string(username) != p.cfg.Username || string(password) != p.cfg.Password {
+	if subtle.ConstantTimeCompare(username, []byte(p.cfg.Username))&subtle.ConstantTimeCompare(password, []byte(p.cfg.Password)) != 1 {
 		_, _ = conn.Write([]byte{0x01, 0x01})
 		return errors.New("invalid credentials")
 	}
@@ -411,29 +433,64 @@ func (p *Proxy) sendReply(conn net.Conn, code byte) error {
 }
 
 // relay reenvía datos bidireccionalmente.
+// activityConn refreshes both directions' idle deadlines on successful I/O.
+type activityConn struct {
+	net.Conn
+	peer net.Conn
+	idle time.Duration
+}
+
+func (c activityConn) touch() {
+	deadline := time.Now().Add(c.idle)
+	_ = c.Conn.SetDeadline(deadline)
+	_ = c.peer.SetDeadline(deadline)
+}
+func (c activityConn) Read(b []byte) (int, error) {
+	n, e := c.Conn.Read(b)
+	if n > 0 {
+		c.touch()
+	}
+	return n, e
+}
+func (c activityConn) Write(b []byte) (int, error) {
+	n, e := c.Conn.Write(b)
+	if n > 0 {
+		c.touch()
+	}
+	return n, e
+}
 func (p *Proxy) relay(a, b net.Conn) {
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	var up, down atomic.Uint64
-
-	go func() {
-		defer wg.Done()
-		n, _ := io.Copy(b, a)
-		up.Store(uint64(n))
-	}()
-
-	go func() {
-		defer wg.Done()
-		n, _ := io.Copy(a, b)
-		down.Store(uint64(n))
-	}()
-
-	wg.Wait()
-
+	left := activityConn{a, b, p.cfg.IdleTimeout}
+	right := activityConn{b, a, p.cfg.IdleTimeout}
+	left.touch()
+	type result struct {
+		up bool
+		n  int64
+	}
+	done := make(chan result, 2)
+	copySide := func(dst activityConn, src net.Conn, up bool) {
+		n, err := io.Copy(dst, src)
+		if err != nil {
+			_ = a.Close()
+			_ = b.Close()
+		} else if cw, ok := dst.Conn.(interface{ CloseWrite() error }); ok {
+			_ = cw.CloseWrite()
+		} else {
+			_ = dst.Close()
+		}
+		done <- result{up, n}
+	}
+	go copySide(right, left, true)
+	go copySide(left, right, false)
+	first, second := <-done, <-done
 	p.mu.Lock()
-	p.stats.TotalBytesUp += up.Load()
-	p.stats.TotalBytesDown += down.Load()
+	for _, r := range []result{first, second} {
+		if r.up {
+			p.stats.TotalBytesUp += uint64(r.n)
+		} else {
+			p.stats.TotalBytesDown += uint64(r.n)
+		}
+	}
 	p.mu.Unlock()
 }
 
@@ -496,6 +553,9 @@ func readAddress(conn net.Conn, atyp byte) (string, error) {
 		lenBuf := make([]byte, 1)
 		if _, err := io.ReadFull(conn, lenBuf); err != nil {
 			return "", err
+		}
+		if lenBuf[0] == 0 {
+			return "", errors.New("empty destination")
 		}
 		domain := make([]byte, int(lenBuf[0]))
 		if _, err := io.ReadFull(conn, domain); err != nil {

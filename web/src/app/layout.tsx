@@ -23,7 +23,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     PREFERENCE_DEFAULTS;
   return (
     <html
-      lang={"en"}
+      lang="es"
+      translate="no"
+      className="notranslate"
       data-theme-mode={theme_mode}
       data-theme-preset={theme_preset}
       data-content-layout={content_layout}
@@ -34,6 +36,8 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       suppressHydrationWarning
     >
       <head>
+        {/* The app handles translation; browser translators can replace nodes React owns. */}
+        <meta name="google" content="notranslate" />
         {/* Applies theme and layout preferences on load to avoid flicker and unnecessary server rerenders. */}
         <ThemeBootScript />
       </head>

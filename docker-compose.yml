@@ -70,17 +70,18 @@ services:
       # Estado
       ENV_STATE:          "${ENV_STATE:-production}"
       LOG_LEVEL:          "${LOG_LEVEL:-INFO}"
+      NEXUS_SKILL_DIR:     "/app/data/skills"
+      NEXUS_MEMORY_ENABLED: "${NEXUS_MEMORY_ENABLED:-true}"
     volumes:
       # Persistencia de datos runtime (SQLite, skills, etc.)
       - nexus_data:/app/data
-      # Skills (hot-reload desde el host)
-      - ./skills:/app/skills:ro
+      # User skills persist under nexus_data; bundled skills are seeded once.
     # Acceso al host Windows (para Ollama)
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       # API HTTP (127.0.0.1 = solo host local)
-      - "127.0.0.1:8787:8787"
+      - "0.0.0.0:8787:8787"
       # MITM proxy (opcional, comentado por defecto)
       # - "127.0.0.1:8788:8788"
     networks:

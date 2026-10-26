@@ -1,0 +1,7 @@
+# Dependency-only variant of the local Alpine laboratory image.
+# Keeps the original application and unprivileged runtime user.
+FROM nexus-ia/orchestrator:v6.0.0
+USER root
+RUN apk add --no-cache bash ripgrep
+USER nexus
+RUN /bin/bash -lc 'command -v bash && command -v rg && python3 --version'

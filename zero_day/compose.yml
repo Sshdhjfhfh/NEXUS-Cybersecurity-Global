@@ -1,0 +1,20 @@
+name: nexus-zero-day
+services:
+  fuzz:
+    build:
+      context: .
+    image: nexus-zero-day:local
+    network_mode: none
+    read_only: true
+    user: "1000:1000"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 64
+    mem_limit: 512m
+    cpus: 1.0
+    shm_size: 64m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,uid=1000,gid=1000
+    volumes:
+      - ./artifacts:/work
+    stop_grace_period: 10s

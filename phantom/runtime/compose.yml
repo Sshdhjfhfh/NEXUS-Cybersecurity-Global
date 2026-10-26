@@ -1,0 +1,46 @@
+name: nexus-phantom
+services:
+  tor:
+    image: nexus-phantom:local
+    build: .
+    restart: unless-stopped
+    networks: [private, egress]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: ['/tmp:size=16m,noexec,nosuid']
+    volumes: [tor-state:/var/lib/tor]
+    pids_limit: 128
+    mem_limit: 384m
+    healthcheck:
+      test: [CMD, python3, -c, "import socket; s=socket.create_connection(('127.0.0.1',9050),2); s.close()"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+  proxy:
+    image: nexus-phantom:local
+    user: '1000:1000'
+    command: [phantom-proxy]
+    restart: unless-stopped
+    environment:
+      PHANTOM_UPSTREAM: tor:9050
+    depends_on:
+      tor: {condition: service_healthy}
+    networks: [private]
+    ports: ['127.0.0.1:1080:1080']
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    pids_limit: 64
+    mem_limit: 128m
+    healthcheck:
+      test: [CMD, python3, -c, "import socket; s=socket.create_connection(('127.0.0.1',1080),2); s.sendall(bytes([5,1,0])); assert s.recv(2)==bytes([5,0])"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+networks:
+  private:
+    internal: true
+  egress: {}
+volumes:
+  tor-state: {}

@@ -10,14 +10,14 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/nexus-ia/nexus/db"
-	"github.com/nexus-ia/nexus/ethical_boundary/guard"
-	"github.com/nexus-ia/nexus/ethical_boundary/intercept"
 	"github.com/nexus-ia/nexus/core/agent"
 	"github.com/nexus-ia/nexus/core/llm"
 	"github.com/nexus-ia/nexus/core/permission"
 	actool "github.com/nexus-ia/nexus/core/tool"
 	"github.com/nexus-ia/nexus/core/transcript"
+	"github.com/nexus-ia/nexus/db"
+	"github.com/nexus-ia/nexus/ethical_boundary/guard"
+	"github.com/nexus-ia/nexus/ethical_boundary/intercept"
 )
 
 // ChatAgent is the generic, task-independent conversational runner behind the chat
@@ -129,6 +129,7 @@ func (c *ChatAgent) Chat(ctx context.Context, agentKey, sessionID, message strin
 
 	system, boundary := deferredSystem(chatSystem(agentKey, c.workDir, sessionWorkDir), def)
 	opts := agentcore.Options{
+		Memory:          scopedMemory(sessionWorkDir),
 		Provider:        c.prov,
 		SystemPrompt:    system,
 		DynamicBoundary: boundary,

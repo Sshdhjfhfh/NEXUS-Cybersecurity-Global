@@ -3,6 +3,7 @@ package mixnet
 
 import (
 	"bytes"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -369,24 +370,18 @@ func TestMixerShuffling(t *testing.T) {
 func TestCoverTraffic(t *testing.T) {
 	gen := NewCoverTrafficGenerator(10.0) // 10 pkt/s
 
-	count := make(chan int, 1)
-	var total int
+	var total atomic.Int64
 	gen.SetPacketCallback(func(p *SphinxPacket) {
-		total++
+		total.Add(1)
 	})
 
 	gen.Start()
 	time.Sleep(500 * time.Millisecond)
 	_ = gen.Close()
 
-	select {
-	case count <- total:
-	default:
-	}
-
 	// Debería haber generado ~5 paquetes en 500ms
-	if total < 2 {
-		t.Errorf("expected at least 2 packets, got %d", total)
+	if n := total.Load(); n < 2 {
+		t.Errorf("expected at least 2 packets, got %d", n)
 	}
 }
 
@@ -426,7 +421,6 @@ func TestClientSend(t *testing.T) {
 		t.Error("packets sent should be > 0")
 	}
 }
-
 
 // ═══════════════════════════════════════════════════════════════
 // Tests de MixNode

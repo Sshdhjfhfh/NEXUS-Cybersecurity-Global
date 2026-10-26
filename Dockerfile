@@ -6,7 +6,7 @@
 # Stages:
 #   1. frontend: build Next.js static export
 #   2. backend:  build Go binary con frontend embebido (-tags embedui)
-#   3. runtime:  Alpine con el binario único
+#   3. runtime:  Debian con el binario único y herramientas de los agentes
 # ═══════════════════════════════════════════════════════════════
 
 # ───────────────────────────────────────────────────────────────
@@ -57,35 +57,46 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     -o /nexus ./cmd/nexus
 
 # ───────────────────────────────────────────────────────────────
-# STAGE 3: Runtime (Alpine mínimo)
+# STAGE 3: Runtime (herramientas de los agentes)
 # ───────────────────────────────────────────────────────────────
-FROM alpine:3.20 AS runtime
+FROM node:22-bookworm-slim AS runtime
 
 # Herramientas mínimas que el backend necesita en runtime
-RUN apk add --no-cache \
-    ca-certificates \
-    tzdata \
-    python3 \
-    py3-pip \
-    ripgrep \
-    curl \
-    && update-ca-certificates
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash ca-certificates tzdata python3 python3-pip ripgrep curl git jq unzip \
+    dnsutils iputils-ping netcat-openbsd whois nmap \
+    && rm -rf /var/lib/apt/lists/*
+
+# Fixed versions: browser tools are ready without downloading at task runtime.
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright \
+    NODE_PATH=/usr/local/lib/node_modules \
+    CHROMIUM=/usr/local/bin/chromium
+RUN npm install -g @playwright/cli@0.1.22 @playwright/mcp@0.0.83 playwright@1.64.1 puppeteer-core@23.11.1 \
+    && playwright install --with-deps chromium \
+    && node -e "require('fs').symlinkSync(require('playwright').chromium.executablePath(), '/usr/local/bin/chromium')" \
+    && chmod -R a+rX /opt/ms-playwright \
+    && npm cache clean --force \
+    && rm -rf /var/lib/apt/lists/*
 
 # Directorio de trabajo
 WORKDIR /app
 
 # Copiar el binario único
 COPY --from=backend /nexus /app/nexus
+COPY resources/skills/ /app/bundled-skills/
+COPY scripts/seed_skills.py /app/seed_skills.py
+COPY scripts/container-entrypoint.sh /app/entrypoint.sh
 
 # Directorio de datos (SQLite + skills)
-RUN mkdir -p /app/data /app/skills
+RUN mkdir -p /app/data /app/skills && chmod +x /app/entrypoint.sh
 
 # Usuario no-root
-RUN addgroup -g 1000 nexus && \
-    adduser -u 1000 -G nexus -s /bin/sh -D nexus && \
-    chown -R nexus:nexus /app
+RUN chown -R node:node /app
 
-USER nexus
+USER node
+
+# Fail the image build if a required execution dependency is missing.
+RUN /bin/bash -lc 'for tool in bash python3 rg curl git jq node npm nmap dig whois chromium; do command -v "$tool" || exit 1; done'
 
 # Puerto HTTP + proxy MITM
 EXPOSE 8787 8788
@@ -96,8 +107,10 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 
 # Variables de entorno por defecto
 ENV ENV_STATE=production \
-    LOG_LEVEL=INFO
+    LOG_LEVEL=INFO \
+    NEXUS_SKILL_DIR=/app/data/skills \
+    NEXUS_MEMORY_ENABLED=true
 
 # Arrancar
-ENTRYPOINT ["/app/nexus"]
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["-addr", ":8787", "-data", "/app/data", "-proxy", "127.0.0.1:8788"]

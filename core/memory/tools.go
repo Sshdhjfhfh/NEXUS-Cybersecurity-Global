@@ -24,10 +24,10 @@ func Tools(s *Store) []tool.CoreTool {
 func RecallTool(s *Store) tool.CoreTool {
 	return tool.Build(tool.Spec{
 		Name:        "RecallMemory",
-		Description: "Searches your long-term memory for facts relevant to a query and returns their full content. Use it when prior context (user preferences, project state, past decisions) would help.",
+		Description: "Busca notas relevantes en la memoria de esta tarea o conversación. Comprueba la vigencia de las evidencias antes de usar las conclusiones.",
 		Schema: map[string]any{
 			"type":       "object",
-			"properties": map[string]any{"query": map[string]any{"type": "string", "description": "What to recall."}},
+			"properties": map[string]any{"query": map[string]any{"type": "string", "description": "Qué deseas recordar."}},
 			"required":   []any{"query"},
 		},
 		ReadOnly:   func(json.RawMessage) bool { return true },
@@ -35,16 +35,19 @@ func RecallTool(s *Store) tool.CoreTool {
 		Permissions: func(context.Context, json.RawMessage, permission.Context) permission.Decision {
 			return permission.Allowed()
 		},
-		Run: func(_ context.Context, input json.RawMessage, _ *tool.ToolContext) (tool.Result, error) {
+		Run: func(ctx context.Context, input json.RawMessage, _ *tool.ToolContext) (tool.Result, error) {
 			var in struct {
 				Query string `json:"query"`
 			}
 			if err := json.Unmarshal(input, &in); err != nil {
 				return tool.Result{}, err
 			}
-			mems := s.Relevant(in.Query, 5)
+			mems := s.RelevantContext(ctx, in.Query, 5)
+			if err := ctx.Err(); err != nil {
+				return tool.Result{}, err
+			}
 			if len(mems) == 0 {
-				return tool.Text("No relevant memories found."), nil
+				return tool.Text("No se encontraron memorias relevantes."), nil
 			}
 			return tool.Text(RenderForInjection(mems, time.Now())), nil
 		},
@@ -55,15 +58,15 @@ func RecallTool(s *Store) tool.CoreTool {
 func RecordTool(s *Store) tool.CoreTool {
 	return tool.Build(tool.Spec{
 		Name:        "RecordMemory",
-		Description: "Saves a durable fact to long-term memory so it persists across sessions. Record stable facts (user preferences, project constraints, decisions) — not transient conversation detail.",
-		Prompt:      "type is one of: user (about the user), feedback (how you should work), project (ongoing work/constraints), reference (external resources). Give a short name and a one-line description.",
+		Description: "Guarda una lección verificada, una preferencia o una decisión para futuras sesiones de esta tarea o conversación. Incluye su evidencia; no guardes secretos ni hipótesis como hechos.",
+		Prompt:      "Tipos: user (preferencias), feedback (lecciones de trabajo), project (decisiones y restricciones), reference (referencias). Usa un nombre corto y una descripción de una línea.",
 		Schema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"name":        map[string]any{"type": "string", "description": "Short title for the memory."},
-				"description": map[string]any{"type": "string", "description": "One-line summary."},
+				"name":        map[string]any{"type": "string", "description": "Título breve de la memoria."},
+				"description": map[string]any{"type": "string", "description": "Resumen de una línea."},
 				"type":        map[string]any{"type": "string", "description": "user | feedback | project | reference"},
-				"content":     map[string]any{"type": "string", "description": "The fact to remember (markdown)."},
+				"content":     map[string]any{"type": "string", "description": "Hecho o lección que recordar, con evidencia (Markdown)."},
 			},
 			"required": []any{"name", "content"},
 		},
@@ -83,13 +86,13 @@ func RecordTool(s *Store) tool.CoreTool {
 				return tool.Result{}, err
 			}
 			if strings.TrimSpace(in.Name) == "" || strings.TrimSpace(in.Content) == "" {
-				return tool.Errorf("Error: name and content are required"), nil
+				return tool.Errorf("Se requieren nombre y contenido."), nil
 			}
 			m := Memory{Name: in.Name, Description: in.Description, Type: Type(in.Type), Content: in.Content}
 			if err := s.Save(m); err != nil {
-				return tool.Errorf("Error saving memory: " + err.Error()), nil
+				return tool.Errorf("No se pudo guardar la memoria: " + err.Error()), nil
 			}
-			return tool.Text(fmt.Sprintf("Saved memory %q.", in.Name)), nil
+			return tool.Text(fmt.Sprintf("Memoria %q guardada.", in.Name)), nil
 		},
 	})
 }

@@ -16,6 +16,10 @@ import (
 // behavior is identical until a user edits a prompt in the UI.
 var PromptOverride func(agentKey string) (string, bool)
 
+// The host sets the default language even when a stored prompt predates Nexus.
+// This is appended at runtime; user-owned templates are never rewritten.
+const nexusLanguagePolicy = `Idioma de Nexus: responde por defecto en español. Redacta en español las explicaciones, los informes, las lecciones de memoria y los resúmenes de contexto. Si el usuario solicita expresamente otro idioma, respeta su elección. Conserva literalmente las evidencias, las citas, el código, los comandos, las rutas, los nombres de herramientas, las claves JSON y los identificadores técnicos. No traduzcas ni alteres los esquemas de salida estructurada. Esta pauta de idioma no cambia el alcance autorizado ni los controles de seguridad.`
+
 // Prompt-variable structs — fields mirror each agent's catalog (docs §5a) so a
 // user template referencing a catalog variable renders; referencing anything else
 // fails template execution and falls back to the built-in default.
@@ -39,7 +43,8 @@ func nowStr() string { return time.Now().Format("2006-01-02 15:04:05 MST") }
 // default template, then to the raw default string — an agent never starts with a
 // half-rendered prompt. Callers append the code-owned tail (trafficTool / 中间产物
 // 输出规约) AFTER this, so those can't be edited away via the DB body.
-func renderSystem(agentKey, def string, vars any) string {
+func renderSystem(agentKey, def string, vars any) (body string) {
+	defer func() { body += "\n\n" + nexusLanguagePolicy }()
 	tmpl := def
 	if PromptOverride != nil {
 		if t, ok := PromptOverride(agentKey); ok && t != "" {

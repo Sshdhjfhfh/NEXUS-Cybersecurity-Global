@@ -55,3 +55,7 @@ manager-keys.json
 .manager-keys-*
 **/manager-keys.json
 **/.manager-keys-*
+
+# Local laboratory sessions and captured run data.
+lab/benchmark/artifacts/
+lab/academy/artifacts/

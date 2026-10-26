@@ -223,7 +223,15 @@ func (f *Framework) updateStats(d Decision) {
 func (f *Framework) Stats() FrameworkStats {
 	f.stats.mu.Lock()
 	defer f.stats.mu.Unlock()
-	return f.stats
+	// Devolvemos una copia solo de los contadores: copiar el struct completo
+	// duplicaría el sync.Mutex incluido en FrameworkStats (aviso de go vet).
+	return FrameworkStats{
+		TotalEvaluated:  f.stats.TotalEvaluated,
+		TotalAllowed:    f.stats.TotalAllowed,
+		TotalDenied:     f.stats.TotalDenied,
+		TotalAsk:        f.stats.TotalAsk,
+		TotalQuarantine: f.stats.TotalQuarantine,
+	}
 }
 
 // Report devuelve un reporte legible del framework.

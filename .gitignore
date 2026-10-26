@@ -82,3 +82,6 @@ web/src.backup/
 # Persistent NHI private key bundle
 manager-keys.json
 .manager-keys-*
+
+# Laboratory run artifacts include local authentication sessions.
+lab/benchmark/artifacts/

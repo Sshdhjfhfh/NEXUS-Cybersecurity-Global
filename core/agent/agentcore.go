@@ -444,7 +444,7 @@ func (s *Session) Prompt(ctx context.Context, input string) iter.Seq2[harness.Ev
 		if max <= 0 {
 			max = 3
 		}
-		if mems := s.opts.Memory.Store.Relevant(input, max); len(mems) > 0 {
+		if mems := s.opts.Memory.Store.RelevantContext(ctx, input, max); len(mems) > 0 {
 			input = input + "\n\n" + memory.RenderForInjection(mems, time.Now())
 		}
 	}

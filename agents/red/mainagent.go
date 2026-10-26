@@ -8,13 +8,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nexus-ia/nexus/db"
-	"github.com/nexus-ia/nexus/ethical_boundary/intercept"
 	"github.com/nexus-ia/nexus/core/agent"
 	"github.com/nexus-ia/nexus/core/llm"
 	"github.com/nexus-ia/nexus/core/permission"
 	actool "github.com/nexus-ia/nexus/core/tool"
 	"github.com/nexus-ia/nexus/core/transcript"
+	"github.com/nexus-ia/nexus/db"
+	"github.com/nexus-ia/nexus/ethical_boundary/intercept"
 )
 
 // MainAgent is the thin human-interface orchestrator (docs §4.2 / §7). The human
@@ -137,6 +137,7 @@ func (m *MainAgent) Chat(ctx context.Context, taskID int64, mainSeg int, as *db.
 	ctx = intercept.WithReviewWorkingDirectory(ctx, mainDir)
 	system, boundary := deferredSystem(mainAgentSystem(goal, m.workDir, mainDir), def)
 	opts := agentcore.Options{
+		Memory:          scopedMemory(mainDir),
 		Provider:        m.prov,
 		SystemPrompt:    system,
 		DynamicBoundary: boundary,

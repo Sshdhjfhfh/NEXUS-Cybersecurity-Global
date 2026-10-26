@@ -144,12 +144,12 @@ func PostgresDSN() (dsn, source string, err error) {
 	}
 	db := Load().Database
 	if d := strings.TrimSpace(db.DSN); d != "" {
-		return d, "配置文件 " + Path() + " (database.dsn)", nil
+		return d, "archivo de configuración " + Path() + " (database.dsn)", nil
 	}
 	if db.Host != "" || db.DBName != "" || db.User != "" {
-		return db.buildDSN(), "配置文件 " + Path() + " (database 字段)", nil
+		return db.buildDSN(), "archivo de configuración " + Path() + " (campos database)", nil
 	}
-	return "", "", fmt.Errorf("未找到数据库配置：variable de entorno NEXUS_PG_DSN 未设置，且配置文件 %s 未提供 database（dsn 或 host/user/dbname）。请创建该配置文件或设置环境变量后重试", Path())
+	return "", "", fmt.Errorf("no se encontró configuración de base de datos: la variable de entorno NEXUS_PG_DSN no está definida y el archivo de configuración %s no proporciona 'database' (dsn, o host/user/dbname). Crea ese archivo o define la variable de entorno y reinténtalo", Path())
 }
 
 func (d Database) buildDSN() string {

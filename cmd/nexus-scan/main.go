@@ -29,10 +29,14 @@ func main() {
 	recon := flag.Bool("recon", false, "crawl the target first (katana) and scan the discovered URLs too")
 	depth := flag.Int("depth", 2, "crawl depth when -recon is set")
 	skipNuclei := flag.Bool("skip-nuclei", false, "run only httpx discovery (no vulnerability templates)")
+	secretsDir := flag.String("secrets", "", "scan this local source dir for leaked secrets (gitleaks); must be an authorized source")
+	scaDir := flag.String("sca", "", "scan this local source dir for vulnerable dependencies (osv-scanner); must be an authorized source")
 	flag.Parse()
 
-	if *scopePath == "" || *target == "" {
-		fmt.Fprintln(os.Stderr, "usage: nexus-scan -scope scope.json -target https://host [-severity critical,high] [-format json|md] [-skip-nuclei]")
+	// A web target is optional when only source scanning (secrets/SCA) is asked.
+	sourceOnly := *target == "" && (*secretsDir != "" || *scaDir != "")
+	if *scopePath == "" || (*target == "" && !sourceOnly) {
+		fmt.Fprintln(os.Stderr, "usage: nexus-scan -scope scope.json [-target https://host] [-secrets DIR] [-sca DIR] [-severity critical,high] [-format json|md] [-skip-nuclei]")
 		os.Exit(2)
 	}
 
@@ -62,42 +66,65 @@ func main() {
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 
-	probes, err := scanner.HTTPX(ctx, scope.Engagement, []string{*target})
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "httpx:", err)
-		os.Exit(1)
-	}
-	rep.Probes = probes
-
-	// Build the target list: the base target, plus any URLs discovered by the
-	// crawler when -recon is set. This is the "recon chain" — discover more
-	// surface, then scan all of it.
-	targets := []string{*target}
-	if *recon {
-		discovered, err := scanner.Crawl(ctx, scope.Engagement, *target, *depth)
+	// Web scanning path (only when a target is given).
+	if *target != "" {
+		probes, err := scanner.HTTPX(ctx, scope.Engagement, []string{*target})
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "crawl:", err)
+			fmt.Fprintln(os.Stderr, "httpx:", err)
 			os.Exit(1)
 		}
-		rep.Discovered = discovered
-		targets = dedupe(append(targets, discovered...))
+		rep.Probes = probes
+
+		// Build the target list: the base target, plus any URLs discovered by the
+		// crawler when -recon is set. This is the "recon chain" — discover more
+		// surface, then scan all of it.
+		targets := []string{*target}
+		if *recon {
+			discovered, err := scanner.Crawl(ctx, scope.Engagement, *target, *depth)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "crawl:", err)
+				os.Exit(1)
+			}
+			rep.Discovered = discovered
+			targets = dedupe(append(targets, discovered...))
+		}
+
+		if !*skipNuclei {
+			opt := scan.NucleiOptions{}
+			if s := strings.TrimSpace(*severity); s != "" {
+				opt.Severities = strings.Split(s, ",")
+			}
+			if s := strings.TrimSpace(*tags); s != "" {
+				opt.Tags = strings.Split(s, ",")
+			}
+			opt.TemplatesDir = strings.TrimSpace(*templates)
+			findings, err := scanner.NucleiTargets(ctx, scope.Engagement, targets, opt)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "nuclei:", err)
+				os.Exit(1)
+			}
+			rep.Findings = findings
+		}
 	}
 
-	if !*skipNuclei {
-		opt := scan.NucleiOptions{}
-		if s := strings.TrimSpace(*severity); s != "" {
-			opt.Severities = strings.Split(s, ",")
-		}
-		if s := strings.TrimSpace(*tags); s != "" {
-			opt.Tags = strings.Split(s, ",")
-		}
-		opt.TemplatesDir = strings.TrimSpace(*templates)
-		findings, err := scanner.NucleiTargets(ctx, scope.Engagement, targets, opt)
+	// Source scanning path: leaked secrets (gitleaks) and vulnerable
+	// dependencies / SCA (osv-scanner). Each directory must be an authorized
+	// source in the engagement scope or the scan is refused before running.
+	if *secretsDir != "" {
+		secrets, err := scanner.Secrets(ctx, scope.Engagement, *secretsDir)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "nuclei:", err)
+			fmt.Fprintln(os.Stderr, "secrets:", err)
 			os.Exit(1)
 		}
-		rep.Findings = findings
+		rep.Secrets = secrets
+	}
+	if *scaDir != "" {
+		deps, err := scanner.SCA(ctx, scope.Engagement, *scaDir)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "sca:", err)
+			os.Exit(1)
+		}
+		rep.DepVulns = deps
 	}
 
 	switch *format {
@@ -112,11 +139,13 @@ func main() {
 type report struct {
 	Engagement  string         `json:"engagement"`
 	Client      string         `json:"client,omitempty"`
-	Target      string         `json:"target"`
+	Target      string         `json:"target,omitempty"`
 	GeneratedAt string         `json:"generated_at"`
-	Probes      []scan.Probe   `json:"probes"`
+	Probes      []scan.Probe   `json:"probes,omitempty"`
 	Discovered  []string       `json:"discovered,omitempty"`
-	Findings    []scan.Finding `json:"findings"`
+	Findings    []scan.Finding `json:"findings,omitempty"`
+	Secrets     []scan.Secret  `json:"secrets,omitempty"`
+	DepVulns    []scan.DepVuln `json:"dep_vulns,omitempty"`
 }
 
 func dedupe(in []string) []string {
@@ -137,17 +166,23 @@ func (r report) markdown() string {
 	if r.Client != "" {
 		fmt.Fprintf(&b, "**Cliente:** %s  \n", r.Client)
 	}
-	fmt.Fprintf(&b, "**Objetivo:** %s  \n**Generado:** %s\n\n", r.Target, r.GeneratedAt)
+	if r.Target != "" {
+		fmt.Fprintf(&b, "**Objetivo:** %s  \n", r.Target)
+	}
+	fmt.Fprintf(&b, "**Generado:** %s\n\n", r.GeneratedAt)
 
-	fmt.Fprintf(&b, "## Superficie detectada\n\n")
-	if len(r.Probes) == 0 {
-		fmt.Fprintf(&b, "_Sin endpoints web vivos detectados._\n\n")
-	} else {
-		fmt.Fprintf(&b, "| URL | Estado | Título | Servidor |\n| --- | --- | --- | --- |\n")
-		for _, p := range r.Probes {
-			fmt.Fprintf(&b, "| %s | %d | %s | %s |\n", p.URL, p.Status, p.Title, p.Webserver)
+	// Web surface only when a web target was scanned.
+	if r.Target != "" {
+		fmt.Fprintf(&b, "## Superficie detectada\n\n")
+		if len(r.Probes) == 0 {
+			fmt.Fprintf(&b, "_Sin endpoints web vivos detectados._\n\n")
+		} else {
+			fmt.Fprintf(&b, "| URL | Estado | Título | Servidor |\n| --- | --- | --- | --- |\n")
+			for _, p := range r.Probes {
+				fmt.Fprintf(&b, "| %s | %d | %s | %s |\n", p.URL, p.Status, p.Title, p.Webserver)
+			}
+			fmt.Fprintln(&b)
 		}
-		fmt.Fprintln(&b)
 	}
 
 	if len(r.Discovered) > 0 {
@@ -165,21 +200,51 @@ func (r report) markdown() string {
 		fmt.Fprintln(&b)
 	}
 
-	fmt.Fprintf(&b, "## Hallazgos (%d)\n\n", len(r.Findings))
-	if len(r.Findings) == 0 {
-		fmt.Fprintf(&b, "_Sin hallazgos de las plantillas ejecutadas._\n")
-		return b.String()
-	}
-	fmt.Fprintf(&b, "| Severidad | Hallazgo | Dónde | CVE | CWE |\n| --- | --- | --- | --- | --- |\n")
-	for _, f := range r.Findings {
-		cve, cwe := f.CVE, f.CWE
-		if cve == "" {
-			cve = "—"
+	if len(r.Probes) > 0 || len(r.Findings) > 0 || r.Target != "" {
+		fmt.Fprintf(&b, "## Hallazgos web (%d)\n\n", len(r.Findings))
+		if len(r.Findings) == 0 {
+			fmt.Fprintf(&b, "_Sin hallazgos de las plantillas ejecutadas._\n\n")
+		} else {
+			fmt.Fprintf(&b, "| Severidad | Hallazgo | Dónde | CVE | CWE |\n| --- | --- | --- | --- | --- |\n")
+			for _, f := range r.Findings {
+				cve, cwe := f.CVE, f.CWE
+				if cve == "" {
+					cve = "—"
+				}
+				if cwe == "" {
+					cwe = "—"
+				}
+				fmt.Fprintf(&b, "| %s | %s | %s | %s | %s |\n", strings.ToUpper(f.Severity), f.Name, f.MatchedAt, cve, cwe)
+			}
+			fmt.Fprintln(&b)
 		}
-		if cwe == "" {
-			cwe = "—"
-		}
-		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s |\n", strings.ToUpper(f.Severity), f.Name, f.MatchedAt, cve, cwe)
 	}
+
+	if len(r.Secrets) > 0 {
+		fmt.Fprintf(&b, "## Secretos filtrados en el código (%d)\n\n", len(r.Secrets))
+		fmt.Fprintf(&b, "| Regla | Archivo | Línea | Vista (redactada) |\n| --- | --- | --- | --- |\n")
+		for _, s := range r.Secrets {
+			fmt.Fprintf(&b, "| %s | %s | %d | %s |\n", s.RuleID, s.File, s.StartLine, s.Preview)
+		}
+		fmt.Fprintln(&b)
+	}
+
+	if len(r.DepVulns) > 0 {
+		fmt.Fprintf(&b, "## Dependencias vulnerables / SCA (%d)\n\n", len(r.DepVulns))
+		fmt.Fprintf(&b, "| Severidad | Paquete | Versión | ID | Resumen |\n| --- | --- | --- | --- | --- |\n")
+		for _, d := range r.DepVulns {
+			sev := d.Severity
+			if sev == "" {
+				sev = "—"
+			}
+			id := d.ID
+			if len(d.Aliases) > 0 {
+				id = fmt.Sprintf("%s (%s)", d.ID, strings.Join(d.Aliases, ", "))
+			}
+			fmt.Fprintf(&b, "| %s | %s | %s | %s | %s |\n", sev, d.Package, d.Version, id, d.Summary)
+		}
+		fmt.Fprintln(&b)
+	}
+
 	return b.String()
 }

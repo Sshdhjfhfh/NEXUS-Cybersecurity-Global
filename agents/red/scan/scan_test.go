@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/nexus-ia/nexus/lab"
@@ -110,5 +111,99 @@ func TestParseNucleiWebshellAndCVE(t *testing.T) {
 	}
 	if fs[1].CVE != "CVE-2021-41773" || fs[1].Severity != "high" || fs[1].MatchedAt == "" {
 		t.Errorf("cve finding parsed wrong: %+v", fs[1])
+	}
+}
+
+func TestParseGitleaksRedactsSecret(t *testing.T) {
+	raw := `[{"RuleID":"aws-access-token","Description":"AWS Access Key","File":"config/.env","StartLine":3,"Secret":"AKIAIOSFODNN7EXAMPLE","Match":"aws_key=AKIAIOSFODNN7EXAMPLE"}]`
+	secs, err := parseGitleaks([]byte(raw))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if len(secs) != 1 {
+		t.Fatalf("expected 1 secret, got %d", len(secs))
+	}
+	s := secs[0]
+	if s.RuleID != "aws-access-token" || s.File != "config/.env" || s.StartLine != 3 {
+		t.Errorf("secret parsed wrong: %+v", s)
+	}
+	// The raw secret must never appear in the preview we report.
+	if strings.Contains(s.Preview, "AKIAIOSFODNN7EXAMPLE") || strings.Contains(s.Preview, "OSFODNN") {
+		t.Errorf("preview leaks the secret: %q", s.Preview)
+	}
+	if !strings.HasPrefix(s.Preview, "AKIA") {
+		t.Errorf("preview should keep a short fingerprint, got %q", s.Preview)
+	}
+}
+
+func TestParseGitleaksEmpty(t *testing.T) {
+	secs, err := parseGitleaks([]byte("  \n"))
+	if err != nil || secs != nil {
+		t.Fatalf("empty report should yield no secrets, got %v err=%v", secs, err)
+	}
+}
+
+func TestParseOSVDedupesAliasesPerGroup(t *testing.T) {
+	// osv-scanner lists the same flaw under both its PYSEC and GHSA ids. The
+	// "groups" collapse those aliases, and parseOSV must emit ONE finding per
+	// group (not one per alias), carrying the other ids as aliases.
+	raw := `{"results":[{"source":{"path":"/repo/requirements.txt","type":"lockfile"},"packages":[{"package":{"name":"django","version":"2.2.0","ecosystem":"PyPI"},"vulnerabilities":[{"id":"GHSA-6r97-cj55-9hrq","aliases":["CVE-2019-14234","PYSEC-2019-13"],"summary":"SQL Injection in Django"},{"id":"PYSEC-2019-13","aliases":["CVE-2019-14234"],"summary":""}],"groups":[{"ids":["PYSEC-2019-13","GHSA-6r97-cj55-9hrq"],"aliases":["CVE-2019-14234","GHSA-6r97-cj55-9hrq","PYSEC-2019-13"],"max_severity":"9.8"}]}]}]}`
+	vs, err := parseOSV([]byte(raw))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if len(vs) != 1 {
+		t.Fatalf("expected 1 deduped dep vuln, got %d: %+v", len(vs), vs)
+	}
+	v := vs[0]
+	if v.Package != "django" || v.Version != "2.2.0" || v.Source != "/repo/requirements.txt" {
+		t.Errorf("package/source parsed wrong: %+v", v)
+	}
+	if v.ID != "PYSEC-2019-13" {
+		t.Errorf("representative id wrong: %q", v.ID)
+	}
+	if v.Severity != "9.8" {
+		t.Errorf("severity should come from group max_severity, got %q", v.Severity)
+	}
+	if v.Summary != "SQL Injection in Django" {
+		t.Errorf("summary should be pulled from a grouped advisory, got %q", v.Summary)
+	}
+	// Aliases must carry the other ids but never repeat the representative.
+	joined := strings.Join(v.Aliases, ",")
+	if !strings.Contains(joined, "GHSA-6r97-cj55-9hrq") || !strings.Contains(joined, "CVE-2019-14234") {
+		t.Errorf("aliases missing cross-references: %+v", v.Aliases)
+	}
+	for _, a := range v.Aliases {
+		if a == "PYSEC-2019-13" {
+			t.Errorf("representative id must not appear in aliases: %+v", v.Aliases)
+		}
+	}
+}
+
+func TestParseOSVTwoGroups(t *testing.T) {
+	// Two distinct groups → two findings.
+	raw := `{"results":[{"source":{"path":"go.mod"},"packages":[{"package":{"name":"x","version":"1.0.0","ecosystem":"Go"},"vulnerabilities":[{"id":"GO-2024-1","summary":"a"},{"id":"GO-2024-2","summary":"b"}],"groups":[{"ids":["GO-2024-1"],"max_severity":"7.5"},{"ids":["GO-2024-2"],"max_severity":"3.1"}]}]}]}`
+	vs, err := parseOSV([]byte(raw))
+	if err != nil || len(vs) != 2 {
+		t.Fatalf("parse: %v (%d)", err, len(vs))
+	}
+	if vs[0].Severity != "7.5" || vs[1].Severity != "3.1" {
+		t.Errorf("group severities wrong: %+v", vs)
+	}
+}
+
+func TestSecretsDeniedPathNeverRuns(t *testing.T) {
+	s, _ := New(denyGate{}, "red-1")
+	s.GitleaksBin = "this-binary-does-not-exist"
+	if _, err := s.Secrets(context.Background(), "task-1", "/etc"); err == nil {
+		t.Fatal("expected authorization denial before any exec")
+	}
+}
+
+func TestSCADeniedPathNeverRuns(t *testing.T) {
+	s, _ := New(denyGate{}, "red-1")
+	s.OSVBin = "this-binary-does-not-exist"
+	if _, err := s.SCA(context.Background(), "task-1", "/etc"); err == nil {
+		t.Fatal("expected authorization denial before any exec")
 	}
 }

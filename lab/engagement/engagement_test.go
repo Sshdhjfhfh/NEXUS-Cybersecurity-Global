@@ -42,7 +42,41 @@ func TestAuthorizerEnforcesScope(t *testing.T) {
 
 func TestNewAuthorizerRejectsEmpty(t *testing.T) {
 	if _, err := NewAuthorizer(Scope{Engagement: "e"}); err == nil {
-		t.Error("expected error when scope has no authorized targets")
+		t.Error("expected error when scope has no authorized targets or sources")
+	}
+}
+
+func TestAuthorizerEnforcesSourceScope(t *testing.T) {
+	root := t.TempDir()
+	a, err := NewAuthorizer(Scope{
+		Engagement:        "acme-2026-q4",
+		AuthorizedSources: []string{root},
+	})
+	if err != nil {
+		t.Fatalf("new authorizer: %v", err)
+	}
+	// In-scope source paths (the root and anything under it) are allowed for
+	// source-scan actions.
+	for _, p := range []string{root, filepath.Join(root, "service", "config")} {
+		for _, name := range []string{"red.gitleaks", "red.osv"} {
+			if err := a.Authorize(context.Background(), lab.Action{Name: name, Target: p}); err != nil {
+				t.Errorf("in-scope source %q (%s) should be allowed: %v", p, name, err)
+			}
+		}
+	}
+	// A path outside the authorized root is denied.
+	if err := a.Authorize(context.Background(), lab.Action{Name: "red.gitleaks", Target: "/etc"}); err == nil {
+		t.Error("out-of-scope source /etc must be denied")
+	}
+	// A sibling that merely shares a prefix string must NOT pass (prefix must be
+	// a real path boundary).
+	if err := a.Authorize(context.Background(), lab.Action{Name: "red.gitleaks", Target: root + "-evil"}); err == nil {
+		t.Errorf("sibling path %q must be denied", root+"-evil")
+	}
+	// A network action with a filesystem path as target still goes through the
+	// host check and is denied (paths never slip through as hosts).
+	if err := a.Authorize(context.Background(), lab.Action{Name: "red.httpx", Target: root}); err == nil {
+		t.Error("network action with a path target must be denied")
 	}
 }
 

@@ -25,11 +25,13 @@ import (
 // Scanner runs authorized external scanners. Bin fields default to the tool name
 // resolved on PATH; override them to pin a lab toolchain location.
 type Scanner struct {
-	HTTPXBin  string
-	NucleiBin string
-	CrawlBin  string
-	gate      lab.Authorizer
-	agentID   string
+	HTTPXBin    string
+	NucleiBin   string
+	CrawlBin    string
+	GitleaksBin string
+	OSVBin      string
+	gate        lab.Authorizer
+	agentID     string
 }
 
 // New returns a Scanner bound to a laboratory authorizer and agent identity.
@@ -37,7 +39,11 @@ func New(gate lab.Authorizer, agentID string) (*Scanner, error) {
 	if gate == nil || strings.TrimSpace(agentID) == "" {
 		return nil, fmt.Errorf("scanner requires a laboratory authorizer and agent id")
 	}
-	return &Scanner{HTTPXBin: "httpx", NucleiBin: "nuclei", CrawlBin: "katana", gate: gate, agentID: agentID}, nil
+	return &Scanner{
+		HTTPXBin: "httpx", NucleiBin: "nuclei", CrawlBin: "katana",
+		GitleaksBin: "gitleaks", OSVBin: "osv-scanner",
+		gate: gate, agentID: agentID,
+	}, nil
 }
 
 // Probe is a live web endpoint discovered by httpx.
@@ -296,4 +302,214 @@ func firstNonEmpty(vals ...string) string {
 		}
 	}
 	return ""
+}
+
+// Secret is a credential leaked in source code, found by gitleaks. The raw
+// secret value is NEVER stored — only a short redacted preview — so the report
+// can be handed to the audited organization without re-leaking it.
+type Secret struct {
+	RuleID      string `json:"rule_id"`
+	Description string `json:"description"`
+	File        string `json:"file"`
+	StartLine   int    `json:"start_line"`
+	Preview     string `json:"preview"`
+}
+
+// Secrets scans an authorized local source directory for leaked credentials
+// (API keys, tokens, private keys) with gitleaks. The directory must be inside
+// the engagement's authorized sources, or the scan is refused before running.
+func (s *Scanner) Secrets(ctx context.Context, taskID, dir string) ([]Secret, error) {
+	if err := s.authorize(ctx, taskID, "red.gitleaks", dir); err != nil {
+		return nil, fmt.Errorf("authorization denied for %q: %w", dir, err)
+	}
+	bin, err := exec.LookPath(s.GitleaksBin)
+	if err != nil {
+		return nil, fmt.Errorf("gitleaks not found on PATH: %w", err)
+	}
+	report, err := os.CreateTemp("", "nexus-gitleaks-*.json")
+	if err != nil {
+		return nil, err
+	}
+	reportPath := report.Name()
+	report.Close()
+	defer os.Remove(reportPath)
+
+	// --exit-code 0 makes gitleaks return 0 even when leaks are found, so a
+	// clean exit means "ran ok" and findings come from the JSON report.
+	cmd := exec.CommandContext(ctx, bin, "dir", dir,
+		"--report-format", "json", "--report-path", reportPath,
+		"--exit-code", "0", "--no-banner")
+	var errb bytes.Buffer
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("gitleaks run: %w: %s", err, strings.TrimSpace(errb.String()))
+	}
+	data, err := os.ReadFile(reportPath)
+	if err != nil {
+		return nil, fmt.Errorf("read gitleaks report: %w", err)
+	}
+	return parseGitleaks(data)
+}
+
+func parseGitleaks(data []byte) ([]Secret, error) {
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 {
+		return nil, nil
+	}
+	var raw []struct {
+		RuleID      string `json:"RuleID"`
+		Description string `json:"Description"`
+		File        string `json:"File"`
+		StartLine   int    `json:"StartLine"`
+		Secret      string `json:"Secret"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, fmt.Errorf("parse gitleaks report: %w", err)
+	}
+	out := make([]Secret, 0, len(raw))
+	for _, r := range raw {
+		out = append(out, Secret{
+			RuleID: r.RuleID, Description: r.Description,
+			File: r.File, StartLine: r.StartLine, Preview: redact(r.Secret),
+		})
+	}
+	return out, nil
+}
+
+// redact keeps only a short fingerprint of a secret so a finding can point to
+// it without disclosing the value.
+func redact(s string) string {
+	s = strings.TrimSpace(s)
+	n := len(s)
+	if n == 0 {
+		return ""
+	}
+	if n <= 4 {
+		return fmt.Sprintf("%s (%d chars)", strings.Repeat("*", n), n)
+	}
+	return fmt.Sprintf("%s… (%d chars)", s[:4], n)
+}
+
+// DepVuln is a vulnerable third-party dependency found by osv-scanner (SCA),
+// ready to report to the audited organization for upgrade/patching.
+type DepVuln struct {
+	Package   string   `json:"package"`
+	Ecosystem string   `json:"ecosystem"`
+	Version   string   `json:"version"`
+	Source    string   `json:"source"`
+	ID        string   `json:"id"`
+	Aliases   []string `json:"aliases,omitempty"`
+	Summary   string   `json:"summary,omitempty"`
+	Severity  string   `json:"severity,omitempty"`
+}
+
+// SCA scans an authorized local source directory for vulnerable dependencies
+// (known CVEs in lockfiles / manifests) with osv-scanner. The directory must be
+// inside the engagement's authorized sources, or the scan is refused.
+func (s *Scanner) SCA(ctx context.Context, taskID, dir string) ([]DepVuln, error) {
+	if err := s.authorize(ctx, taskID, "red.osv", dir); err != nil {
+		return nil, fmt.Errorf("authorization denied for %q: %w", dir, err)
+	}
+	bin, err := exec.LookPath(s.OSVBin)
+	if err != nil {
+		return nil, fmt.Errorf("osv-scanner not found on PATH: %w", err)
+	}
+	// osv-scanner exits non-zero when vulnerabilities are found, so a run error
+	// with JSON on stdout is expected; only treat it as fatal if stdout is empty.
+	cmd := exec.CommandContext(ctx, bin, "scan", "source", "--format", "json", "-r", dir)
+	var out, errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	runErr := cmd.Run()
+	if runErr != nil && len(bytes.TrimSpace(out.Bytes())) == 0 {
+		return nil, fmt.Errorf("osv-scanner run: %w: %s", runErr, strings.TrimSpace(errb.String()))
+	}
+	return parseOSV(out.Bytes())
+}
+
+func parseOSV(data []byte) ([]DepVuln, error) {
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 {
+		return nil, nil
+	}
+	var raw struct {
+		Results []struct {
+			Source struct {
+				Path string `json:"path"`
+			} `json:"source"`
+			Packages []struct {
+				Package struct {
+					Name      string `json:"name"`
+					Version   string `json:"version"`
+					Ecosystem string `json:"ecosystem"`
+				} `json:"package"`
+				Vulnerabilities []struct {
+					ID      string   `json:"id"`
+					Aliases []string `json:"aliases"`
+					Summary string   `json:"summary"`
+				} `json:"vulnerabilities"`
+				Groups []struct {
+					IDs         []string `json:"ids"`
+					Aliases     []string `json:"aliases"`
+					MaxSeverity string   `json:"max_severity"`
+				} `json:"groups"`
+			} `json:"packages"`
+		} `json:"results"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, fmt.Errorf("parse osv-scanner report: %w", err)
+	}
+	var out []DepVuln
+	emitted := map[string]bool{} // package|version|id → already reported
+	for _, res := range raw.Results {
+		for _, p := range res.Packages {
+			// osv-scanner lists each advisory once per id alias (e.g. the same
+			// flaw under its PYSEC and its GHSA id). Its "groups" already collapse
+			// those aliases into one real vulnerability, so we emit one DepVuln
+			// per group — not per alias — to avoid duplicate findings in reports.
+			summaries := map[string]string{}
+			for _, v := range p.Vulnerabilities {
+				if v.Summary != "" {
+					summaries[v.ID] = v.Summary
+				}
+			}
+			for _, g := range p.Groups {
+				if len(g.IDs) == 0 {
+					continue
+				}
+				id := g.IDs[0]
+				key := p.Package.Name + "|" + p.Package.Version + "|" + id
+				if emitted[key] {
+					continue
+				}
+				emitted[key] = true
+				// Aliases = all ids/aliases in the group except the representative.
+				var aliases []string
+				seen := map[string]bool{id: true}
+				add := func(xs []string) {
+					for _, x := range xs {
+						if x != "" && !seen[x] {
+							seen[x] = true
+							aliases = append(aliases, x)
+						}
+					}
+				}
+				add(g.IDs)
+				add(g.Aliases)
+				// Prefer a human summary from any id in the group.
+				summary := ""
+				for _, gid := range g.IDs {
+					if sm, ok := summaries[gid]; ok {
+						summary = sm
+						break
+					}
+				}
+				out = append(out, DepVuln{
+					Package: p.Package.Name, Ecosystem: p.Package.Ecosystem,
+					Version: p.Package.Version, Source: res.Source.Path,
+					ID: id, Aliases: aliases, Summary: summary, Severity: g.MaxSeverity,
+				})
+			}
+		}
+	}
+	return out, nil
 }

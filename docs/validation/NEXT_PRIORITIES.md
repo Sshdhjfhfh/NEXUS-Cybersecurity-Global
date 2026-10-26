@@ -13,11 +13,12 @@ se sube ningún nivel sin evidencia ejecutable.
    ni debo hacerlo.
 
 ## P1 — Defensiva utilizable (Nivel 3→4, sin LLM)
-2. **`nexus-detect` (CLI blue):** correr el motor `telemetry`+`sigma` sobre un
-   archivo de logs y emitir alertas con tag ATT&CK. *Aceptación:* detecta un
-   evento sembrado en un log de laboratorio; test de extremo a extremo.
+2. **`nexus-detect` (CLI blue): ✅ HECHO.** Corre `telemetry`+`sigma` sobre
+   eventos JSONL y emite alertas con tag ATT&CK, autorizando cada activo contra
+   el alcance. Demo: 3 eventos→1 alerta HIGH (T1059.001); fuera de alcance
+   denegado; SigmaHQ real carga 1000 reglas. Tests verdes.
 3. **Métricas de detección:** precisión/recall/FP contra un corpus etiquetado.
-   *Aceptación:* reporte con matriz de confusión reproducible.
+   *Aceptación:* reporte con matriz de confusión reproducible. ← **siguiente**
 
 ## P2 — Ofensiva más completa (Nivel 4, sin LLM)
 4. **Verificación/PoC de hallazgos:** confirmar no-falso-positivo antes de

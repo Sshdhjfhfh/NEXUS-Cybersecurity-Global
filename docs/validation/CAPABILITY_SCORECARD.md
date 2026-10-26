@@ -29,7 +29,7 @@ No hay puntuación global: cada dimensión se evalúa por separado.
 | A | Inteligencia / razonamiento (loop LLM) | **1–2** | `core/agent`, `core/llm` existen; el loop plan→herramienta→verifica **no está demostrado de punta a punta** porque no hay proveedor LLM habilitado. Bloqueante abajo. |
 | B | Autonomía | **2** | `core/coordinator`, `core/subagent` con cancelación previa al arranque probada ([cancellation-after.log](../engineering/evidence/cancellation-after.log)); ejecución autónoma completa depende de A. |
 | C | Ofensiva autorizada | **4** | `agents/red/scan` + `cmd/nexus-scan`: recon (katana) → web (httpx/nuclei) → **SCA (osv) + secrets (gitleaks)**, todo tras el gate de alcance. Demo real en lab: 5 hallazgos web + 2 secretos + 63 dependencias vulnerables. Pendiente: verificación/PoC de hallazgo. |
-| D | Defensiva | **3–4** | `agents/blue/sigma` (compilación acotada y concurrente, 3.161 reglas reales parseadas) + `agents/blue/telemetry` (detección **pasiva** con autz por evento, enrutado por logsource). Tests unidad+carga verdes. Métricas FP/recall formales: parciales. |
+| D | Defensiva | **4** | `agents/blue/sigma` + `agents/blue/telemetry` + **`cmd/nexus-detect`** (CLI usable): corre detección pasiva sobre eventos JSONL, autoriza cada activo contra el alcance y emite alertas con tag ATT&CK y agregación temporal. Demo lab: 3 eventos→1 alerta HIGH (T1059.001, 2 evidencias, ventana 30s); activo fuera de alcance denegado; corpus real SigmaHQ carga 1000 reglas. Métricas FP/recall formales: pendientes. |
 | E | Purple team | **1–2** | Piezas sueltas (simulación/telemetría) existen; **no hay ciclo cerrado** ATT&CK→simulación→brecha→regla→validación. No construido. |
 | F | Mejora continua | **3–4** | `agents/blue/detectbench` sobre `evolve`: promoción verificada y **rechazo de regresión** probados (sign-test, train/holdout). |
 | G | Mejora recursiva | **2** | `evolve/experiment.go` (generaciones con presupuesto + evaluador independiente, [generations.json](../engineering/evidence/generations.json)). Mejorar el **propio generador** y la transferencia a tareas nuevas: no demostrado. |
@@ -64,13 +64,16 @@ No hay puntuación global: cada dimensión se evalúa por separado.
 - **Qué hace:** compila un subconjunto acotado de Sigma (reutilizable y
   concurrente) y aplica detección **pasiva** sobre eventos normalizados, con
   autorización por evento y agregación temporal de alertas. Nunca abre
-  conexiones ni aplica contención.
+  conexiones ni aplica contención. **`cmd/nexus-detect`** lo expone como CLI:
+  carga reglas de un directorio, lee eventos JSONL y emite alertas con ATT&CK.
 - **Evidencia:** parseo de 3.161 reglas reales; fuzz y `-race` verdes
   ([final-sigma-fuzz.log](../engineering/evidence/final-sigma-fuzz.log),
-  [sigma-race.log](../engineering/evidence/sigma-race.log)).
+  [sigma-race.log](../engineering/evidence/sigma-race.log)). Demo `nexus-detect`:
+  3 eventos→1 alerta HIGH (T1059.001, 2 evidencias, ventana 30s); activo fuera
+  de alcance denegado; SigmaHQ real carga 1000 reglas (tope), 2021 omitidas.
+  Tests de los helpers del CLI verdes (`cmd/nexus-detect`).
 - **Limitación / próximo:** faltan métricas formales de precisión/recall/FP
-  contra un corpus etiquetado independiente, y un CLI `nexus-detect` para
-  correr sobre logs reales.
+  contra un corpus etiquetado independiente.
 
 ### F — Mejora continua (Nivel 3–4)
 - **Archivos:** [agents/blue/detectbench/detectbench.go](../../agents/blue/detectbench/detectbench.go),

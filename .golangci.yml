@@ -1,0 +1,27 @@
+# Configuración base de golangci-lint para NEXUS.
+# Arranca conservadora (linters estándar) para no inundar de avisos un
+# código grande ya existente; se puede endurecer por fases.
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  disable-all: true
+  enable:
+    - govet        # errores sutiles (incluye copylocks)
+    - staticcheck  # análisis estático amplio
+    - ineffassign  # asignaciones sin efecto
+    - errcheck     # errores no comprobados
+    - unused       # código muerto
+    - gofmt        # formato
+    - misspell     # erratas en comentarios/strings
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    # Los archivos _test.go pueden ser más laxos con errcheck.
+    - path: _test\.go
+      linters:
+        - errcheck

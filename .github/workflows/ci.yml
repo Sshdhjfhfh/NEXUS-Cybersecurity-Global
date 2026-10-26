@@ -1,0 +1,58 @@
+name: CI
+
+# Integración continua de NEXUS.
+# Compila, pasa go vet y ejecuta los tests. Levanta un PostgreSQL efímero
+# para que los paquetes que requieren base de datos (orchestrator/server, etc.)
+# puedan ejecutarse en CI. No apunta a ninguna base de datos real.
+
+on:
+  push:
+    branches: [main, fase2-saneamiento]
+  pull_request:
+    branches: [main]
+
+jobs:
+  go:
+    name: build · vet · test (Go)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nexus
+          POSTGRES_PASSWORD: nexus
+          POSTGRES_DB: nexus_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexus"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # El código lee NEXUS_PG_DSN (ver config/app/config.go).
+      NEXUS_PG_DSN: postgres://nexus:nexus@localhost:5432/nexus_test?sslmode=disable
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Descargar dependencias
+        run: go mod download
+
+      - name: Build (todo el repo)
+        run: go build ./...
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Tests (cortos)
+        run: go test -short -count=1 -timeout 120s ./...

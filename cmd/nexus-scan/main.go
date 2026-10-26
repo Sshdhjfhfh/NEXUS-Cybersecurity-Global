@@ -23,6 +23,8 @@ func main() {
 	scopePath := flag.String("scope", "", "path to engagement scope JSON (required)")
 	target := flag.String("target", "", "target URL to scan, must be in scope (required)")
 	severity := flag.String("severity", "", "comma-separated nuclei severities, e.g. critical,high (optional)")
+	tags := flag.String("tags", "", "comma-separated nuclei tags to scope the scan, e.g. exposure,misconfig (optional)")
+	templates := flag.String("templates", "", "path to a nuclei-templates checkout (optional; overrides auto-update)")
 	format := flag.String("format", "json", "report format: json or md")
 	skipNuclei := flag.Bool("skip-nuclei", false, "run only httpx discovery (no vulnerability templates)")
 	flag.Parse()
@@ -66,11 +68,15 @@ func main() {
 	rep.Probes = probes
 
 	if !*skipNuclei {
-		var sevs []string
+		opt := scan.NucleiOptions{}
 		if s := strings.TrimSpace(*severity); s != "" {
-			sevs = strings.Split(s, ",")
+			opt.Severities = strings.Split(s, ",")
 		}
-		findings, err := scanner.Nuclei(ctx, scope.Engagement, *target, sevs)
+		if s := strings.TrimSpace(*tags); s != "" {
+			opt.Tags = strings.Split(s, ",")
+		}
+		opt.TemplatesDir = strings.TrimSpace(*templates)
+		findings, err := scanner.Nuclei(ctx, scope.Engagement, *target, opt)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "nuclei:", err)
 			os.Exit(1)

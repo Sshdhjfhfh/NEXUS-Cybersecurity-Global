@@ -126,10 +126,19 @@ func parseHTTPX(data []byte) ([]Probe, error) {
 	return probes, sc.Err()
 }
 
+// NucleiOptions scopes a nuclei run. All fields are optional; empty means the
+// default template set. Scoping by tag or template id makes a focused audit
+// much faster than the full default set.
+type NucleiOptions struct {
+	Severities   []string // e.g. critical, high
+	Tags         []string // e.g. exposure, misconfig, cve
+	TemplateIDs  []string // specific template ids
+	TemplatesDir string   // path to a nuclei-templates checkout (overrides auto-update)
+}
+
 // Nuclei runs detection templates against one authorized target and returns the
-// vulnerabilities/exposures found. severities (optional) filters by level,
-// e.g. []string{"critical","high"}.
-func (s *Scanner) Nuclei(ctx context.Context, taskID, target string, severities []string) ([]Finding, error) {
+// vulnerabilities/exposures found, ready to report to the audited organization.
+func (s *Scanner) Nuclei(ctx context.Context, taskID, target string, opt NucleiOptions) ([]Finding, error) {
 	if err := s.authorize(ctx, taskID, "red.nuclei", target); err != nil {
 		return nil, fmt.Errorf("authorization denied for %q: %w", target, err)
 	}
@@ -138,8 +147,17 @@ func (s *Scanner) Nuclei(ctx context.Context, taskID, target string, severities 
 		return nil, fmt.Errorf("nuclei not found on PATH: %w", err)
 	}
 	args := []string{"-jsonl", "-silent", "-no-color", "-disable-update-check", "-u", target}
-	if len(severities) > 0 {
-		args = append(args, "-severity", strings.Join(severities, ","))
+	if len(opt.Severities) > 0 {
+		args = append(args, "-severity", strings.Join(opt.Severities, ","))
+	}
+	if len(opt.Tags) > 0 {
+		args = append(args, "-tags", strings.Join(opt.Tags, ","))
+	}
+	if len(opt.TemplateIDs) > 0 {
+		args = append(args, "-id", strings.Join(opt.TemplateIDs, ","))
+	}
+	if opt.TemplatesDir != "" {
+		args = append(args, "-t", opt.TemplatesDir)
 	}
 	cmd := exec.CommandContext(ctx, bin, args...)
 	var out, errb bytes.Buffer

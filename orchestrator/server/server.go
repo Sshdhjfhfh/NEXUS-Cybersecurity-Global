@@ -672,6 +672,12 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/auth/change-password", s.authChangePassword)
 
 	mux.HandleFunc("GET /api/health", s.health)
+
+	// Public commercial website: lead capture. POST is public (exempt from JWT in
+	// requireAuth via the /api/public/ prefix); the admin listing requires login.
+	mux.HandleFunc("POST /api/public/leads", s.createLead)
+	mux.HandleFunc("GET /api/leads", s.listLeads)
+
 	mux.HandleFunc("GET /api/stats", s.stats)
 	mux.HandleFunc("GET /api/logs", s.getLogs)
 	mux.HandleFunc("GET /api/logs/history", s.getLogsHistory)

@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const AUTH_PAGES = ["/login", "/setup"];
+// Web pública de marketing: accesible sin sesión.
+const PUBLIC_PAGES = ["/", "/solutions", "/request-demo"];
 
 export function proxy(request: NextRequest) {
   // Mock demo：No hay inicio de sesión real, todas las páginas están permitidas (cliente auth El guardia también te dejará ir）。
   if (process.env.NEXT_PUBLIC_MOCK === "1") return NextResponse.next();
 
   const { pathname } = request.nextUrl;
+  if (PUBLIC_PAGES.includes(pathname)) return NextResponse.next();
+
   const token = request.cookies.get("nexus_ia_token")?.value;
   const isAuthPage = AUTH_PAGES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 

@@ -125,7 +125,10 @@ func extractToken(r *http.Request) string {
 func (s *Server) requireAuth(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := r.URL.Path
-		if strings.HasPrefix(p, "/api/auth/") || p == "/api/health" {
+		// /api/auth/*, health, and the public website endpoints (lead capture) are
+		// exempt from JWT. Everything under /api/public/ must be safe for anonymous
+		// access (validated + rate-limited in its handler).
+		if strings.HasPrefix(p, "/api/auth/") || p == "/api/health" || strings.HasPrefix(p, "/api/public/") {
 			h.ServeHTTP(w, r)
 			return
 		}

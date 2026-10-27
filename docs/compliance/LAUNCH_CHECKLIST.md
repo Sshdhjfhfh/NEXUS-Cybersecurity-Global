@@ -17,11 +17,11 @@ Rastrea el avance hacia una revisión de lanzamiento (Directiva §20). Marca `[x
 
 ## Pendiente de ingeniería (lo hago yo en próximos sprints)
 - [ ] Rutas por idioma reales (`/en`, `/es`) con `hreflang`, canonical, sitemap, robots.
-- [ ] Subpáginas: Platform, Services, Research, About, Contact, Pricing, Early Access.
+- [x] Subpáginas: Platform, Services, Research, About, Contact, Pricing. *(Early Access pendiente)*
 - [ ] Páginas de capacidades (Red/Blue/Purple, Vuln Mgmt, Threat Detection, Agents, AI, Lab).
-- [ ] Gestor de cookies (necesarias/analítica/marketing) con registro de preferencias.
-- [ ] Páginas legales como **borrador "pendiente de revisión legal"** (no enlaces vacíos):
-      Terms, Privacy, Cookies, AUP, Security, VDP, DPA, SLA, Subprocesadores, Aviso Legal.
+- [x] Gestor de cookies (necesarias/analítica/marketing) con registro de preferencias.
+- [x] Páginas legales como **borrador "pendiente de revisión legal"**: Terms, Privacy,
+      Cookies, AUP, Security, VDP publicadas en `/legal`. *(DPA, SLA, Subprocesadores, Aviso Legal: listados como pendientes)*
 - [ ] Libro de Reclamaciones (SOLO si aplica la modalidad consumidor en Perú).
 - [ ] Trust Center con clasificación de controles (Implementado/En desarrollo/Planificado).
 - [ ] Endurecimiento de seguridad: CSP y cabeceras, revisión ASVS, (MFA si hay cuentas).

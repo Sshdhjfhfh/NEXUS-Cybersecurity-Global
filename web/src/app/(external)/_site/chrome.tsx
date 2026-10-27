@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { ChevronDownIcon, GlobeIcon, MenuIcon, XIcon } from "lucide-react";
 
+import { openCookiePreferences } from "./cookie-consent";
 import { useSiteI18n } from "./i18n";
 
 // Public marketing site chrome, matching the NEXUS Cybersecurity Global design:
@@ -232,13 +233,23 @@ const FOOTER_COLS = {
 };
 
 const LEGAL = {
-  en: ["Terms of Service", "Privacy Policy", "Acceptable Use Policy", "Security Policy", "Vulnerability Disclosure"],
+  en: [
+    { label: "Legal", href: "/legal" },
+    { label: "Terms of Service", href: "/legal/terms" },
+    { label: "Privacy Policy", href: "/legal/privacy" },
+    { label: "Cookie Policy", href: "/legal/cookies" },
+    { label: "Acceptable Use", href: "/legal/aup" },
+    { label: "Security", href: "/legal/security" },
+    { label: "Vulnerability Disclosure", href: "/legal/vdp" },
+  ],
   es: [
-    "Términos del servicio",
-    "Privacidad",
-    "Política de uso aceptable",
-    "Política de seguridad",
-    "Divulgación de vulnerabilidades",
+    { label: "Legal", href: "/legal" },
+    { label: "Términos del servicio", href: "/legal/terms" },
+    { label: "Privacidad", href: "/legal/privacy" },
+    { label: "Política de Cookies", href: "/legal/cookies" },
+    { label: "Uso aceptable", href: "/legal/aup" },
+    { label: "Seguridad", href: "/legal/security" },
+    { label: "Divulgación de vulnerabilidades", href: "/legal/vdp" },
   ],
 };
 
@@ -284,10 +295,17 @@ export function SiteFooter() {
           </p>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-slate-500">
             {LEGAL[lang].map((l) => (
-              <Link key={l} href="/#trust" className="transition-colors hover:text-slate-300">
-                {l}
+              <Link key={l.label} href={l.href} className="transition-colors hover:text-slate-300">
+                {l.label}
               </Link>
             ))}
+            <button
+              type="button"
+              onClick={() => openCookiePreferences()}
+              className="transition-colors hover:text-slate-300"
+            >
+              {lang === "en" ? "Cookie preferences" : "Preferencias de cookies"}
+            </button>
           </div>
         </div>
       </div>

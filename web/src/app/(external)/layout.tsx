@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { SiteFooter, SiteHeader } from "./_site/chrome";
+import { CookieConsent } from "./_site/cookie-consent";
 import { SiteI18nProvider } from "./_site/i18n";
 
 // Public marketing website layout (NEXUS Global Website). Self-contained chrome
@@ -12,6 +13,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />
+        <CookieConsent />
       </div>
     </SiteI18nProvider>
   );

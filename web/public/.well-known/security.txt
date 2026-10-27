@@ -1,0 +1,7 @@
+# NEXUS Cybersecurity Global — Security contact (RFC 9116)
+# Report security issues responsibly. See /legal/vdp for the full policy.
+Contact: mailto:security@nexus-security.io
+Policy: /legal/vdp
+Preferred-Languages: es, en
+# NOTE: Email is provisional; Expires must be set to a real date before launch.
+Expires: 2027-01-01T00:00:00.000Z

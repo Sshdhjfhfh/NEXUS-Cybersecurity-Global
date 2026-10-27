@@ -113,6 +113,11 @@ func run() int {
 		Addr:              *addr,
 		Handler:           srv.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
+		// Reap idle keep-alive connections so slow/abandoned clients can't pile up
+		// and exhaust file descriptors. No WriteTimeout on purpose: it would cut
+		// off long-lived SSE streams and large uploads.
+		IdleTimeout:    120 * time.Second,
+		MaxHeaderBytes: 1 << 20, // 1 MiB
 	}
 
 	go func() {

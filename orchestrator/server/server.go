@@ -672,6 +672,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/auth/change-password", s.authChangePassword)
 
 	mux.HandleFunc("GET /api/health", s.health)
+	mux.HandleFunc("GET /api/ready", s.ready)
 
 	// Public commercial website: lead capture. POST is public (exempt from JWT in
 	// requireAuth via the /api/public/ prefix); the admin listing requires login.
@@ -956,7 +957,7 @@ func (s *Server) Handler() http.Handler {
 	// /api/* goes through CORS + JWT; everything else is served by the embedded
 	// frontend (public — auth is enforced client-side and on the API). With the
 	// no-embed build the webui handler just 404s (run `next dev` separately).
-	api := cors(s.requireAuth(mux))
+	api := withReliability(cors(s.requireAuth(mux)))
 	root := http.NewServeMux()
 	root.Handle("/api/", api)
 	root.Handle("/", s.webuiHandler())
@@ -967,6 +968,23 @@ func (s *Server) Handler() http.Handler {
 
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"ok": true, "service": "nexus-ia", "version": BuildVersion})
+}
+
+// ready is a readiness probe: it reports 200 only when the database is reachable,
+// so a load balancer can stop routing traffic to an instance that lost its DB
+// instead of serving errors. Kept cheap and bounded (2s).
+func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
+	pg := s.pg(w)
+	if pg == nil {
+		return // s.pg already wrote a 503
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	if err := pg.PingContext(ctx); err != nil {
+		writeErr(w, 503, "base de datos no disponible")
+		return
+	}
+	writeJSON(w, 200, map[string]any{"ok": true})
 }
 
 func (s *Server) stats(w http.ResponseWriter, r *http.Request) {

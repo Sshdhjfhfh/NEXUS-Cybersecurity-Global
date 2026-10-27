@@ -13,12 +13,14 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/nexus-ia/nexus/config/app"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib" // pgx database/sql driver ("pgx")
+	"github.com/nexus-ia/nexus/config/app"
 )
 
 //go:embed schema.sql
@@ -26,10 +28,22 @@ var schemaSQL string
 
 const schemaMigrationLockKey int64 = 7337741001
 
-// maxOpenConns 是连接池上限，见 Open 里的说明。取值远低于 PostgreSQL 默认的
+// defaultMaxOpenConns 是连接池上限，见 Open 里的说明。取值远低于 PostgreSQL 默认的
 // max_connections=100，同时远高于应用自身的嵌套取连接深度（启动期的 schema
 // advisory lock 会在持有一条连接的同时让 seedBuiltins 另取连接），不会自锁。
-const maxOpenConns = 32
+const defaultMaxOpenConns = 32
+
+// poolMaxOpenConns reads NEXUS_PG_MAX_CONNS (1..200) so the pool can be scaled
+// per deployment; it falls back to the safe default. Bounded on both ends to
+// stay well under PostgreSQL's max_connections and above the startup nesting.
+func poolMaxOpenConns() int {
+	if v := strings.TrimSpace(os.Getenv("NEXUS_PG_MAX_CONNS")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= 200 {
+			return n
+		}
+	}
+	return defaultMaxOpenConns
+}
 
 var schemaDeadlockRetryDelays = [...]time.Duration{
 	100 * time.Millisecond,
@@ -148,6 +162,7 @@ func Open(dsn string) (*DB, error) {
 	// 排队等待空闲连接——同样的负载下变成变慢而不是报错，调用方不必再去区分
 	// "读不到"和"没有"。maxOpenConns 要留出余量给 psql / reset-password.sh 以及
 	// 可能并存的其他实例；若 max_connections 调低过，这里也要跟着往下调。
+	maxOpenConns := poolMaxOpenConns()
 	sqlDB.SetMaxOpenConns(maxOpenConns)
 	sqlDB.SetMaxIdleConns(maxOpenConns)
 	sqlDB.SetConnMaxLifetime(30 * time.Minute)

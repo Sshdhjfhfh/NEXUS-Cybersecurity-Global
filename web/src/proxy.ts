@@ -14,6 +14,8 @@ const PUBLIC_PAGES = [
   "/contact",
   "/pricing",
   "/trust",
+  "/sitemap.xml",
+  "/robots.txt",
 ];
 // Prefijos públicos (p. ej. documentos legales en /legal/*).
 const PUBLIC_PREFIXES = ["/legal"];

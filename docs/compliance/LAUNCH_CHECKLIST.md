@@ -16,18 +16,19 @@ Rastrea el avance hacia una revisión de lanzamiento (Directiva §20). Marca `[x
 - [x] Config corporativa central `web/src/config/company.ts` (campos PENDIENTE).
 
 ## Pendiente de ingeniería (lo hago yo en próximos sprints)
-- [ ] Rutas por idioma reales (`/en`, `/es`) con `hreflang`, canonical, sitemap, robots.
+- [~] SEO: `sitemap.xml`, `robots.txt` y Open Graph/metadata **hechos**. *(Rutas `/en` `/es` + `hreflang` pendientes — hoy i18n es por cliente)*
 - [x] Subpáginas: Platform, Services, Research, About, Contact, Pricing. *(Early Access pendiente)*
 - [ ] Páginas de capacidades (Red/Blue/Purple, Vuln Mgmt, Threat Detection, Agents, AI, Lab).
 - [x] Gestor de cookies (necesarias/analítica/marketing) con registro de preferencias.
 - [x] Páginas legales como **borrador "pendiente de revisión legal"**: Terms, Privacy,
       Cookies, AUP, Security, VDP publicadas en `/legal`. *(DPA, SLA, Subprocesadores, Aviso Legal: listados como pendientes)*
 - [ ] Libro de Reclamaciones (SOLO si aplica la modalidad consumidor en Perú).
-- [ ] Trust Center con clasificación de controles (Implementado/En desarrollo/Planificado).
-- [ ] Endurecimiento de seguridad: CSP y cabeceras, revisión ASVS, (MFA si hay cuentas).
+- [x] Trust Center con clasificación de controles (Implementado/En desarrollo/Planificado) → `/trust`.
+- [~] Endurecimiento de seguridad: **cabeceras base hechas** (nosniff, X-Frame-Options, Referrer-Policy,
+      Permissions-Policy, HSTS). *(CSP en Report-Only → enforced+nonce pendiente; revisión ASVS y MFA pendientes)*
 - [ ] Auditoría de accesibilidad WCAG 2.2 AA.
 - [ ] Pruebas E2E (Playwright): enlaces, formularios, 404, idioma, cookies + visuales 1440/1280/768/390.
-- [ ] Nitidez: re-encodear/regenerar imágenes de baja calidad (ver abajo).
+- [x] Nitidez: imágenes clave re-generadas a alta calidad (dashboard, industries, incident-response) + iconos de nodos.
 
 ## 🙋 LO QUE NECESITO DE TI (para no inventar nada)
 ### Datos legales/corporativos → van en `web/src/config/company.ts`

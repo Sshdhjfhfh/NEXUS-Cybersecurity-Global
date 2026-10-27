@@ -27,7 +27,9 @@ Rastrea el avance hacia una revisión de lanzamiento (Directiva §20). Marca `[x
 - [~] Endurecimiento de seguridad: **cabeceras base hechas** (nosniff, X-Frame-Options, Referrer-Policy,
       Permissions-Policy, HSTS). *(CSP en Report-Only → enforced+nonce pendiente; revisión ASVS y MFA pendientes)*
 - [ ] Auditoría de accesibilidad WCAG 2.2 AA.
-- [ ] Pruebas E2E (Playwright): enlaces, formularios, 404, idioma, cookies + visuales 1440/1280/768/390.
+- [~] Pruebas E2E (Playwright): **suite escrita** (`web/e2e/`: smoke, nav, i18n, formulario, cookies,
+      404, responsive 1440/390). **Ejecución pendiente**: instalar libs del navegador con
+      `sudo npx playwright install-deps chromium` (requiere tu contraseña). Ver `docs/validation/E2E_PLAYWRIGHT.md`.
 - [x] Nitidez: imágenes clave re-generadas a alta calidad (dashboard, industries, incident-response) + iconos de nodos.
 
 ## 🙋 LO QUE NECESITO DE TI (para no inventar nada)

@@ -49,18 +49,11 @@ function LangToggle() {
   );
 }
 
-function Wordmark() {
+function Wordmark({ className = "h-10" }: { className?: string }) {
   return (
-    <Link href="/" className="flex items-center gap-2.5">
-      <span className="grid size-9 place-items-center rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 text-[15px] font-black text-[#060b18] shadow-[0_0_20px_rgba(34,211,238,0.35)]">
-        N
-      </span>
-      <span className="leading-none">
-        <span className="block text-base font-bold tracking-tight text-white">NEXUS</span>
-        <span className="block text-[9px] font-medium uppercase tracking-[0.25em] text-cyan-300/70">
-          Cybersecurity Global
-        </span>
-      </span>
+    <Link href="/" className="inline-flex items-center" aria-label="NEXUS Cybersecurity Global">
+      {/* biome-ignore lint/performance/noImgElement: brand logo asset */}
+      <img src="/brand/logo.webp" alt="NEXUS Cybersecurity Global" className={`${className} w-auto`} />
     </Link>
   );
 }

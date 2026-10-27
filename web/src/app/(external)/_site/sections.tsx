@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 import Link from "next/link";
 
@@ -71,7 +71,7 @@ export function InfoCard({
   body,
   badge,
 }: {
-  icon?: ReactNode;
+  icon?: ReactElement;
   title: string;
   body: string;
   badge?: string;
@@ -105,7 +105,7 @@ export function Band({
   body?: string;
   img: string;
   reverse?: boolean;
-  children?: ReactNode;
+  children?: ReactElement;
 }) {
   return (
     <section className="border-t border-white/5">

@@ -677,6 +677,7 @@ func (s *Server) Handler() http.Handler {
 	// requireAuth via the /api/public/ prefix); the admin listing requires login.
 	mux.HandleFunc("POST /api/public/leads", s.createLead)
 	mux.HandleFunc("GET /api/leads", s.listLeads)
+	mux.HandleFunc("PATCH /api/leads/{id}", s.updateLeadStatus)
 
 	mux.HandleFunc("GET /api/stats", s.stats)
 	mux.HandleFunc("GET /api/logs", s.getLogs)

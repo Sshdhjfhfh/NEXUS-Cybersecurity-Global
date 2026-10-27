@@ -8,7 +8,7 @@ import { SiteI18nProvider } from "./_site/i18n";
 export default function SiteLayout({ children }: { children: ReactNode }) {
   return (
     <SiteI18nProvider>
-      <div className="flex min-h-screen flex-col bg-[#061024] text-white">
+      <div className="flex min-h-screen flex-col bg-[#060b18] text-white">
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />

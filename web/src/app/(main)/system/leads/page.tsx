@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { http } from "@/lib/api";
 
+const STATUSES = ["new", "contacted", "qualified", "closed"] as const;
+
 // Solicitudes comerciales captadas por la web pública (POST /api/public/leads).
 // Lectura solo para usuarios autenticados (GET /api/leads).
 interface Lead {
@@ -49,6 +51,17 @@ export default function LeadsPage() {
     void load();
   }, [load]);
 
+  async function updateStatus(id: number, status: string) {
+    const prev = leads;
+    setLeads((cur) => cur.map((l) => (l.id === id ? { ...l, status } : l)));
+    try {
+      await http(`/leads/${id}`, { method: "PATCH", body: JSON.stringify({ status }) });
+    } catch (e) {
+      setLeads(prev); // revertir si el backend rechaza el cambio
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 p-4 md:p-6">
       <div className="flex items-center justify-between gap-3">
@@ -81,7 +94,18 @@ export default function LeadsPage() {
                 <span className="text-muted-foreground">#{l.id}</span>
                 {l.organization}
                 {l.service ? <Badge variant="secondary">{l.service}</Badge> : null}
-                <Badge variant="outline">{l.status}</Badge>
+                <select
+                  value={l.status}
+                  onChange={(e) => void updateStatus(l.id, e.target.value)}
+                  className="rounded-md border bg-background px-2 py-0.5 text-xs"
+                  aria-label="Estado de la solicitud"
+                >
+                  {STATUSES.map((st) => (
+                    <option key={st} value={st}>
+                      {st}
+                    </option>
+                  ))}
+                </select>
                 <span className="ml-auto text-xs font-normal text-muted-foreground">
                   {new Date(l.created_at).toLocaleString()}
                 </span>

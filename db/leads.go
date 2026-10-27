@@ -99,6 +99,20 @@ FROM leads ORDER BY created_at DESC LIMIT $1`, limit)
 	return out, rows.Err()
 }
 
+// LeadStatuses are the allowed workflow states for a lead.
+var LeadStatuses = map[string]bool{"new": true, "contacted": true, "qualified": true, "closed": true}
+
+// UpdateLeadStatus moves a lead to a new workflow state. Returns false if no lead
+// with that id exists. Reversible: it only changes the status column.
+func (d *DB) UpdateLeadStatus(id int64, status string) (bool, error) {
+	res, err := d.Exec(`UPDATE leads SET status = $1 WHERE id = $2`, status, id)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
+}
+
 // CountLeads returns the total number of leads (admin KPI).
 func (d *DB) CountLeads() (int, error) {
 	var n int

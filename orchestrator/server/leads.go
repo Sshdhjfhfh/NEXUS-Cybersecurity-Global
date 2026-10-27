@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -159,4 +160,42 @@ func (s *Server) listLeads(w http.ResponseWriter, r *http.Request) {
 	}
 	total, _ := pg.CountLeads()
 	writeJSON(w, 200, map[string]any{"leads": leads, "total": total})
+}
+
+// updateLeadStatus changes a lead's workflow state (PATCH /api/leads/{id}, auth
+// required). Reversible and bounded to the known status set.
+func (s *Server) updateLeadStatus(w http.ResponseWriter, r *http.Request) {
+	pg := s.pg(w)
+	if pg == nil {
+		return
+	}
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		writeErr(w, 400, "id inválido")
+		return
+	}
+	var req struct {
+		Status string `json:"status"`
+	}
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeErr(w, 400, "cuerpo inválido")
+		return
+	}
+	req.Status = strings.ToLower(strings.TrimSpace(req.Status))
+	if !db.LeadStatuses[req.Status] {
+		writeErr(w, 400, "estado inválido (new, contacted, qualified, closed)")
+		return
+	}
+	ok, err := pg.UpdateLeadStatus(id, req.Status)
+	if err != nil {
+		writeErr(w, 500, "no se pudo actualizar la solicitud")
+		return
+	}
+	if !ok {
+		writeErr(w, 404, "solicitud no encontrada")
+		return
+	}
+	writeJSON(w, 200, map[string]any{"ok": true, "id": id, "status": req.Status})
 }

@@ -13,15 +13,22 @@ export const company = {
   registrationNumber: PENDING, // RUC / company registration number
   legalAddress: PENDING,
   contractJurisdiction: PENDING,
+  // PROVISIONAL placeholder addresses (owner approved inventing these for now).
+  // Replace with real, monitored mailboxes before launch — see LAUNCH_CHECKLIST.
   email: {
-    general: PENDING,
-    privacy: PENDING, // DPO / privacy contact
-    security: PENDING, // security / vulnerability disclosure
-    support: PENDING,
+    general: "contact@nexus-security.io",
+    privacy: "privacy@nexus-security.io", // DPO / privacy contact
+    security: "security@nexus-security.io", // security / vulnerability disclosure
+    support: "support@nexus-security.io",
   },
-  // Commercial modality decides whether Perú's Libro de Reclamaciones applies.
-  // Set once the business model and selling entity are confirmed.
-  peruConsumerFacing: PENDING as typeof PENDING | boolean,
+  emailsAreProvisional: true,
+  // Commercial modality: both a B2B SaaS platform and professional (pentesting)
+  // security services. Confirmed by the owner.
+  modality: "saas-and-services" as const,
+  // B2B only (sold to organizations, not retail consumers), so Perú's Libro de
+  // Reclamaciones (consumer protection) is treated as NOT applicable — subject to
+  // legal confirmation once the selling entity and offering are finalized.
+  peruConsumerFacing: false as typeof PENDING | boolean,
 } as const;
 
 // Per-document metadata: a legal page is only publishable once its draft has

@@ -18,7 +18,7 @@ const NAV = {
     { label: "Soluciones", href: "/solutions", caret: false },
     { label: "Investigación IA", href: "/research", caret: false },
     { label: "Servicios", href: "/services", caret: false },
-    { label: "Trust Center", href: "/#trust", caret: false },
+    { label: "Trust Center", href: "/trust", caret: false },
     { label: "Nosotros", href: "/about", caret: false },
     { label: "Contacto", href: "/contact", caret: false },
   ],
@@ -27,7 +27,7 @@ const NAV = {
     { label: "Solutions", href: "/solutions", caret: false },
     { label: "AI Research", href: "/research", caret: false },
     { label: "Services", href: "/services", caret: false },
-    { label: "Trust Center", href: "/#trust", caret: false },
+    { label: "Trust Center", href: "/trust", caret: false },
     { label: "About", href: "/about", caret: false },
     { label: "Contact", href: "/contact", caret: false },
   ],
@@ -169,7 +169,7 @@ const FOOTER_COLS = {
       links: [
         { label: "About", href: "/about" },
         { label: "Research", href: "/research" },
-        { label: "Trust Center", href: "/#trust" },
+        { label: "Trust Center", href: "/trust" },
         { label: "Contact", href: "/contact" },
       ],
     },
@@ -177,7 +177,7 @@ const FOOTER_COLS = {
       title: "Resources",
       links: [
         { label: "Platform", href: "/platform" },
-        { label: "Trust Center", href: "/#trust" },
+        { label: "Trust Center", href: "/trust" },
         { label: "Support", href: "/contact" },
         { label: "Request a demo", href: "/request-demo" },
       ],
@@ -216,7 +216,7 @@ const FOOTER_COLS = {
       links: [
         { label: "Nosotros", href: "/about" },
         { label: "Investigación", href: "/research" },
-        { label: "Trust Center", href: "/#trust" },
+        { label: "Trust Center", href: "/trust" },
         { label: "Contacto", href: "/contact" },
       ],
     },
@@ -224,7 +224,7 @@ const FOOTER_COLS = {
       title: "Recursos",
       links: [
         { label: "Plataforma", href: "/platform" },
-        { label: "Trust Center", href: "/#trust" },
+        { label: "Trust Center", href: "/trust" },
         { label: "Soporte", href: "/contact" },
         { label: "Solicitar demo", href: "/request-demo" },
       ],

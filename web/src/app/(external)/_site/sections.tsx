@@ -31,7 +31,7 @@ export function PageHeader({
             src={img}
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 size-full object-cover opacity-25"
+            className="pointer-events-none absolute inset-0 size-full object-cover opacity-40"
           />
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#060b18_8%,rgba(6,11,24,0.7)_60%,rgba(6,11,24,0.85)_100%)]" />
         </>

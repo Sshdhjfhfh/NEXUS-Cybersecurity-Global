@@ -211,6 +211,15 @@ const CAP_THEMES = [
 ];
 const CAP_IMAGES = ["/site/cap-red.webp", "/site/cap-blue.webp", "/site/cap-purple.webp", "/site/cap-ai.webp"];
 const NODE_ICONS = [GlobeIcon, UserRoundIcon, LayersIcon, SlidersHorizontalIcon, FlaskConicalIcon];
+// One image per architecture node (center uses the engine video instead). Swap
+// these for the dedicated node-*.webp once generated.
+const NODE_IMAGES = [
+  "/site/hero-soc.webp",
+  "/site/platform-dashboard.webp",
+  "",
+  "/site/arch.webp",
+  "/site/evolution-lab.webp",
+];
 const TRUST_ICONS = [FileTextIcon, LockIcon, ShieldCheckIcon, DatabaseIcon, BugIcon];
 
 type Status = { kind: "idle" } | { kind: "sending" } | { kind: "ok" } | { kind: "err"; msg: string };
@@ -265,7 +274,7 @@ export default function Home() {
         <VideoBg
           src="/site/hero-loop.mp4"
           poster="/site/hero-soc.webp"
-          className="pointer-events-none absolute inset-0 size-full object-cover opacity-70"
+          className="pointer-events-none absolute inset-0 size-full object-cover opacity-85"
         />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#060b18_2%,rgba(6,11,24,0.88)_34%,rgba(6,11,24,0.35)_68%,rgba(6,11,24,0.55)_100%)]" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_70%_at_78%_0%,rgba(14,116,214,0.18),transparent_60%)]" />
@@ -341,9 +350,9 @@ export default function Home() {
                   src={CAP_IMAGES[i]}
                   alt=""
                   aria-hidden="true"
-                  className="absolute inset-0 size-full object-cover opacity-30 transition-opacity duration-300 group-hover:opacity-45"
+                  className="absolute inset-0 size-full object-cover opacity-55 transition-opacity duration-300 group-hover:opacity-75"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#060b18] via-[#060b18]/75 to-[#060b18]/20" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#060b18] via-[#060b18]/55 to-transparent" />
                 <Icon className="absolute left-6 top-6 size-7" />
                 <div className="relative">
                   <div className="flex items-center gap-2">
@@ -365,7 +374,7 @@ export default function Home() {
           src="/site/section-particles.webp"
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 size-full object-cover opacity-10"
+          className="pointer-events-none absolute inset-0 size-full object-cover opacity-20"
         />
         <div className="relative mx-auto grid max-w-[1400px] items-center gap-10 px-6 py-20 lg:grid-cols-2">
           <Reveal>
@@ -422,20 +431,32 @@ export default function Home() {
                     <Icon className={`size-5 ${center ? "text-cyan-300" : "text-slate-300"}`} />
                     <div className="mt-6 text-sm font-semibold text-white">{n.t}</div>
                     <div className="mt-0.5 text-[11px] text-slate-400">{n.d}</div>
-                    {center ? (
-                      <div className="mt-4 grid place-items-center">
-                        <VideoBg
-                          src="/site/engine-loop.mp4"
-                          poster="/site/security-engine.webp"
-                          className="h-24 w-full rounded-lg object-cover"
-                        />
-                        <div className="mt-3 flex flex-wrap justify-center gap-x-2 gap-y-1 text-[9px] font-semibold uppercase tracking-wide text-cyan-200/80">
-                          {c.engineSteps.map((s) => (
-                            <span key={s}>{s}</span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
+                    <div className="mt-4 grid flex-1 content-end place-items-center">
+                      {center ? (
+                        <>
+                          <VideoBg
+                            src="/site/engine-loop.mp4"
+                            poster="/site/security-engine.webp"
+                            className="h-24 w-full rounded-lg object-cover"
+                          />
+                          <div className="mt-3 flex flex-wrap justify-center gap-x-2 gap-y-1 text-[9px] font-semibold uppercase tracking-wide text-cyan-200/80">
+                            {c.engineSteps.map((s) => (
+                              <span key={s}>{s}</span>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {/* biome-ignore lint/performance/noImgElement: static marketing asset */}
+                          <img
+                            src={NODE_IMAGES[i]}
+                            alt=""
+                            aria-hidden="true"
+                            className="h-28 w-full rounded-lg border border-white/10 object-cover opacity-90"
+                          />
+                        </>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -546,7 +567,7 @@ export default function Home() {
           src="/site/about-team.webp"
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 size-full object-cover opacity-30"
+          className="pointer-events-none absolute inset-0 size-full object-cover opacity-45"
         />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#060b18_10%,rgba(6,11,24,0.6)_60%,rgba(6,11,24,0.85)_100%)]" />
         <div id="about" className="relative mx-auto max-w-[1400px] px-6 py-24">

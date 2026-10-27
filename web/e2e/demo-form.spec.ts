@@ -3,10 +3,12 @@ import { expect, test } from "@playwright/test";
 // The Request Demo form builds a correct request and shows a success state.
 // The API is intercepted so the suite is deterministic and does not write test
 // rows into Postgres on every run. (Real persistence is verified separately.)
+type LeadBody = { organization?: string; email?: string; consent?: boolean };
+
 test("submits the demo request and shows success", async ({ page }) => {
-  let captured: Record<string, unknown> | null = null;
+  let captured: LeadBody | null = null;
   await page.route("**/api/public/leads", async (route) => {
-    captured = route.request().postDataJSON();
+    captured = route.request().postDataJSON() as LeadBody;
     await route.fulfill({
       status: 201,
       contentType: "application/json",

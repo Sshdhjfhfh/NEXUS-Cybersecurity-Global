@@ -11,6 +11,8 @@ import { PREFERENCE_DEFAULTS } from "@/lib/preferences/preferences-config";
 import { ThemeBootScript } from "@/scripts/theme-boot";
 import { PreferencesStoreProvider } from "@/stores/preferences/preferences-provider";
 
+import { ConnectionGuard } from "./_status/connection-guard";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -50,10 +52,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             navbarStyle={navbar_style}
             font={font}
           >
-            <I18nProvider>
-              {children}
-            </I18nProvider>
+            <I18nProvider>{children}</I18nProvider>
             <Toaster />
+            <ConnectionGuard />
           </PreferencesStoreProvider>
         </TooltipProvider>
       </body>

@@ -1,53 +1,48 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+// Authenticated console route prefixes (route group (main)). Only these require a
+// session; everything else is public, so unknown routes fall through to Next and
+// render the branded 404 instead of being bounced to /login.
+const PROTECTED_PREFIXES = ["/function", "/system", "/dashboard", "/chat"];
 const AUTH_PAGES = ["/login", "/setup"];
-// Web pública de marketing (grupo de rutas (external)): accesible sin sesión.
-const PUBLIC_PAGES = [
-  "/",
-  "/solutions",
-  "/request-demo",
-  "/platform",
-  "/services",
-  "/research",
-  "/about",
-  "/contact",
-  "/pricing",
-  "/trust",
-  "/sitemap.xml",
-  "/robots.txt",
-];
-// Prefijos públicos (p. ej. documentos legales en /legal/*).
-const PUBLIC_PREFIXES = ["/legal"];
+const MAINTENANCE = process.env.NEXT_PUBLIC_MAINTENANCE === "1";
+
+function underPrefix(pathname: string, prefixes: string[]) {
+  return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 
 export function proxy(request: NextRequest) {
-  // Mock demo：No hay inicio de sesión real, todas las páginas están permitidas (cliente auth El guardia también te dejará ir）。
+  // Mock demo: no real auth, allow everything (client-side guard still applies).
   if (process.env.NEXT_PUBLIC_MOCK === "1") return NextResponse.next();
 
   const { pathname } = request.nextUrl;
-  if (PUBLIC_PAGES.includes(pathname)) return NextResponse.next();
-  if (PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+  const token = request.cookies.get("nexus_ia_token")?.value;
+  const isAuthPage = underPrefix(pathname, AUTH_PAGES);
+  const isProtected = underPrefix(pathname, PROTECTED_PREFIXES);
+
+  // Maintenance mode takes the public site offline (not the console or login).
+  if (MAINTENANCE && !isProtected && !isAuthPage && pathname !== "/maintenance") {
+    return NextResponse.redirect(new URL("/maintenance", request.url));
+  }
+
+  // Visiting login/setup while already signed in → go to the console.
+  if (isAuthPage) {
+    if (token) return NextResponse.redirect(new URL("/function/tasks", request.url));
     return NextResponse.next();
   }
 
-  const token = request.cookies.get("nexus_ia_token")?.value;
-  const isAuthPage = AUTH_PAGES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-
-  // No iniciado sesión → Saltar a la página de inicio de sesión
-  if (!token && !isAuthPage) {
+  // Console routes require a session.
+  if (isProtected && !token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Acceder al inicio de sesión cuando ya haya iniciado sesión/página de inicialización → saltar a la interfaz principal
-  if (token && isAuthPage) {
-    return NextResponse.redirect(new URL("/function/tasks", request.url));
-  }
-
+  // Public marketing, legal, maintenance and unknown routes are served by Next.
   return NextResponse.next();
 }
 
 export const config = {
-  // saltar Next.js enrutamiento interno、API Enrutamiento、favicon y public/ archivos estáticos (incluidas imágenes, fuentes, etc.)）
+  // Skip Next internals, the API, favicon and static assets (images, video, fonts).
   matcher: [
     "/((?!_next/static|_next/image|favicon\\.ico|api/|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|otf|mp4|webm|mov|m4v)$).*)",
   ],

@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
+
 import Link from "next/link";
 
-import { ChevronDownIcon, GlobeIcon, SearchIcon } from "lucide-react";
+import { ChevronDownIcon, GlobeIcon, MenuIcon, SearchIcon, XIcon } from "lucide-react";
 
 import { useSiteI18n } from "./i18n";
 
@@ -100,6 +102,7 @@ function Wordmark() {
 export function SiteHeader() {
   const { lang } = useSiteI18n();
   const nav = NAV[lang];
+  const [open, setOpen] = useState(false);
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#060b18]/85 backdrop-blur-md">
       <div className="mx-auto flex h-[68px] max-w-[1400px] items-center justify-between gap-6 px-6">
@@ -117,7 +120,11 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="flex items-center gap-3">
-          <button type="button" aria-label="Search" className="text-slate-300 transition-colors hover:text-white">
+          <button
+            type="button"
+            aria-label="Search"
+            className="hidden text-slate-300 transition-colors hover:text-white sm:block"
+          >
             <SearchIcon className="size-[18px]" />
           </button>
           <Link
@@ -127,8 +134,43 @@ export function SiteHeader() {
             {lang === "en" ? "Request Demo" : "Solicitar demo"} <span aria-hidden>→</span>
           </Link>
           <LangToggle />
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+            className="text-slate-200 transition-colors hover:text-white lg:hidden"
+          >
+            {open ? <XIcon className="size-6" /> : <MenuIcon className="size-6" />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile menu */}
+      {open ? (
+        <nav className="border-t border-white/10 bg-[#060b18] px-6 py-4 lg:hidden">
+          <ul className="flex flex-col divide-y divide-white/5">
+            {nav.map((item) => (
+              <li key={item.label}>
+                <Link
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className="block py-3 text-sm font-medium text-slate-200 transition-colors hover:text-cyan-300"
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/request-demo"
+            onClick={() => setOpen(false)}
+            className="mt-4 flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-400 to-cyan-500 px-4 py-2.5 text-sm font-semibold text-[#060b18]"
+          >
+            {lang === "en" ? "Request Demo" : "Solicitar demo"} <span aria-hidden>→</span>
+          </Link>
+        </nav>
+      ) : null}
     </header>
   );
 }

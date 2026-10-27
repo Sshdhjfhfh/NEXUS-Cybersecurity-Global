@@ -37,9 +37,9 @@ const COPY = {
     requestDemo: "Request Demo",
     explore: "Explore Our Platform",
     stats: [
-      { v: "24/7", l: "Global Threat Monitoring" },
-      { v: "190+", l: "Countries Protected" },
-      { v: "99.99%", l: "Platform Uptime" },
+      { v: "Red · Blue · Purple", l: "Full-spectrum security" },
+      { v: "Signed scope", l: "Authorization before capability" },
+      { v: "AI research", l: "Detections that keep evolving" },
     ],
     capsKicker: "Capabilities",
     capsTitle: "A unified approach to a stronger tomorrow.",
@@ -122,9 +122,9 @@ const COPY = {
     requestDemo: "Solicitar demo",
     explore: "Explorar la plataforma",
     stats: [
-      { v: "24/7", l: "Monitoreo global de amenazas" },
-      { v: "190+", l: "Países protegidos" },
-      { v: "99.99%", l: "Disponibilidad de plataforma" },
+      { v: "Red · Blue · Purple", l: "Seguridad de espectro completo" },
+      { v: "Alcance firmado", l: "Autorización antes que capacidad" },
+      { v: "Investigación IA", l: "Detecciones que evolucionan" },
     ],
     capsKicker: "Capacidades",
     capsTitle: "Un enfoque unificado para un mañana más fuerte.",
@@ -296,11 +296,11 @@ export default function Home() {
             </div>
             <div className="mt-12 flex flex-wrap gap-x-10 gap-y-6">
               {c.stats.map((s) => (
-                <div key={s.l}>
-                  <div className="text-3xl font-bold text-cyan-300">
+                <div key={s.l} className="border-l border-cyan-400/30 pl-3">
+                  <div className="text-lg font-bold text-cyan-300">
                     <Counter value={s.v} />
                   </div>
-                  <div className="mt-1 max-w-[9rem] text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                  <div className="mt-1 max-w-[11rem] text-[11px] font-medium uppercase tracking-wide text-slate-400">
                     {s.l}
                   </div>
                 </div>

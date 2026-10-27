@@ -214,11 +214,11 @@ const NODE_ICONS = [GlobeIcon, UserRoundIcon, LayersIcon, SlidersHorizontalIcon,
 // One image per architecture node (center uses the engine video instead). Swap
 // these for the dedicated node-*.webp once generated.
 const NODE_IMAGES = [
-  "/site/hero-soc.webp",
-  "/site/platform-dashboard.webp",
+  "/site/node-website.webp",
+  "/site/node-portal.webp",
   "",
-  "/site/arch.webp",
-  "/site/evolution-lab.webp",
+  "/site/node-admin.webp",
+  "/site/node-lab.webp",
 ];
 const TRUST_ICONS = [FileTextIcon, LockIcon, ShieldCheckIcon, DatabaseIcon, BugIcon];
 
@@ -452,7 +452,7 @@ export default function Home() {
                             src={NODE_IMAGES[i]}
                             alt=""
                             aria-hidden="true"
-                            className="h-28 w-full rounded-lg border border-white/10 object-cover opacity-90"
+                            className="h-28 w-full rounded-lg object-contain"
                           />
                         </>
                       )}

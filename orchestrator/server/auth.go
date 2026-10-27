@@ -128,7 +128,7 @@ func (s *Server) requireAuth(h http.Handler) http.Handler {
 		// /api/auth/*, health, and the public website endpoints (lead capture) are
 		// exempt from JWT. Everything under /api/public/ must be safe for anonymous
 		// access (validated + rate-limited in its handler).
-		if strings.HasPrefix(p, "/api/auth/") || p == "/api/health" || p == "/api/ready" || strings.HasPrefix(p, "/api/public/") {
+		if strings.HasPrefix(p, "/api/auth/") || p == "/api/health" || p == "/api/ready" || p == "/api/metrics" || strings.HasPrefix(p, "/api/public/") {
 			h.ServeHTTP(w, r)
 			return
 		}

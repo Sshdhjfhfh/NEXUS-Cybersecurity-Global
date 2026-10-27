@@ -107,6 +107,22 @@ func TestStatusWriterCapabilities(t *testing.T) {
 	}
 }
 
+func TestIPLimiterBurstThenBlocks(t *testing.T) {
+	l := newIPLimiter(1, 3) // 1 rps, burst 3
+	allowed := 0
+	for range 5 {
+		if l.allow("1.2.3.4") {
+			allowed++
+		}
+	}
+	if allowed != 3 {
+		t.Fatalf("burst should allow exactly 3, got %d", allowed)
+	}
+	if !l.allow("5.6.7.8") {
+		t.Fatal("a different IP has its own bucket and must be allowed")
+	}
+}
+
 func TestIsStreaming(t *testing.T) {
 	for _, p := range []string{"/api/logs/stream", "/api/update/stream", "/api/exploration/activity/stream", "/api/side-questions/x/events"} {
 		if !isStreaming(p) {

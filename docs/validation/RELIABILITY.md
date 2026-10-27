@@ -28,11 +28,21 @@ Middleware en `orchestrator/server/middleware.go`, cadena:
 - **Readiness** `GET /api/ready`: 200 solo si la BD responde (ping 2s); el balanceador deja de
   enviar tráfico a una instancia sin BD. `GET /api/health` sigue siendo *liveness*.
 
+- **Métricas Prometheus** (`GET /api/metrics`): peticiones totales, respuestas por clase
+  (2xx/3xx/4xx/5xx), suma/cuenta de latencia, en-vuelo, panics, load-shed, rate-limited y
+  uptime. Solo contadores agregados — **restringir por red en producción**.
+- **Rate limiting por IP** (`rateLimit`): token-bucket por IP (default 50 rps, burst 100),
+  `429 + Retry-After` al exceder. Exento para SSE. `X-Forwarded-For` solo se confía desde un
+  peer loopback (`clientIP`), así nadie falsea su IP.
+
 ## Palancas por entorno (escalar sin recompilar)
 | Variable | Default | Para qué |
 |---|---|---|
 | `NEXUS_MAX_INFLIGHT` | `512` | Tope de peticiones concurrentes (0 = sin límite). |
 | `NEXUS_PG_MAX_CONNS` | `32` | Conexiones máximas del pool (1..200). |
+| `NEXUS_RATE_RPS` | `50` | Peticiones/seg por IP (0 = sin rate limit). |
+| `NEXUS_RATE_BURST` | `100` | Ráfaga máxima por IP. |
+| `NEXT_PUBLIC_MAINTENANCE` | `0` | `1` pone la web pública en modo mantenimiento. |
 
 ## Verificado (local)
 - `recoverer/requestID/loadShed/statusWriter/isStreaming` con tests unitarios (sin BD) — PASS.
@@ -42,10 +52,8 @@ Middleware en `orchestrator/server/middleware.go`, cadena:
 ## Siguiente para MUCHOS usuarios (recomendado, pendiente)
 - **Escalado horizontal** detrás de un balanceador (el servicio es apto si el estado va en
   BD; revisar que no haya estado en memoria por-instancia crítico para multiusuario).
-- **Métricas** (`/metrics` Prometheus: latencia, throughput, errores, in-flight, pool) y
-  **tracing**; hoy hay logs con `request id`.
-- **Rate limiting por IP global** (hoy solo en captación de leads) y **circuit breakers** hacia
-  dependencias externas.
+- **Tracing** distribuido (hoy hay métricas Prometheus + logs con `request id`); exponer el
+  `pool` de BD en métricas y **circuit breakers** hacia dependencias externas.
 - **PostgreSQL**: réplicas de lectura / `PgBouncer` si el nº de instancias crece; índices por
   consulta caliente; backups y pruebas de restauración.
 - **Pruebas de carga** (k6/Vegeta) para fijar `NEXUS_MAX_INFLIGHT`/`NEXUS_PG_MAX_CONNS` con datos.

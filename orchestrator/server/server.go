@@ -673,6 +673,7 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /api/health", s.health)
 	mux.HandleFunc("GET /api/ready", s.ready)
+	mux.HandleFunc("GET /api/metrics", metricsHandler)
 
 	// Public commercial website: lead capture. POST is public (exempt from JWT in
 	// requireAuth via the /api/public/ prefix); the admin listing requires login.

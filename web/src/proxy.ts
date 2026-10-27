@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 const AUTH_PAGES = ["/login", "/setup"];
 // Web pública de marketing: accesible sin sesión.
@@ -30,5 +30,7 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // saltar Next.js enrutamiento interno、API Enrutamiento、favicon y public/ archivos estáticos (incluidas imágenes, fuentes, etc.)）
-  matcher: ["/((?!_next/static|_next/image|favicon\\.ico|api/|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|otf)$).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon\\.ico|api/|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf|otf|mp4|webm|mov|m4v)$).*)",
+  ],
 };

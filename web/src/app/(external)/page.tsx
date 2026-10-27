@@ -24,6 +24,8 @@ import {
 
 import { HeroVisual } from "./_site/hero-visual";
 import { useSiteI18n } from "./_site/i18n";
+import { Counter, Reveal } from "./_site/motion";
+import { VideoBg } from "./_site/video-bg";
 
 const COPY = {
   en: {
@@ -89,6 +91,27 @@ const COPY = {
     okBody: "Thank you — our team will be in touch shortly.",
     errReq: "Name, work email and company are required.",
     err: "Could not send your request. Please try again.",
+    learnMore: "Learn more",
+    tiKicker: "Threat Intelligence",
+    tiTitle: "See every attack, everywhere, in real time.",
+    tiBody:
+      "Our global sensor network maps adversary infrastructure and live attack paths across continents, so your team acts before the breach — not after.",
+    platKicker: "The Platform",
+    platTitle: "One console for your entire security operation.",
+    platBody:
+      "Assets, assessments, findings, detections and reports in a single workspace — built so operators move fast and nothing slips through.",
+    labKicker: "Evolution Lab",
+    labTitle: "Detections that get smarter every generation.",
+    labBody:
+      "In our research lab, agent strategies evolve across generations under an independent evaluator — measured, verified gains, no guesswork.",
+    indKicker: "Industries",
+    indTitle: "Trusted where the stakes are highest.",
+    indBody:
+      "From finance to healthcare to government, NEXUS adapts to the threats and compliance demands of the world's most critical sectors.",
+    industries2: ["Finance", "Healthcare", "Government", "Energy", "Technology", "Retail"],
+    aboutKicker: "About NEXUS",
+    aboutTitle: "People, intelligence and technology — united.",
+    aboutBody: "A global team of operators and researchers building a safer digital world together, around the clock.",
   },
   es: {
     eyebrow: "Inteligencia global de amenazas · Defensa con IA · Un mañana más seguro",
@@ -154,6 +177,28 @@ const COPY = {
     okBody: "Gracias — nuestro equipo te contactará muy pronto.",
     errReq: "Nombre, email corporativo y empresa son obligatorios.",
     err: "No se pudo enviar tu solicitud. Inténtalo de nuevo.",
+    learnMore: "Saber más",
+    tiKicker: "Inteligencia de amenazas",
+    tiTitle: "Ve cada ataque, en cualquier lugar, en tiempo real.",
+    tiBody:
+      "Nuestra red global de sensores mapea la infraestructura adversaria y las rutas de ataque en vivo en todos los continentes, para que tu equipo actúe antes de la brecha, no después.",
+    platKicker: "La plataforma",
+    platTitle: "Una consola para toda tu operación de seguridad.",
+    platBody:
+      "Activos, evaluaciones, hallazgos, detecciones e informes en un único espacio de trabajo — pensado para que los operadores vayan rápido y nada se escape.",
+    labKicker: "Evolution Lab",
+    labTitle: "Detecciones que mejoran en cada generación.",
+    labBody:
+      "En nuestro laboratorio, las estrategias de los agentes evolucionan por generaciones con un evaluador independiente — mejoras medidas y verificadas, sin conjeturas.",
+    indKicker: "Industrias",
+    indTitle: "Donde más está en juego, confían en nosotros.",
+    indBody:
+      "De las finanzas a la salud y el gobierno, NEXUS se adapta a las amenazas y exigencias de cumplimiento de los sectores más críticos del mundo.",
+    industries2: ["Finanzas", "Salud", "Gobierno", "Energía", "Tecnología", "Retail"],
+    aboutKicker: "Sobre NEXUS",
+    aboutTitle: "Personas, inteligencia y tecnología — unidas.",
+    aboutBody:
+      "Un equipo global de operadores e investigadores construyendo juntos un mundo digital más seguro, las 24 horas.",
   },
 };
 
@@ -216,12 +261,10 @@ export default function Home() {
     <>
       {/* ============ HERO ============ */}
       <section className="relative overflow-hidden border-b border-white/5">
-        {/* Operations-center photo as the hero backdrop. */}
-        {/* biome-ignore lint/performance/noImgElement: static marketing asset, no next/image needed */}
-        <img
-          src="/site/hero.webp"
-          alt=""
-          aria-hidden="true"
+        {/* Operations-center looping video as the hero backdrop (poster fallback). */}
+        <VideoBg
+          src="/site/hero-loop.mp4"
+          poster="/site/hero-soc.webp"
           className="pointer-events-none absolute inset-0 size-full object-cover opacity-70"
         />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#060b18_2%,rgba(6,11,24,0.88)_34%,rgba(6,11,24,0.35)_68%,rgba(6,11,24,0.55)_100%)]" />
@@ -254,7 +297,9 @@ export default function Home() {
             <div className="mt-12 flex flex-wrap gap-x-10 gap-y-6">
               {c.stats.map((s) => (
                 <div key={s.l}>
-                  <div className="text-3xl font-bold text-cyan-300">{s.v}</div>
+                  <div className="text-3xl font-bold text-cyan-300">
+                    <Counter value={s.v} />
+                  </div>
                   <div className="mt-1 max-w-[9rem] text-[11px] font-medium uppercase tracking-wide text-slate-400">
                     {s.l}
                   </div>
@@ -313,6 +358,39 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ============ THREAT INTELLIGENCE ============ */}
+      <section className="relative overflow-hidden border-y border-white/5 bg-[#070d1c]">
+        {/* biome-ignore lint/performance/noImgElement: static marketing asset */}
+        <img
+          src="/site/section-particles.webp"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 size-full object-cover opacity-10"
+        />
+        <div className="relative mx-auto grid max-w-[1400px] items-center gap-10 px-6 py-20 lg:grid-cols-2">
+          <Reveal>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">{c.tiKicker}</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">{c.tiTitle}</h2>
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">{c.tiBody}</p>
+            <Link
+              href="/solutions"
+              className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-cyan-300 transition-colors hover:text-cyan-200"
+            >
+              {c.learnMore} <ArrowRightIcon className="size-4" />
+            </Link>
+          </Reveal>
+          <Reveal delay={120}>
+            <div className="overflow-hidden rounded-2xl border border-cyan-400/20 shadow-2xl">
+              <VideoBg
+                src="/site/threatmap-loop.mp4"
+                poster="/site/threat-map.webp"
+                className="aspect-video w-full object-cover"
+              />
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
       {/* ============ PLATFORM ARCHITECTURE ============ */}
       <section id="platform" className="border-y border-white/5 bg-[#070d1c]">
         <div className="mx-auto max-w-[1400px] px-6 py-20">
@@ -346,10 +424,9 @@ export default function Home() {
                     <div className="mt-0.5 text-[11px] text-slate-400">{n.d}</div>
                     {center ? (
                       <div className="mt-4 grid place-items-center">
-                        {/* biome-ignore lint/performance/noImgElement: static marketing asset */}
-                        <img
-                          src="/site/engine.webp"
-                          alt="AI-powered security engine core"
+                        <VideoBg
+                          src="/site/engine-loop.mp4"
+                          poster="/site/security-engine.webp"
                           className="h-24 w-full rounded-lg object-cover"
                         />
                         <div className="mt-3 flex flex-wrap justify-center gap-x-2 gap-y-1 text-[9px] font-semibold uppercase tracking-wide text-cyan-200/80">
@@ -365,6 +442,27 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* ============ PLATFORM SHOWCASE ============ */}
+      <section className="mx-auto max-w-[1400px] px-6 py-20">
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">{c.platKicker}</p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">{c.platTitle}</h2>
+          <p className="mt-4 text-sm leading-relaxed text-slate-400">{c.platBody}</p>
+        </Reveal>
+        <Reveal delay={120} className="mt-10">
+          <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0a1324] shadow-[0_30px_80px_-20px_rgba(34,211,238,0.25)]">
+            <div className="flex items-center gap-1.5 border-b border-white/10 px-4 py-2.5">
+              <span className="size-2.5 rounded-full bg-rose-400/70" />
+              <span className="size-2.5 rounded-full bg-amber-400/70" />
+              <span className="size-2.5 rounded-full bg-emerald-400/70" />
+              <span className="ml-3 text-[11px] text-slate-500">console.nexus-security.io</span>
+            </div>
+            {/* biome-ignore lint/performance/noImgElement: static marketing asset */}
+            <img src="/site/platform-dashboard.webp" alt="NEXUS security console" className="w-full object-cover" />
+          </div>
+        </Reveal>
       </section>
 
       {/* ============ TRUST CENTER ============ */}
@@ -389,6 +487,74 @@ export default function Home() {
               </Link>
             );
           })}
+        </div>
+      </section>
+
+      {/* ============ EVOLUTION LAB ============ */}
+      <section className="border-y border-white/5 bg-[#070d1c]">
+        <div className="mx-auto grid max-w-[1400px] items-center gap-10 px-6 py-20 lg:grid-cols-2">
+          <Reveal className="lg:order-2">
+            <span className="inline-block rounded-full border border-violet-400/40 bg-violet-400/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-200">
+              Research
+            </span>
+            <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">{c.labKicker}</p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">{c.labTitle}</h2>
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">{c.labBody}</p>
+          </Reveal>
+          <Reveal delay={120} className="lg:order-1">
+            {/* biome-ignore lint/performance/noImgElement: static marketing asset */}
+            <img
+              src="/site/evolution-lab.webp"
+              alt="AI agent evolution lab"
+              className="aspect-video w-full rounded-2xl border border-violet-400/20 object-cover shadow-2xl"
+            />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ============ INDUSTRIES ============ */}
+      <section className="mx-auto grid max-w-[1400px] items-center gap-10 px-6 py-20 lg:grid-cols-2">
+        <Reveal>
+          {/* biome-ignore lint/performance/noImgElement: static marketing asset */}
+          <img
+            src="/site/industries.webp"
+            alt="Industries NEXUS protects"
+            className="aspect-video w-full rounded-2xl border border-white/10 object-cover shadow-2xl"
+          />
+        </Reveal>
+        <Reveal delay={120}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">{c.indKicker}</p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">{c.indTitle}</h2>
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">{c.indBody}</p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {c.industries2.map((ind) => (
+              <span
+                key={ind}
+                className="rounded-full border border-white/15 bg-white/[0.03] px-3.5 py-1.5 text-xs font-medium text-slate-200"
+              >
+                {ind}
+              </span>
+            ))}
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ============ ABOUT ============ */}
+      <section className="relative overflow-hidden border-y border-white/5">
+        {/* biome-ignore lint/performance/noImgElement: static marketing asset */}
+        <img
+          src="/site/about-team.webp"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 size-full object-cover opacity-30"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#060b18_10%,rgba(6,11,24,0.6)_60%,rgba(6,11,24,0.85)_100%)]" />
+        <div id="about" className="relative mx-auto max-w-[1400px] px-6 py-24">
+          <Reveal className="max-w-xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">{c.aboutKicker}</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">{c.aboutTitle}</h2>
+            <p className="mt-4 text-sm leading-relaxed text-slate-300">{c.aboutBody}</p>
+          </Reveal>
         </div>
       </section>
 

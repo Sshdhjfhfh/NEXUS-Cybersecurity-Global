@@ -33,8 +33,9 @@ backend. Rutas desconocidas → **404 de marca**, no exponen la consola.
   clave JWT). Endpoints `/api/auth/mfa/{status,setup,enable,disable}`. Unit-tested.
 
 ## Pendiente (recomendado, honesto)
-- **Verificar la CSP estricta con un build de producción** (`next build && next start`) y
-  resolver cualquier violación residual antes de publicar.
+- **CSP estricta verificada** con un build de producción (`next build` OK; `next start` sirve
+  `Content-Security-Policy` enforced con nonce; los scripts de Next llevan el nonce y la página
+  renderiza). Revisar violaciones si se añaden scripts de terceros.
 - **Revocación de tokens** (lista de revocados / rotación de clave) y expiración más corta.
 - **Defensa CSRF explícita** para métodos que mutan si se admite auth por cookie
   (hoy el API usa Bearer; la cookie es para el guard de rutas).

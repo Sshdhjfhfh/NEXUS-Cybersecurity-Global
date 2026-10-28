@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { BuildingIcon, ChevronDownIcon, ChevronRightIcon, RefreshCwIcon } from "lucide-react";
+import { BuildingIcon, ChevronDownIcon, ChevronRightIcon, RefreshCwIcon, Trash2Icon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,6 +79,27 @@ export default function PortalOrgsPage() {
     }
   }
 
+  async function deleteOrg(org: OrgSummary) {
+    if (
+      !window.confirm(
+        `¿Eliminar definitivamente «${org.name}» y TODOS sus datos (miembros, solicitudes, auditoría)? ` +
+          "Esta acción no se puede deshacer.",
+      )
+    ) {
+      return;
+    }
+    setBusy(org.id);
+    setError(null);
+    try {
+      await http(`/admin/portal/orgs/${org.id}`, { method: "DELETE" });
+      setOrgs((cur) => cur.filter((o) => o.id !== org.id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function toggleExpand(id: number) {
     if (expanded === id) {
       setExpanded(null);
@@ -148,6 +169,16 @@ export default function PortalOrgsPage() {
                     disabled={busy === o.id}
                   >
                     {o.suspended ? "Reactivar" : "Suspender"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void deleteOrg(o)}
+                    disabled={busy === o.id}
+                    aria-label={`Eliminar ${o.name}`}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2Icon className="size-4" />
                   </Button>
                 </CardTitle>
               </CardHeader>

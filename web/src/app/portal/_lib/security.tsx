@@ -2,9 +2,9 @@
 
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
-import { CheckCircle2Icon, MailCheckIcon, MailWarningIcon, ShieldIcon } from "lucide-react";
+import { CheckCircle2Icon, DownloadIcon, MailCheckIcon, MailWarningIcon, ShieldIcon } from "lucide-react";
 
-import { type Me, portalApi } from "./portal";
+import { clearPortalToken, downloadExport, type Me, portalApi } from "./portal";
 import { Field, PrimaryButton } from "./ui";
 
 // Per-user 2FA (TOTP) management. Every user manages their own second factor. The
@@ -39,6 +39,40 @@ export function SecurityPanel({ me }: { me: Me }) {
       }
     } catch (ex) {
       setResendMsg(ex instanceof Error ? ex.message : "No se pudo reenviar");
+    }
+  }
+
+  // Data & privacy (export / erasure).
+  const [exporting, setExporting] = useState(false);
+  const [exportErr, setExportErr] = useState("");
+  const [delPw, setDelPw] = useState("");
+  const [delConfirm, setDelConfirm] = useState(false);
+  const [delBusy, setDelBusy] = useState(false);
+  const [delErr, setDelErr] = useState("");
+
+  async function exportData() {
+    setExporting(true);
+    setExportErr("");
+    try {
+      await downloadExport();
+    } catch (ex) {
+      setExportErr(ex instanceof Error ? ex.message : "No se pudo exportar");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function deleteOrg() {
+    setDelBusy(true);
+    setDelErr("");
+    try {
+      await portalApi.deleteAccount(delPw);
+      clearPortalToken();
+      window.location.assign("/portal/login");
+    } catch (ex) {
+      setDelErr(ex instanceof Error ? ex.message : "No se pudo eliminar la organización");
+    } finally {
+      setDelBusy(false);
     }
   }
 
@@ -242,6 +276,77 @@ export function SecurityPanel({ me }: { me: Me }) {
             {pwBusy ? "Guardando…" : "Actualizar contraseña"}
           </PrimaryButton>
         </form>
+      </section>
+
+      {/* Data & privacy */}
+      <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Datos y privacidad</h2>
+        <div className="mt-4 space-y-3">
+          <p className="text-sm text-slate-400">
+            Descarga una copia de todos los datos de tu organización (perfil, miembros, solicitudes, resultados
+            publicados y registro de auditoría).
+          </p>
+          <button
+            type="button"
+            onClick={() => void exportData()}
+            disabled={exporting}
+            className="inline-flex items-center gap-2 rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-200 transition-colors hover:border-cyan-400/50 hover:text-white disabled:opacity-60"
+          >
+            <DownloadIcon className="size-4" /> {exporting ? "Exportando…" : "Exportar mis datos"}
+          </button>
+          {exportErr ? <p className="text-sm text-rose-400">{exportErr}</p> : null}
+        </div>
+
+        {me.user.role === "owner" ? (
+          <div className="mt-6 border-t border-rose-400/20 pt-5">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-rose-300">Zona de peligro</h3>
+            <p className="mt-2 text-sm text-slate-400">
+              Eliminar la organización borra de forma permanente todos sus datos y los de sus miembros. Esta acción no
+              se puede deshacer.
+            </p>
+            {!delConfirm ? (
+              <button
+                type="button"
+                onClick={() => setDelConfirm(true)}
+                className="mt-3 rounded-lg border border-rose-400/40 px-4 py-2 text-sm font-semibold text-rose-300 transition-colors hover:bg-rose-400/10"
+              >
+                Eliminar organización
+              </button>
+            ) : (
+              <div className="mt-3 space-y-3">
+                <Field
+                  label="Confirma con tu contraseña"
+                  type="password"
+                  value={delPw}
+                  onChange={(e) => setDelPw(e.target.value)}
+                  autoComplete="current-password"
+                />
+                {delErr ? <p className="text-sm text-rose-400">{delErr}</p> : null}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void deleteOrg()}
+                    disabled={delBusy || !delPw}
+                    className="rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-600 disabled:opacity-60"
+                  >
+                    {delBusy ? "Eliminando…" : "Sí, eliminar definitivamente"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDelConfirm(false);
+                      setDelPw("");
+                      setDelErr("");
+                    }}
+                    className="rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-300 hover:text-white"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
       </section>
     </div>
   );

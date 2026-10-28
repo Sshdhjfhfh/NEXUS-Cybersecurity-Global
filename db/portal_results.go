@@ -104,6 +104,65 @@ func (d *DB) GetClientFinding(taskID, findingID int64) (*ClientFindingDetail, er
 	return &f, nil
 }
 
+// RequestExport is a request plus the fields needed to assemble a data export.
+type RequestExport struct {
+	ID              int64     `json:"id"`
+	Title           string    `json:"title"`
+	Scope           string    `json:"scope"`
+	Status          string    `json:"status"`
+	EngineTaskID    *int64    `json:"-"`
+	ResultsReleased bool      `json:"results_released"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+// ListOrgRequestsForExport returns an org's requests with the fields needed to
+// build its data export (scoped to the org).
+func (d *DB) ListOrgRequestsForExport(orgID int64) ([]RequestExport, error) {
+	rows, err := d.Query(
+		`SELECT id, title, scope, status, engine_task_id, results_released, created_at
+         FROM portal_requests WHERE org_id = $1 ORDER BY created_at ASC LIMIT 2000`, orgID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []RequestExport{}
+	for rows.Next() {
+		var r RequestExport
+		var tid sql.NullInt64
+		if err := rows.Scan(&r.ID, &r.Title, &r.Scope, &r.Status, &tid, &r.ResultsReleased, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		if tid.Valid {
+			r.EngineTaskID = &tid.Int64
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// DeleteOrg permanently removes an organization and all its data. The org's
+// members, requests, invites and tokens cascade via FKs; its audit entries have
+// no FK, so they are deleted explicitly here (true erasure). Runs in one tx.
+func (d *DB) DeleteOrg(orgID int64) error {
+	tx, err := d.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint:errcheck
+	if _, err := tx.Exec(`DELETE FROM portal_audit WHERE org_id = $1`, orgID); err != nil {
+		return err
+	}
+	res, err := tx.Exec(`DELETE FROM orgs WHERE id = $1`, orgID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return tx.Commit()
+}
+
 // SetRequestResultsReleased toggles whether a request's results are visible to
 // the client.
 func (d *DB) SetRequestResultsReleased(requestID int64, released bool) error {

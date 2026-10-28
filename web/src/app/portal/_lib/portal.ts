@@ -160,6 +160,10 @@ export const portalApi = {
   resendVerification: () =>
     req<{ ok: boolean; already_verified?: boolean }>("/email/resend", { method: "POST", body: "{}" }),
 
+  // --- GDPR data rights ---
+  deleteAccount: (password: string) =>
+    req<{ ok: boolean }>("/account/delete", { method: "POST", body: JSON.stringify({ password }) }),
+
   // --- invitation acceptance (public, token-gated; no auth header needed) ---
   lookupInvite: (token: string) =>
     req<{ email: string; role: PortalRole; org: string }>(`/invites/lookup?token=${encodeURIComponent(token)}`),
@@ -169,3 +173,24 @@ export const portalApi = {
       body: JSON.stringify({ token, password }),
     }),
 };
+
+// downloadExport fetches the org's data export and triggers a file download. It
+// streams a blob (not JSON), so it bypasses the JSON `req` helper.
+export async function downloadExport(): Promise<void> {
+  const token = getPortalToken();
+  const res = await fetch("/api/portal/export", {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    throw new Error("No se pudo exportar");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "nexus-export.json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

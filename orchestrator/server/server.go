@@ -708,6 +708,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/portal/invites/lookup", s.portalLookupInvite)
 	mux.HandleFunc("POST /api/portal/invites/accept", s.portalAcceptInvite)
 	mux.HandleFunc("GET /api/portal/audit", s.portalListAudit)
+	// GDPR data rights: export (admin+) and account erasure (owner, password).
+	mux.HandleFunc("GET /api/portal/export", s.portalExport)
+	mux.HandleFunc("POST /api/portal/account/delete", s.portalDeleteAccount)
 	// Per-user 2FA (TOTP) for portal accounts.
 	mux.HandleFunc("GET /api/portal/mfa/status", s.portalMFAStatus)
 	mux.HandleFunc("POST /api/portal/mfa/setup", s.portalMFASetup)
@@ -729,6 +732,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/admin/portal/orgs", s.adminListOrgs)
 	mux.HandleFunc("GET /api/admin/portal/orgs/{id}/members", s.adminListOrgMembers)
 	mux.HandleFunc("PATCH /api/admin/portal/orgs/{id}", s.adminSuspendOrg)
+	mux.HandleFunc("DELETE /api/admin/portal/orgs/{id}", s.adminDeleteOrg)
 	// Tamper-evident audit trail (operator): full log + chain integrity check.
 	mux.HandleFunc("GET /api/admin/portal/audit", s.adminListAudit)
 	mux.HandleFunc("GET /api/admin/portal/audit/verify", s.adminVerifyAudit)

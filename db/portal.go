@@ -27,9 +27,10 @@ type PortalUser struct {
 	OrgID        int64  `json:"org_id"`
 	Email        string `json:"email"`
 	PasswordHash string `json:"-"`
-	Role         string `json:"role"`
-	MFASecret    string `json:"-"` // encrypted at rest; empty when no secret set
-	MFAEnabled   bool   `json:"mfa_enabled"`
+	Role          string `json:"role"`
+	MFASecret     string `json:"-"` // encrypted at rest; empty when no secret set
+	MFAEnabled    bool   `json:"mfa_enabled"`
+	EmailVerified bool   `json:"email_verified"`
 }
 
 type PortalRequest struct {
@@ -72,6 +73,20 @@ ALTER TABLE orgs ADD COLUMN IF NOT EXISTS suspended BOOLEAN NOT NULL DEFAULT fal
 -- Per-user TOTP 2FA. Secret stored encrypted at rest (AES-256-GCM); empty = none.
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS mfa_secret TEXT NOT NULL DEFAULT '';
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS mfa_enabled BOOLEAN NOT NULL DEFAULT false;
+-- Email verification state.
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
+-- One-time tokens for password reset and email verification. Only the SHA-256 of
+-- the token is stored; the plaintext lives only in the email sent to the user.
+CREATE TABLE IF NOT EXISTS portal_tokens (
+    id         BIGSERIAL PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES portal_users(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL,
+    token_hash TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used       BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_portal_tokens_hash ON portal_tokens(token_hash);
 -- Link a promoted request to the engine task an operator created from it.
 ALTER TABLE portal_requests ADD COLUMN IF NOT EXISTS engine_task_id BIGINT;
 CREATE TABLE IF NOT EXISTS portal_invites (
@@ -149,8 +164,8 @@ func (d *DB) CreateOrgWithOwner(orgName, email, passwordHash string) (orgID, use
 func (d *DB) GetPortalUserByEmail(email string) (*PortalUser, error) {
 	var u PortalUser
 	err := d.QueryRow(
-		`SELECT id, org_id, email, password_hash, role, mfa_secret, mfa_enabled FROM portal_users WHERE email = $1`, email,
-	).Scan(&u.ID, &u.OrgID, &u.Email, &u.PasswordHash, &u.Role, &u.MFASecret, &u.MFAEnabled)
+		`SELECT id, org_id, email, password_hash, role, mfa_secret, mfa_enabled, email_verified FROM portal_users WHERE email = $1`, email,
+	).Scan(&u.ID, &u.OrgID, &u.Email, &u.PasswordHash, &u.Role, &u.MFASecret, &u.MFAEnabled, &u.EmailVerified)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -286,8 +301,8 @@ type PortalInvite struct {
 func (d *DB) GetPortalUserByID(id int64) (*PortalUser, error) {
 	var u PortalUser
 	err := d.QueryRow(
-		`SELECT id, org_id, email, password_hash, role, mfa_secret, mfa_enabled FROM portal_users WHERE id = $1`, id,
-	).Scan(&u.ID, &u.OrgID, &u.Email, &u.PasswordHash, &u.Role, &u.MFASecret, &u.MFAEnabled)
+		`SELECT id, org_id, email, password_hash, role, mfa_secret, mfa_enabled, email_verified FROM portal_users WHERE id = $1`, id,
+	).Scan(&u.ID, &u.OrgID, &u.Email, &u.PasswordHash, &u.Role, &u.MFASecret, &u.MFAEnabled, &u.EmailVerified)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}

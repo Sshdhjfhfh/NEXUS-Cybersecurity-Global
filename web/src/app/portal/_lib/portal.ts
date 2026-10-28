@@ -67,7 +67,10 @@ export type Invite = {
   role: PortalRole;
   created_at: string;
 };
-export type Me = { user: { id: number; role: PortalRole; email: string }; org: Org };
+export type Me = {
+  user: { id: number; role: PortalRole; email: string; email_verified: boolean };
+  org: Org;
+};
 export type AuditEntry = {
   id: number;
   actor: string;
@@ -112,6 +115,21 @@ export const portalApi = {
   mfaEnable: (code: string) => req<{ ok: boolean }>("/mfa/enable", { method: "POST", body: JSON.stringify({ code }) }),
   mfaDisable: (code: string) =>
     req<{ ok: boolean }>("/mfa/disable", { method: "POST", body: JSON.stringify({ code }) }),
+
+  // --- account recovery + email verification ---
+  forgotPassword: (email: string) =>
+    req<{ ok: boolean }>("/password/forgot", { method: "POST", body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, password: string) =>
+    req<{ ok: boolean }>("/password/reset", { method: "POST", body: JSON.stringify({ token, password }) }),
+  changePassword: (old_password: string, new_password: string) =>
+    req<{ ok: boolean }>("/password/change", {
+      method: "POST",
+      body: JSON.stringify({ old_password, new_password }),
+    }),
+  verifyEmail: (token: string) =>
+    req<{ ok: boolean }>("/email/verify", { method: "POST", body: JSON.stringify({ token }) }),
+  resendVerification: () =>
+    req<{ ok: boolean; already_verified?: boolean }>("/email/resend", { method: "POST", body: "{}" }),
 
   // --- invitation acceptance (public, token-gated; no auth header needed) ---
   lookupInvite: (token: string) =>

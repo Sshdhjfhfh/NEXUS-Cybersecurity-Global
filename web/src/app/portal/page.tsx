@@ -107,6 +107,19 @@ export default function PortalDashboard() {
         <h1 className="text-2xl font-bold">Hola, {me.org.name}</h1>
         <p className="mt-1 text-sm text-slate-400">Gestiona tus solicitudes de evaluación de seguridad.</p>
 
+        {!me.user.email_verified ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-2.5 text-sm text-amber-200">
+            Tu email aún no está verificado.
+            <button
+              type="button"
+              onClick={() => setTab("security")}
+              className="font-semibold underline underline-offset-2 hover:text-amber-100"
+            >
+              Verificar ahora
+            </button>
+          </div>
+        ) : null}
+
         {/* Tabs */}
         <div className="mt-6 flex gap-1 border-b border-white/10">
           <button
@@ -159,7 +172,7 @@ export default function PortalDashboard() {
 
         {tab === "team" && canManageTeam ? <TeamPanel me={me} /> : null}
         {tab === "audit" && canManageTeam ? <AuditPanel /> : null}
-        {tab === "security" ? <SecurityPanel /> : null}
+        {tab === "security" ? <SecurityPanel me={me} /> : null}
 
         {tab === "requests" ? (
           <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_1.4fr]">

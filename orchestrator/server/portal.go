@@ -151,6 +151,7 @@ func (s *Server) portalRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, &orgID, req.Email, "portal_user", "org.register",
 		"org:"+strconv.FormatInt(orgID, 10), "org="+req.OrgName)
+	s.sendVerification(userID, req.Email)
 	writeJSON(w, 201, map[string]any{"token": tok, "org": map[string]any{"id": orgID, "name": req.OrgName}})
 }
 
@@ -229,12 +230,14 @@ func (s *Server) portalMe(w http.ResponseWriter, r *http.Request) {
 	}
 	role := ""
 	email := ""
+	verified := false
 	if u, err := pg.GetPortalUserByID(userID); err == nil && u != nil {
 		role = u.Role
 		email = u.Email
+		verified = u.EmailVerified
 	}
 	writeJSON(w, 200, map[string]any{
-		"user": map[string]any{"id": userID, "role": role, "email": email},
+		"user": map[string]any{"id": userID, "role": role, "email": email, "email_verified": verified},
 		"org":  org,
 	})
 }

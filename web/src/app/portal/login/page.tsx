@@ -45,10 +45,15 @@ export default function PortalLogin() {
       subtitle="Inicia sesión en tu organización."
       footer={
         <>
-          ¿No tienes cuenta?{" "}
-          <Link href="/portal/register" className="text-cyan-300 hover:text-cyan-200">
-            Crear organización
+          <Link href="/portal/forgot" className="text-cyan-300 hover:text-cyan-200">
+            ¿Olvidaste tu contraseña?
           </Link>
+          <span className="mt-2 block">
+            ¿No tienes cuenta?{" "}
+            <Link href="/portal/register" className="text-cyan-300 hover:text-cyan-200">
+              Crear organización
+            </Link>
+          </span>
         </>
       }
     >

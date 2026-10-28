@@ -708,6 +708,12 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/portal/mfa/setup", s.portalMFASetup)
 	mux.HandleFunc("POST /api/portal/mfa/enable", s.portalMFAEnable)
 	mux.HandleFunc("POST /api/portal/mfa/disable", s.portalMFADisable)
+	// Account recovery + email verification (reset/verify are public, token-gated).
+	mux.HandleFunc("POST /api/portal/password/forgot", s.portalForgotPassword)
+	mux.HandleFunc("POST /api/portal/password/reset", s.portalResetPassword)
+	mux.HandleFunc("POST /api/portal/password/change", s.portalChangePassword)
+	mux.HandleFunc("POST /api/portal/email/verify", s.portalVerifyEmail)
+	mux.HandleFunc("POST /api/portal/email/resend", s.portalResendVerification)
 	// Operator bridge (console-authenticated via requireAuth; NOT /api/portal/):
 	// review client requests and promote an approved one into an engine task.
 	mux.HandleFunc("GET /api/admin/portal/requests", s.adminListPortalRequests)

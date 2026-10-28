@@ -1,22 +1,67 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 
-import { CheckCircle2Icon, ShieldIcon } from "lucide-react";
+import { CheckCircle2Icon, MailCheckIcon, MailWarningIcon, ShieldIcon } from "lucide-react";
 
-import { portalApi } from "./portal";
+import { type Me, portalApi } from "./portal";
 import { Field, PrimaryButton } from "./ui";
 
 // Per-user 2FA (TOTP) management. Every user manages their own second factor. The
 // secret is shown for manual entry plus an otpauth:// link to open in the app —
 // never sent to a third-party QR service, so the seed never leaves this origin.
-export function SecurityPanel() {
+export function SecurityPanel({ me }: { me: Me }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [setup, setSetup] = useState<{ secret: string; otpauth: string } | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [note, setNote] = useState("");
+
+  // Email verification + change password.
+  const [verified, setVerified] = useState(me.user.email_verified);
+  const [resendMsg, setResendMsg] = useState("");
+  const [oldPw, setOldPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [pwMsg, setPwMsg] = useState("");
+  const [pwErr, setPwErr] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
+
+  async function resendVerification() {
+    setResendMsg("");
+    try {
+      const res = await portalApi.resendVerification();
+      if (res.already_verified) {
+        setVerified(true);
+        setResendMsg("Tu email ya estaba verificado.");
+      } else {
+        setResendMsg("Te hemos reenviado el correo de verificación.");
+      }
+    } catch (ex) {
+      setResendMsg(ex instanceof Error ? ex.message : "No se pudo reenviar");
+    }
+  }
+
+  async function changePassword(e: FormEvent) {
+    e.preventDefault();
+    if (newPw.length < 8) {
+      setPwErr("La nueva contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    setPwBusy(true);
+    setPwErr("");
+    setPwMsg("");
+    try {
+      await portalApi.changePassword(oldPw, newPw);
+      setOldPw("");
+      setNewPw("");
+      setPwMsg("Contraseña actualizada.");
+    } catch (ex) {
+      setPwErr(ex instanceof Error ? ex.message : "No se pudo cambiar la contraseña");
+    } finally {
+      setPwBusy(false);
+    }
+  }
 
   const loadStatus = useCallback(async () => {
     try {
@@ -147,6 +192,56 @@ export function SecurityPanel() {
             </PrimaryButton>
           </div>
         )}
+      </section>
+
+      {/* Email verification */}
+      <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Email</h2>
+        {verified ? (
+          <p className="mt-3 flex items-center gap-2 text-sm text-emerald-300">
+            <MailCheckIcon className="size-4" /> {me.user.email} — verificado.
+          </p>
+        ) : (
+          <div className="mt-3 space-y-3">
+            <p className="flex items-center gap-2 text-sm text-amber-300">
+              <MailWarningIcon className="size-4" /> {me.user.email} — sin verificar.
+            </p>
+            <button
+              type="button"
+              onClick={() => void resendVerification()}
+              className="rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-200 transition-colors hover:border-cyan-400/50 hover:text-white"
+            >
+              Reenviar verificación
+            </button>
+            {resendMsg ? <p className="text-xs text-slate-400">{resendMsg}</p> : null}
+          </div>
+        )}
+      </section>
+
+      {/* Change password */}
+      <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Cambiar contraseña</h2>
+        <form onSubmit={changePassword} className="mt-4 space-y-4">
+          <Field
+            label="Contraseña actual"
+            type="password"
+            value={oldPw}
+            onChange={(e) => setOldPw(e.target.value)}
+            autoComplete="current-password"
+          />
+          <Field
+            label="Nueva contraseña (mín. 8)"
+            type="password"
+            value={newPw}
+            onChange={(e) => setNewPw(e.target.value)}
+            autoComplete="new-password"
+          />
+          {pwErr ? <p className="text-sm text-rose-400">{pwErr}</p> : null}
+          {pwMsg ? <p className="text-sm text-emerald-300">{pwMsg}</p> : null}
+          <PrimaryButton type="submit" disabled={pwBusy || !oldPw || newPw.length < 8}>
+            {pwBusy ? "Guardando…" : "Actualizar contraseña"}
+          </PrimaryButton>
+        </form>
       </section>
     </div>
   );

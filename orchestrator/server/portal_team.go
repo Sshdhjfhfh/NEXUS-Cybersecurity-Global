@@ -381,5 +381,6 @@ func (s *Server) portalAcceptInvite(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, &inv.OrgID, inv.Email, "portal_user", "invite.accept",
 		"user:"+strconv.FormatInt(userID, 10), "role="+inv.Role)
+	s.sendVerification(userID, inv.Email)
 	writeJSON(w, 201, map[string]any{"token": tok})
 }

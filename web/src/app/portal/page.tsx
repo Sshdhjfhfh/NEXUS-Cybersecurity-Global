@@ -9,6 +9,7 @@ import { ArrowRightIcon, LogOutIcon } from "lucide-react";
 
 import { AuditPanel } from "./_lib/audit";
 import { clearPortalToken, getPortalToken, type Me, type PortalRequest, portalApi } from "./_lib/portal";
+import { ResultsPanel } from "./_lib/results";
 import { SecurityPanel } from "./_lib/security";
 import { TeamPanel } from "./_lib/team";
 import { Field, PrimaryButton } from "./_lib/ui";
@@ -27,6 +28,7 @@ export default function PortalDashboard() {
   const [me, setMe] = useState<Me | null>(null);
   const [reqs, setReqs] = useState<PortalRequest[]>([]);
   const [tab, setTab] = useState<Tab>("requests");
+  const [openResults, setOpenResults] = useState<number | null>(null);
   const [title, setTitle] = useState("");
   const [scope, setScope] = useState("");
   const [err, setErr] = useState("");
@@ -221,9 +223,19 @@ export default function PortalDashboard() {
                         </span>
                       </div>
                       {r.scope ? <p className="mt-1 text-xs text-slate-400">{r.scope}</p> : null}
-                      <p className="mt-1 text-[11px] text-slate-500">
-                        #{r.id} · {new Date(r.created_at).toLocaleString()}
-                      </p>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <p className="text-[11px] text-slate-500">
+                          #{r.id} · {new Date(r.created_at).toLocaleString()}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setOpenResults((cur) => (cur === r.id ? null : r.id))}
+                          className="text-[11px] font-medium text-cyan-300 hover:text-cyan-200"
+                        >
+                          {openResults === r.id ? "Ocultar resultados" : "Ver resultados"}
+                        </button>
+                      </div>
+                      {openResults === r.id ? <ResultsPanel requestId={r.id} /> : null}
                     </li>
                   ))}
                 </ul>

@@ -83,6 +83,25 @@ export type AuditEntry = {
   created_at: string;
 };
 
+export type Severity = "critical" | "high" | "medium" | "low";
+export type ClientFinding = {
+  id: number;
+  name: string;
+  vulnclass: string;
+  severity: Severity;
+  status: string;
+  summary: string;
+  created_at: string;
+};
+export type ClientFindingDetail = ClientFinding & { report: string };
+export type ResultsResponse = {
+  state: "not_started" | "in_progress" | "released";
+  released?: boolean;
+  findings: ClientFinding[];
+  summary?: Record<Severity, number>;
+  total?: number;
+};
+
 export const portalApi = {
   register: (org_name: string, email: string, password: string) =>
     req<{ token: string; org: Org }>("/register", {
@@ -95,6 +114,8 @@ export const portalApi = {
   listRequests: () => req<{ requests: PortalRequest[] }>("/requests"),
   createRequest: (title: string, scope: string) =>
     req<{ ok: boolean; id: number }>("/requests", { method: "POST", body: JSON.stringify({ title, scope }) }),
+  requestResults: (id: number) => req<ResultsResponse>(`/requests/${id}/results`),
+  requestFinding: (id: number, fid: number) => req<{ finding: ClientFindingDetail }>(`/requests/${id}/findings/${fid}`),
 
   // --- team management (admin+) ---
   listMembers: () => req<{ members: Member[] }>("/members"),

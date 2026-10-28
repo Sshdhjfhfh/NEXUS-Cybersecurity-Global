@@ -33,6 +33,7 @@ interface AdminRequest {
   scope: string;
   status: string;
   engine_task_id?: number;
+  results_released: boolean;
   created_at: string;
 }
 
@@ -77,6 +78,18 @@ export default function PortalRequestsPage() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setPromoting(null);
+    }
+  }
+
+  async function toggleRelease(id: number, released: boolean) {
+    setError(null);
+    const prev = requests;
+    setRequests((cur) => cur.map((r) => (r.id === id ? { ...r, results_released: released } : r)));
+    try {
+      await http(`/admin/portal/requests/${id}/release`, { method: "POST", body: JSON.stringify({ released }) });
+    } catch (e) {
+      setRequests(prev);
+      setError(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -158,11 +171,21 @@ export default function PortalRequestsPage() {
               ) : (
                 <p className="text-xs text-muted-foreground">Sin alcance declarado.</p>
               )}
-              <div className="flex items-center gap-3 pt-1">
+              <div className="flex flex-wrap items-center gap-3 pt-1">
                 {r.engine_task_id ? (
-                  <Link href="/function/tasks" className="inline-flex items-center gap-1 text-sm underline">
-                    Tarea #{r.engine_task_id}
-                  </Link>
+                  <>
+                    <Link href="/function/tasks" className="inline-flex items-center gap-1 text-sm underline">
+                      Tarea #{r.engine_task_id}
+                    </Link>
+                    <Button
+                      size="sm"
+                      variant={r.results_released ? "outline" : "default"}
+                      onClick={() => void toggleRelease(r.id, !r.results_released)}
+                    >
+                      {r.results_released ? "Retirar resultados" : "Liberar resultados al cliente"}
+                    </Button>
+                    {r.results_released ? <Badge variant="secondary">Resultados visibles para el cliente</Badge> : null}
+                  </>
                 ) : (
                   <Button size="sm" onClick={() => void promote(r.id)} disabled={promoting === r.id}>
                     <RocketIcon className="size-4" />

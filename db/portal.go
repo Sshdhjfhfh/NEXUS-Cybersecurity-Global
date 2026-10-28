@@ -94,6 +94,8 @@ CREATE TABLE IF NOT EXISTS portal_tokens (
 CREATE INDEX IF NOT EXISTS idx_portal_tokens_hash ON portal_tokens(token_hash);
 -- Link a promoted request to the engine task an operator created from it.
 ALTER TABLE portal_requests ADD COLUMN IF NOT EXISTS engine_task_id BIGINT;
+-- Operator gate: results are shown to the client only once explicitly released.
+ALTER TABLE portal_requests ADD COLUMN IF NOT EXISTS results_released BOOLEAN NOT NULL DEFAULT false;
 CREATE TABLE IF NOT EXISTS portal_invites (
     id          BIGSERIAL PRIMARY KEY,
     org_id      BIGINT NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
@@ -532,20 +534,21 @@ func (d *DB) DisablePortalMFA(userID int64) error {
 // posible vínculo a una tarea del motor. Solo la ve el operador de la consola
 // (requireAuth), nunca el cliente del portal.
 type AdminPortalRequest struct {
-	ID           int64     `json:"id"`
-	OrgID        int64     `json:"org_id"`
-	OrgName      string    `json:"org_name"`
-	Title        string    `json:"title"`
-	Scope        string    `json:"scope"`
-	Status       string    `json:"status"`
-	EngineTaskID *int64    `json:"engine_task_id,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID              int64     `json:"id"`
+	OrgID           int64     `json:"org_id"`
+	OrgName         string    `json:"org_name"`
+	Title           string    `json:"title"`
+	Scope           string    `json:"scope"`
+	Status          string    `json:"status"`
+	EngineTaskID    *int64    `json:"engine_task_id,omitempty"`
+	ResultsReleased bool      `json:"results_released"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 func scanAdminRequest(row interface{ Scan(...any) error }) (AdminPortalRequest, error) {
 	var r AdminPortalRequest
 	var taskID sql.NullInt64
-	if err := row.Scan(&r.ID, &r.OrgID, &r.OrgName, &r.Title, &r.Scope, &r.Status, &taskID, &r.CreatedAt); err != nil {
+	if err := row.Scan(&r.ID, &r.OrgID, &r.OrgName, &r.Title, &r.Scope, &r.Status, &taskID, &r.ResultsReleased, &r.CreatedAt); err != nil {
 		return r, err
 	}
 	if taskID.Valid {
@@ -554,7 +557,7 @@ func scanAdminRequest(row interface{ Scan(...any) error }) (AdminPortalRequest, 
 	return r, nil
 }
 
-const adminRequestCols = `r.id, r.org_id, o.name, r.title, r.scope, r.status, r.engine_task_id, r.created_at`
+const adminRequestCols = `r.id, r.org_id, o.name, r.title, r.scope, r.status, r.engine_task_id, r.results_released, r.created_at`
 
 // AdminListPortalRequests devuelve TODAS las solicitudes (todas las orgs) para
 // el operador, con el nombre de la organización.

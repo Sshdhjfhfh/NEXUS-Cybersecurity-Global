@@ -692,6 +692,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/portal/me", s.portalMe)
 	mux.HandleFunc("POST /api/portal/requests", s.portalCreateRequest)
 	mux.HandleFunc("GET /api/portal/requests", s.portalListRequests)
+	// Client-facing assessment results (org-isolated, released by the operator).
+	mux.HandleFunc("GET /api/portal/requests/{id}/results", s.portalRequestResults)
+	mux.HandleFunc("GET /api/portal/requests/{id}/findings/{fid}", s.portalRequestFinding)
 	// Team management: members, roles (RBAC) and invitations. Role is enforced
 	// server-side; invite accept + lookup are public (token-gated).
 	mux.HandleFunc("GET /api/portal/members", s.portalListMembers)
@@ -720,6 +723,7 @@ func (s *Server) Handler() http.Handler {
 	// review client requests and promote an approved one into an engine task.
 	mux.HandleFunc("GET /api/admin/portal/requests", s.adminListPortalRequests)
 	mux.HandleFunc("POST /api/admin/portal/requests/{id}/promote", s.adminPromoteRequest)
+	mux.HandleFunc("POST /api/admin/portal/requests/{id}/release", s.adminReleaseResults)
 	mux.HandleFunc("PATCH /api/admin/portal/requests/{id}", s.adminUpdateRequestStatus)
 	// Platform-admin: manage every organization (list with counts, suspend/reactivate).
 	mux.HandleFunc("GET /api/admin/portal/orgs", s.adminListOrgs)

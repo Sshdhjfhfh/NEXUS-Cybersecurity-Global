@@ -163,6 +163,7 @@ func (s *Server) portalLogin(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
+		Code     string `json:"code"`
 	}
 	if err := decode(r, &req); err != nil {
 		writeErr(w, 400, "cuerpo inválido")
@@ -191,6 +192,16 @@ func (s *Server) portalLogin(w http.ResponseWriter, r *http.Request) {
 		s.audit(r, &u.OrgID, u.Email, "portal_user", "auth.login_blocked", "", "org suspendida")
 		writeErr(w, 403, "organización suspendida; contacta con soporte")
 		return
+	}
+	// Second factor: if the user has 2FA on, a valid TOTP code is required. The
+	// "mfa_required" error is the frontend's signal to prompt for the code.
+	if u.MFAEnabled {
+		secret, derr := s.decryptSecret(u.MFASecret)
+		if derr != nil || !verifyTOTP(secret, strings.TrimSpace(req.Code)) {
+			s.audit(r, &u.OrgID, u.Email, "portal_user", "auth.mfa_failed", "", "")
+			writeErr(w, 401, "mfa_required")
+			return
+		}
 	}
 	s.audit(r, &u.OrgID, u.Email, "portal_user", "auth.login", "user:"+strconv.FormatInt(u.ID, 10), "")
 	tok, err := signPortalJWT(s.jwtKey, u.ID, u.OrgID)

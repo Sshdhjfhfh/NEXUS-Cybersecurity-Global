@@ -28,6 +28,8 @@ type PortalUser struct {
 	Email        string `json:"email"`
 	PasswordHash string `json:"-"`
 	Role         string `json:"role"`
+	MFASecret    string `json:"-"` // encrypted at rest; empty when no secret set
+	MFAEnabled   bool   `json:"mfa_enabled"`
 }
 
 type PortalRequest struct {
@@ -67,6 +69,9 @@ CREATE TABLE IF NOT EXISTS portal_requests (
 CREATE INDEX IF NOT EXISTS idx_portal_requests_org ON portal_requests(org_id);
 -- Platform operator can suspend an organization (blocks all portal access).
 ALTER TABLE orgs ADD COLUMN IF NOT EXISTS suspended BOOLEAN NOT NULL DEFAULT false;
+-- Per-user TOTP 2FA. Secret stored encrypted at rest (AES-256-GCM); empty = none.
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS mfa_secret TEXT NOT NULL DEFAULT '';
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS mfa_enabled BOOLEAN NOT NULL DEFAULT false;
 -- Link a promoted request to the engine task an operator created from it.
 ALTER TABLE portal_requests ADD COLUMN IF NOT EXISTS engine_task_id BIGINT;
 CREATE TABLE IF NOT EXISTS portal_invites (
@@ -144,8 +149,8 @@ func (d *DB) CreateOrgWithOwner(orgName, email, passwordHash string) (orgID, use
 func (d *DB) GetPortalUserByEmail(email string) (*PortalUser, error) {
 	var u PortalUser
 	err := d.QueryRow(
-		`SELECT id, org_id, email, password_hash, role FROM portal_users WHERE email = $1`, email,
-	).Scan(&u.ID, &u.OrgID, &u.Email, &u.PasswordHash, &u.Role)
+		`SELECT id, org_id, email, password_hash, role, mfa_secret, mfa_enabled FROM portal_users WHERE email = $1`, email,
+	).Scan(&u.ID, &u.OrgID, &u.Email, &u.PasswordHash, &u.Role, &u.MFASecret, &u.MFAEnabled)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -281,8 +286,8 @@ type PortalInvite struct {
 func (d *DB) GetPortalUserByID(id int64) (*PortalUser, error) {
 	var u PortalUser
 	err := d.QueryRow(
-		`SELECT id, org_id, email, password_hash, role FROM portal_users WHERE id = $1`, id,
-	).Scan(&u.ID, &u.OrgID, &u.Email, &u.PasswordHash, &u.Role)
+		`SELECT id, org_id, email, password_hash, role, mfa_secret, mfa_enabled FROM portal_users WHERE id = $1`, id,
+	).Scan(&u.ID, &u.OrgID, &u.Email, &u.PasswordHash, &u.Role, &u.MFASecret, &u.MFAEnabled)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -405,6 +410,33 @@ func (d *DB) DeleteInvite(orgID, id int64) error {
 		return sql.ErrNoRows
 	}
 	return nil
+}
+
+// SetPortalMFASecret guarda un secreto TOTP (cifrado) pendiente de activar; deja
+// mfa_enabled en false hasta que el usuario confirme con un código válido.
+func (d *DB) SetPortalMFASecret(userID int64, secretEnc string) error {
+	_, err := d.Exec(
+		`UPDATE portal_users SET mfa_secret = $1, mfa_enabled = false WHERE id = $2`, secretEnc, userID,
+	)
+	return err
+}
+
+// EnablePortalMFA activa el 2FA (el secreto ya está guardado).
+func (d *DB) EnablePortalMFA(userID int64) error {
+	res, err := d.Exec(`UPDATE portal_users SET mfa_enabled = true WHERE id = $1`, userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// DisablePortalMFA desactiva el 2FA y borra el secreto.
+func (d *DB) DisablePortalMFA(userID int64) error {
+	_, err := d.Exec(`UPDATE portal_users SET mfa_secret = '', mfa_enabled = false WHERE id = $1`, userID)
+	return err
 }
 
 // AdminPortalRequest es una solicitud con el nombre de su organización y el

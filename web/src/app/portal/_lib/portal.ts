@@ -85,8 +85,8 @@ export const portalApi = {
       method: "POST",
       body: JSON.stringify({ org_name, email, password }),
     }),
-  login: (email: string, password: string) =>
-    req<{ token: string }>("/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  login: (email: string, password: string, code?: string) =>
+    req<{ token: string }>("/login", { method: "POST", body: JSON.stringify({ email, password, code }) }),
   me: () => req<Me>("/me"),
   listRequests: () => req<{ requests: PortalRequest[] }>("/requests"),
   createRequest: (title: string, scope: string) =>
@@ -105,6 +105,13 @@ export const portalApi = {
     }),
   revokeInvite: (id: number) => req<{ ok: boolean }>(`/invites/${id}`, { method: "DELETE" }),
   listAudit: () => req<{ entries: AuditEntry[] }>("/audit"),
+
+  // --- per-user 2FA (TOTP) ---
+  mfaStatus: () => req<{ enabled: boolean }>("/mfa/status"),
+  mfaSetup: () => req<{ secret: string; otpauth: string }>("/mfa/setup", { method: "POST", body: "{}" }),
+  mfaEnable: (code: string) => req<{ ok: boolean }>("/mfa/enable", { method: "POST", body: JSON.stringify({ code }) }),
+  mfaDisable: (code: string) =>
+    req<{ ok: boolean }>("/mfa/disable", { method: "POST", body: JSON.stringify({ code }) }),
 
   // --- invitation acceptance (public, token-gated; no auth header needed) ---
   lookupInvite: (token: string) =>

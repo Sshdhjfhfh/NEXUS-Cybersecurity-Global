@@ -703,6 +703,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/portal/invites/lookup", s.portalLookupInvite)
 	mux.HandleFunc("POST /api/portal/invites/accept", s.portalAcceptInvite)
 	mux.HandleFunc("GET /api/portal/audit", s.portalListAudit)
+	// Per-user 2FA (TOTP) for portal accounts.
+	mux.HandleFunc("GET /api/portal/mfa/status", s.portalMFAStatus)
+	mux.HandleFunc("POST /api/portal/mfa/setup", s.portalMFASetup)
+	mux.HandleFunc("POST /api/portal/mfa/enable", s.portalMFAEnable)
+	mux.HandleFunc("POST /api/portal/mfa/disable", s.portalMFADisable)
 	// Operator bridge (console-authenticated via requireAuth; NOT /api/portal/):
 	// review client requests and promote an approved one into an engine task.
 	mux.HandleFunc("GET /api/admin/portal/requests", s.adminListPortalRequests)

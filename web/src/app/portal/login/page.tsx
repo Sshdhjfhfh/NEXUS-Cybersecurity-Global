@@ -12,6 +12,8 @@ export default function PortalLogin() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [needMfa, setNeedMfa] = useState(false);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -20,11 +22,18 @@ export default function PortalLogin() {
     setLoading(true);
     setErr("");
     try {
-      const { token } = await portalApi.login(email, password);
+      const { token } = await portalApi.login(email, password, needMfa ? code.trim() : undefined);
       setPortalToken(token);
       router.replace("/portal");
     } catch (ex) {
-      setErr(ex instanceof Error && ex.message !== "unauthorized" ? ex.message : "Email o contraseña incorrectos");
+      const msg = ex instanceof Error ? ex.message : "";
+      if (msg === "mfa_required") {
+        // The account has 2FA: reveal the code field and ask for it.
+        setNeedMfa(true);
+        setErr(code ? "Código inválido. Inténtalo de nuevo." : "");
+      } else {
+        setErr(msg && msg !== "unauthorized" ? msg : "Email o contraseña incorrectos");
+      }
     } finally {
       setLoading(false);
     }
@@ -58,9 +67,21 @@ export default function PortalLogin() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
         />
+        {needMfa ? (
+          <Field
+            label="Código de verificación (2FA)"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="123456"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            // biome-ignore lint/a11y/noAutofocus: focus the code field as soon as it appears
+            autoFocus
+          />
+        ) : null}
         {err ? <p className="text-sm text-rose-400">{err}</p> : null}
-        <PrimaryButton type="submit" disabled={loading || !email || !password}>
-          {loading ? "Entrando…" : "Entrar"}
+        <PrimaryButton type="submit" disabled={loading || !email || !password || (needMfa && code.trim().length < 6)}>
+          {loading ? "Entrando…" : needMfa ? "Verificar" : "Entrar"}
         </PrimaryButton>
       </form>
     </PortalAuthShell>

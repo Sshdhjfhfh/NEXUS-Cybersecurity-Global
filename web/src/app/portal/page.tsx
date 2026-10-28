@@ -9,6 +9,7 @@ import { ArrowRightIcon, LogOutIcon } from "lucide-react";
 
 import { AuditPanel } from "./_lib/audit";
 import { clearPortalToken, getPortalToken, type Me, type PortalRequest, portalApi } from "./_lib/portal";
+import { SecurityPanel } from "./_lib/security";
 import { TeamPanel } from "./_lib/team";
 import { Field, PrimaryButton } from "./_lib/ui";
 
@@ -19,7 +20,7 @@ const STATUS_LABEL: Record<string, string> = {
   done: "Completada",
 };
 
-type Tab = "requests" | "team" | "audit";
+type Tab = "requests" | "team" | "audit" | "security";
 
 export default function PortalDashboard() {
   const router = useRouter();
@@ -143,10 +144,22 @@ export default function PortalDashboard() {
               Auditoría
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={() => setTab("security")}
+            className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+              tab === "security"
+                ? "border-cyan-400 text-white"
+                : "border-transparent text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Seguridad
+          </button>
         </div>
 
         {tab === "team" && canManageTeam ? <TeamPanel me={me} /> : null}
         {tab === "audit" && canManageTeam ? <AuditPanel /> : null}
+        {tab === "security" ? <SecurityPanel /> : null}
 
         {tab === "requests" ? (
           <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_1.4fr]">

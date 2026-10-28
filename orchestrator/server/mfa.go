@@ -73,14 +73,18 @@ func verifyTOTP(secret, code string) bool {
 	return false
 }
 
-func otpauthURI(secret string) string {
+func otpauthURI(secret string) string { return otpauthURIFor("ARTEX", secret) }
+
+// otpauthURIFor builds a provisioning URI whose account label is `account` (the
+// console admin, or a portal user's email), so it shows meaningfully in the app.
+func otpauthURIFor(account, secret string) string {
 	v := url.Values{}
 	v.Set("secret", secret)
 	v.Set("issuer", "NEXUS Cybersecurity")
 	v.Set("algorithm", "SHA1")
 	v.Set("digits", strconv.Itoa(totpDigits))
 	v.Set("period", strconv.Itoa(totpPeriod))
-	return "otpauth://totp/" + url.PathEscape("NEXUS:ARTEX") + "?" + v.Encode()
+	return "otpauth://totp/" + url.PathEscape("NEXUS:"+account) + "?" + v.Encode()
 }
 
 // --- secret encryption at rest ----------------------------------------------

@@ -149,6 +149,8 @@ func (s *Server) portalRegister(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudo emitir el token")
 		return
 	}
+	s.audit(r, &orgID, req.Email, "portal_user", "org.register",
+		"org:"+strconv.FormatInt(orgID, 10), "org="+req.OrgName)
 	writeJSON(w, 201, map[string]any{"token": tok, "org": map[string]any{"id": orgID, "name": req.OrgName}})
 }
 
@@ -180,14 +182,17 @@ func (s *Server) portalLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	if u == nil || bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password)) != nil {
 		portalBrute.fail(key)
+		s.audit(r, nil, req.Email, "anonymous", "auth.login_failed", "", "")
 		writeErr(w, 401, "email o contraseña incorrectos")
 		return
 	}
 	portalBrute.success(key)
 	if s.orgSuspended(u.OrgID) {
+		s.audit(r, &u.OrgID, u.Email, "portal_user", "auth.login_blocked", "", "org suspendida")
 		writeErr(w, 403, "organización suspendida; contacta con soporte")
 		return
 	}
+	s.audit(r, &u.OrgID, u.Email, "portal_user", "auth.login", "user:"+strconv.FormatInt(u.ID, 10), "")
 	tok, err := signPortalJWT(s.jwtKey, u.ID, u.OrgID)
 	if err != nil {
 		writeErr(w, 500, "no se pudo emitir el token")

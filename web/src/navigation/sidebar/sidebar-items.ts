@@ -98,6 +98,7 @@ export const sidebarItems: NavGroup[] = [
       { id: "leads", title: "Leads", url: "/system/leads", icon: Inbox },
       { id: "portal-orgs", title: "Organizaciones", url: "/system/portal-orgs", icon: Building },
       { id: "portal-requests", title: "Portal", url: "/system/portal-requests", icon: Building2 },
+      { id: "portal-audit", title: "Auditoría", url: "/system/portal-audit", icon: ShieldCheck },
       { id: "intercept", title: t("ui.786df927eaa30c65"), url: "/system/intercept", icon: ShieldAlert },
       { id: "asset-intercept", title: t("ui.a6d0b2b98aeb2541"), url: "/system/intercept/assets", icon: Ban },
       { id: "approvals", title: t("ui.23fbeb68396df26c"), url: "/system/intercept/approvals", icon: ClipboardList },

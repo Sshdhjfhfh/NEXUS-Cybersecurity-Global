@@ -80,6 +80,23 @@ CREATE TABLE IF NOT EXISTS portal_invites (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_portal_invites_org ON portal_invites(org_id);
+-- Tamper-evident audit trail (hash-chained). No FK on org_id so entries survive
+-- org deletion (audit must be retained for compliance).
+CREATE TABLE IF NOT EXISTS portal_audit (
+    id          BIGSERIAL PRIMARY KEY,
+    org_id      BIGINT,
+    actor       TEXT NOT NULL DEFAULT '',
+    actor_type  TEXT NOT NULL DEFAULT '',
+    action      TEXT NOT NULL,
+    target      TEXT NOT NULL DEFAULT '',
+    detail      TEXT NOT NULL DEFAULT '',
+    ip          TEXT NOT NULL DEFAULT '',
+    prev_hash   TEXT NOT NULL DEFAULT '',
+    hash        TEXT NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_portal_audit_org ON portal_audit(org_id);
+CREATE INDEX IF NOT EXISTS idx_portal_audit_id_desc ON portal_audit(id DESC);
 `
 
 // EnsurePortalTables crea las tablas del portal si no existen (aditivo, reversible).

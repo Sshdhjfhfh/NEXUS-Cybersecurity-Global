@@ -129,6 +129,8 @@ func (s *Server) adminPromoteRequest(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "tarea creada pero no se pudo vincular la solicitud")
 		return
 	}
+	s.audit(r, &pr.OrgID, "operator", "operator", "request.promote",
+		"request:"+strconv.FormatInt(reqID, 10), "task="+t.ID+" org="+pr.OrgName)
 	writeJSON(w, 201, map[string]any{
 		"ok":          true,
 		"task_id":     t.ID,
@@ -194,6 +196,11 @@ func (s *Server) adminSuspendOrg(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudo actualizar la organización")
 		return
 	}
+	action := "org.reactivate"
+	if body.Suspended {
+		action = "org.suspend"
+	}
+	s.audit(r, &orgID, "operator", "operator", action, "org:"+strconv.FormatInt(orgID, 10), "")
 	writeJSON(w, 200, map[string]any{"ok": true, "suspended": body.Suspended})
 }
 
@@ -221,9 +228,20 @@ func (s *Server) adminUpdateRequestStatus(w http.ResponseWriter, r *http.Request
 		writeErr(w, 400, "estado inválido")
 		return
 	}
+	pr, err := pg.GetPortalRequest(reqID)
+	if err != nil {
+		writeErr(w, 503, "almacenamiento no disponible")
+		return
+	}
+	if pr == nil {
+		writeErr(w, 404, "solicitud no encontrada")
+		return
+	}
 	if err := pg.UpdatePortalRequestStatus(reqID, body.Status); err != nil {
 		writeErr(w, 500, "no se pudo actualizar el estado")
 		return
 	}
+	s.audit(r, &pr.OrgID, "operator", "operator", "request.status",
+		"request:"+strconv.FormatInt(reqID, 10), pr.Status+"->"+body.Status)
 	writeJSON(w, 200, map[string]any{"ok": true})
 }

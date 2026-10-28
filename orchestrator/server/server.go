@@ -702,6 +702,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/portal/invites/{id}", s.portalDeleteInvite)
 	mux.HandleFunc("GET /api/portal/invites/lookup", s.portalLookupInvite)
 	mux.HandleFunc("POST /api/portal/invites/accept", s.portalAcceptInvite)
+	mux.HandleFunc("GET /api/portal/audit", s.portalListAudit)
 	// Operator bridge (console-authenticated via requireAuth; NOT /api/portal/):
 	// review client requests and promote an approved one into an engine task.
 	mux.HandleFunc("GET /api/admin/portal/requests", s.adminListPortalRequests)
@@ -711,6 +712,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/admin/portal/orgs", s.adminListOrgs)
 	mux.HandleFunc("GET /api/admin/portal/orgs/{id}/members", s.adminListOrgMembers)
 	mux.HandleFunc("PATCH /api/admin/portal/orgs/{id}", s.adminSuspendOrg)
+	// Tamper-evident audit trail (operator): full log + chain integrity check.
+	mux.HandleFunc("GET /api/admin/portal/audit", s.adminListAudit)
+	mux.HandleFunc("GET /api/admin/portal/audit/verify", s.adminVerifyAudit)
 
 	mux.HandleFunc("GET /api/stats", s.stats)
 	mux.HandleFunc("GET /api/logs", s.getLogs)

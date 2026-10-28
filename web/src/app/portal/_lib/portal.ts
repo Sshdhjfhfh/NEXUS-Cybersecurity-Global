@@ -68,6 +68,16 @@ export type Invite = {
   created_at: string;
 };
 export type Me = { user: { id: number; role: PortalRole; email: string }; org: Org };
+export type AuditEntry = {
+  id: number;
+  actor: string;
+  actor_type: string;
+  action: string;
+  target: string;
+  detail?: string;
+  ip: string;
+  created_at: string;
+};
 
 export const portalApi = {
   register: (org_name: string, email: string, password: string) =>
@@ -94,6 +104,7 @@ export const portalApi = {
       body: JSON.stringify({ email, role }),
     }),
   revokeInvite: (id: number) => req<{ ok: boolean }>(`/invites/${id}`, { method: "DELETE" }),
+  listAudit: () => req<{ entries: AuditEntry[] }>("/audit"),
 
   // --- invitation acceptance (public, token-gated; no auth header needed) ---
   lookupInvite: (token: string) =>

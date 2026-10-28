@@ -91,7 +91,7 @@ func (s *Server) portalListMembers(w http.ResponseWriter, r *http.Request) {
 // PATCH /api/portal/members/{id} {role} — change a member's role (admin+).
 // Guards against leaving the organization without an owner.
 func (s *Server) portalUpdateMember(w http.ResponseWriter, r *http.Request) {
-	orgID, _, _, ok := s.portalRequireRole(w, r, "admin")
+	orgID, actorID, _, ok := s.portalRequireRole(w, r, "admin")
 	if !ok {
 		return
 	}
@@ -141,13 +141,15 @@ func (s *Server) portalUpdateMember(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudo actualizar el rol")
 		return
 	}
+	s.audit(r, &orgID, "user:"+strconv.FormatInt(actorID, 10), "portal_user", "member.role_change",
+		"user:"+strconv.FormatInt(targetID, 10), target.Role+"->"+req.Role)
 	writeJSON(w, 200, map[string]any{"ok": true})
 }
 
 // DELETE /api/portal/members/{id} — remove a member (admin+). Cannot remove the
 // last owner.
 func (s *Server) portalDeleteMember(w http.ResponseWriter, r *http.Request) {
-	orgID, _, _, ok := s.portalRequireRole(w, r, "admin")
+	orgID, actorID, _, ok := s.portalRequireRole(w, r, "admin")
 	if !ok {
 		return
 	}
@@ -184,6 +186,8 @@ func (s *Server) portalDeleteMember(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudo eliminar el miembro")
 		return
 	}
+	s.audit(r, &orgID, "user:"+strconv.FormatInt(actorID, 10), "portal_user", "member.remove",
+		"user:"+strconv.FormatInt(targetID, 10), "email="+target.Email)
 	writeJSON(w, 200, map[string]any{"ok": true})
 }
 
@@ -239,6 +243,8 @@ func (s *Server) portalCreateInvite(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudo crear la invitación")
 		return
 	}
+	s.audit(r, &orgID, "user:"+strconv.FormatInt(userID, 10), "portal_user", "invite.create",
+		"invite:"+strconv.FormatInt(id, 10), "email="+req.Email+" role="+req.Role)
 	writeJSON(w, 201, map[string]any{
 		"ok":    true,
 		"id":    id,
@@ -373,5 +379,7 @@ func (s *Server) portalAcceptInvite(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudo emitir el token")
 		return
 	}
+	s.audit(r, &inv.OrgID, inv.Email, "portal_user", "invite.accept",
+		"user:"+strconv.FormatInt(userID, 10), "role="+inv.Role)
 	writeJSON(w, 201, map[string]any{"token": tok})
 }

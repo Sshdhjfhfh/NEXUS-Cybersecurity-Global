@@ -97,7 +97,11 @@ func signJWT(key []byte) (string, error) {
 	}).SignedString(key)
 }
 
-// verifyJWT returns true when tokenStr is a valid, non-expired HS256 token.
+// verifyJWT returns true when tokenStr is a valid, non-expired HS256 CONSOLE
+// token. Portal tokens are signed with the same key (see signPortalJWT), so a
+// signature check alone would let a portal client call console/admin APIs; we
+// therefore reject any token carrying typ=="portal". Console tokens (signJWT)
+// have no typ claim, so they pass.
 func verifyJWT(tokenStr string, key []byte) bool {
 	t, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -105,7 +109,15 @@ func verifyJWT(tokenStr string, key []byte) bool {
 		}
 		return key, nil
 	})
-	return err == nil && t.Valid
+	if err != nil || !t.Valid {
+		return false
+	}
+	if claims, ok := t.Claims.(jwt.MapClaims); ok {
+		if typ, _ := claims["typ"].(string); typ == "portal" {
+			return false // a portal token must never authenticate the console
+		}
+	}
+	return true
 }
 
 // extractToken reads the JWT from Authorization: Bearer header,

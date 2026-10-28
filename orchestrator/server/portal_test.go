@@ -26,6 +26,14 @@ func TestPortalJWTRoundTripAndTypeGuard(t *testing.T) {
 	if _, _, ok := parsePortalJWT(consoleTok, key); ok {
 		t.Fatal("a console token must not be accepted as a portal token")
 	}
+	// And the reverse: a portal token (same signing key) must NOT authenticate
+	// the console, or a portal client could escalate to console/admin APIs.
+	if verifyJWT(tok, key) {
+		t.Fatal("a portal token must not be accepted as a console token")
+	}
+	if !verifyJWT(consoleTok, key) {
+		t.Fatal("a genuine console token must still validate")
+	}
 }
 
 func TestRoleHierarchy(t *testing.T) {

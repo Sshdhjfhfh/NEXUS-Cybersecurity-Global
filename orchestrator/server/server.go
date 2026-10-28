@@ -702,6 +702,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/portal/invites/{id}", s.portalDeleteInvite)
 	mux.HandleFunc("GET /api/portal/invites/lookup", s.portalLookupInvite)
 	mux.HandleFunc("POST /api/portal/invites/accept", s.portalAcceptInvite)
+	// Operator bridge (console-authenticated via requireAuth; NOT /api/portal/):
+	// review client requests and promote an approved one into an engine task.
+	mux.HandleFunc("GET /api/admin/portal/requests", s.adminListPortalRequests)
+	mux.HandleFunc("POST /api/admin/portal/requests/{id}/promote", s.adminPromoteRequest)
+	mux.HandleFunc("PATCH /api/admin/portal/requests/{id}", s.adminUpdateRequestStatus)
 
 	mux.HandleFunc("GET /api/stats", s.stats)
 	mux.HandleFunc("GET /api/logs", s.getLogs)

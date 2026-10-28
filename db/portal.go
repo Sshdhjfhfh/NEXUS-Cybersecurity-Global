@@ -64,6 +64,8 @@ CREATE TABLE IF NOT EXISTS portal_requests (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_portal_requests_org ON portal_requests(org_id);
+-- Link a promoted request to the engine task an operator created from it.
+ALTER TABLE portal_requests ADD COLUMN IF NOT EXISTS engine_task_id BIGINT;
 CREATE TABLE IF NOT EXISTS portal_invites (
     id          BIGSERIAL PRIMARY KEY,
     org_id      BIGINT NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
@@ -321,6 +323,99 @@ func (d *DB) ListInvites(orgID int64) ([]PortalInvite, error) {
 // DeleteInvite revoca una invitación (acotado a org_id).
 func (d *DB) DeleteInvite(orgID, id int64) error {
 	res, err := d.Exec(`DELETE FROM portal_invites WHERE id = $1 AND org_id = $2`, id, orgID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// AdminPortalRequest es una solicitud con el nombre de su organización y el
+// posible vínculo a una tarea del motor. Solo la ve el operador de la consola
+// (requireAuth), nunca el cliente del portal.
+type AdminPortalRequest struct {
+	ID           int64     `json:"id"`
+	OrgID        int64     `json:"org_id"`
+	OrgName      string    `json:"org_name"`
+	Title        string    `json:"title"`
+	Scope        string    `json:"scope"`
+	Status       string    `json:"status"`
+	EngineTaskID *int64    `json:"engine_task_id,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+func scanAdminRequest(row interface{ Scan(...any) error }) (AdminPortalRequest, error) {
+	var r AdminPortalRequest
+	var taskID sql.NullInt64
+	if err := row.Scan(&r.ID, &r.OrgID, &r.OrgName, &r.Title, &r.Scope, &r.Status, &taskID, &r.CreatedAt); err != nil {
+		return r, err
+	}
+	if taskID.Valid {
+		r.EngineTaskID = &taskID.Int64
+	}
+	return r, nil
+}
+
+const adminRequestCols = `r.id, r.org_id, o.name, r.title, r.scope, r.status, r.engine_task_id, r.created_at`
+
+// AdminListPortalRequests devuelve TODAS las solicitudes (todas las orgs) para
+// el operador, con el nombre de la organización.
+func (d *DB) AdminListPortalRequests() ([]AdminPortalRequest, error) {
+	rows, err := d.Query(
+		`SELECT ` + adminRequestCols + ` FROM portal_requests r
+         JOIN orgs o ON o.id = r.org_id ORDER BY r.created_at DESC LIMIT 1000`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []AdminPortalRequest{}
+	for rows.Next() {
+		r, err := scanAdminRequest(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// GetPortalRequest devuelve una solicitud (cualquier org) por id, o nil.
+func (d *DB) GetPortalRequest(id int64) (*AdminPortalRequest, error) {
+	r, err := scanAdminRequest(d.QueryRow(
+		`SELECT `+adminRequestCols+` FROM portal_requests r
+         JOIN orgs o ON o.id = r.org_id WHERE r.id = $1`, id,
+	))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+// LinkRequestToTask vincula la solicitud a una tarea del motor y la pasa a
+// 'scheduled'. Solo enlaza si aún no tenía tarea (evita duplicar).
+func (d *DB) LinkRequestToTask(reqID, taskID int64) error {
+	res, err := d.Exec(
+		`UPDATE portal_requests SET engine_task_id = $1, status = 'scheduled'
+         WHERE id = $2 AND engine_task_id IS NULL`, taskID, reqID,
+	)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// UpdatePortalRequestStatus cambia el estado de una solicitud (operador).
+func (d *DB) UpdatePortalRequestStatus(id int64, status string) error {
+	res, err := d.Exec(`UPDATE portal_requests SET status = $1 WHERE id = $2`, status, id)
 	if err != nil {
 		return err
 	}

@@ -1,0 +1,63 @@
+name: Security
+
+# Automated security scanning on every push and pull request:
+# - govulncheck: known vulnerabilities in Go code and dependencies
+# - osv-scanner: vulnerable dependencies (go.mod)
+# - gitleaks:    leaked secrets in the repo/history
+# - npm audit:   vulnerable web dependencies
+
+on:
+  push:
+    branches: [main, "implementation/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go-vuln:
+    name: Go vulnerabilities (govulncheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run: govulncheck ./...
+
+  deps-osv:
+    name: Dependency vulnerabilities (osv-scanner)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go install github.com/google/osv-scanner/v2/cmd/osv-scanner@latest
+      - run: osv-scanner scan --lockfile go.mod
+
+  secrets:
+    name: Secret scanning (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+
+  web-audit:
+    name: Web dependencies (npm audit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=high

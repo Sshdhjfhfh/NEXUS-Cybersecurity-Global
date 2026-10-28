@@ -7,7 +7,8 @@ import { useRouter } from "next/navigation";
 
 import { ArrowRightIcon, LogOutIcon } from "lucide-react";
 
-import { clearPortalToken, getPortalToken, type Org, type PortalRequest, portalApi } from "./_lib/portal";
+import { clearPortalToken, getPortalToken, type Me, type PortalRequest, portalApi } from "./_lib/portal";
+import { TeamPanel } from "./_lib/team";
 import { Field, PrimaryButton } from "./_lib/ui";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -17,10 +18,13 @@ const STATUS_LABEL: Record<string, string> = {
   done: "Completada",
 };
 
+type Tab = "requests" | "team";
+
 export default function PortalDashboard() {
   const router = useRouter();
-  const [org, setOrg] = useState<Org | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
   const [reqs, setReqs] = useState<PortalRequest[]>([]);
+  const [tab, setTab] = useState<Tab>("requests");
   const [title, setTitle] = useState("");
   const [scope, setScope] = useState("");
   const [err, setErr] = useState("");
@@ -29,8 +33,8 @@ export default function PortalDashboard() {
 
   const load = useCallback(async () => {
     try {
-      const me = await portalApi.me();
-      setOrg(me.org);
+      const meData = await portalApi.me();
+      setMe(meData);
       const { requests } = await portalApi.listRequests();
       setReqs(requests ?? []);
     } catch {
@@ -70,9 +74,11 @@ export default function PortalDashboard() {
     router.replace("/portal/login");
   }
 
-  if (loading) {
+  if (loading || !me) {
     return <div className="grid min-h-screen place-items-center bg-[#060b18] text-sm text-slate-400">Cargando…</div>;
   }
+
+  const canManageTeam = me.user.role === "owner" || me.user.role === "admin";
 
   return (
     <div className="min-h-screen bg-[#060b18] text-white">
@@ -83,7 +89,7 @@ export default function PortalDashboard() {
             <img src="/brand/logo.webp" alt="NEXUS" className="h-8 w-auto" />
           </Link>
           <div className="flex items-center gap-4 text-sm">
-            <span className="text-slate-400">{org?.name}</span>
+            <span className="text-slate-400">{me.org.name}</span>
             <button
               type="button"
               onClick={logout}
@@ -96,64 +102,94 @@ export default function PortalDashboard() {
       </header>
 
       <main className="mx-auto max-w-5xl px-5 py-10">
-        <h1 className="text-2xl font-bold">Hola, {org?.name}</h1>
+        <h1 className="text-2xl font-bold">Hola, {me.org.name}</h1>
         <p className="mt-1 text-sm text-slate-400">Gestiona tus solicitudes de evaluación de seguridad.</p>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1.4fr]">
-          {/* New request */}
-          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Nueva solicitud</h2>
-            <form onSubmit={create} className="mt-4 space-y-4">
-              <Field
-                label="Título"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Evaluación web Q4"
-              />
-              <label className="block text-xs font-medium text-slate-400">
-                Alcance (opcional)
-                <textarea
-                  value={scope}
-                  onChange={(e) => setScope(e.target.value)}
-                  rows={3}
-                  placeholder="Dominios / sistemas autorizados…"
-                  className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#0a1324] px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-cyan-400/60 focus:outline-none"
-                />
-              </label>
-              {err ? <p className="text-sm text-rose-400">{err}</p> : null}
-              <PrimaryButton type="submit" disabled={creating || !title.trim()}>
-                {creating ? "Enviando…" : "Crear solicitud"}
-              </PrimaryButton>
-            </form>
-          </section>
-
-          {/* Requests list */}
-          <section>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Tus solicitudes</h2>
-            {reqs.length === 0 ? (
-              <p className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-5 text-sm text-slate-400">
-                Aún no tienes solicitudes. Crea la primera a la izquierda.
-              </p>
-            ) : (
-              <ul className="mt-4 space-y-3">
-                {reqs.map((r) => (
-                  <li key={r.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="font-semibold text-white">{r.title}</span>
-                      <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-300">
-                        {STATUS_LABEL[r.status] ?? r.status}
-                      </span>
-                    </div>
-                    {r.scope ? <p className="mt-1 text-xs text-slate-400">{r.scope}</p> : null}
-                    <p className="mt-1 text-[11px] text-slate-500">
-                      #{r.id} · {new Date(r.created_at).toLocaleString()}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+        {/* Tabs */}
+        <div className="mt-6 flex gap-1 border-b border-white/10">
+          <button
+            type="button"
+            onClick={() => setTab("requests")}
+            className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+              tab === "requests"
+                ? "border-cyan-400 text-white"
+                : "border-transparent text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Solicitudes
+          </button>
+          {canManageTeam ? (
+            <button
+              type="button"
+              onClick={() => setTab("team")}
+              className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                tab === "team" ? "border-cyan-400 text-white" : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Equipo
+            </button>
+          ) : null}
         </div>
+
+        {tab === "team" && canManageTeam ? <TeamPanel me={me} /> : null}
+
+        {tab === "requests" ? (
+          <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_1.4fr]">
+            {/* New request */}
+            <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Nueva solicitud</h2>
+              <form onSubmit={create} className="mt-4 space-y-4">
+                <Field
+                  label="Título"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Evaluación web Q4"
+                />
+                <label className="block text-xs font-medium text-slate-400">
+                  Alcance (opcional)
+                  <textarea
+                    value={scope}
+                    onChange={(e) => setScope(e.target.value)}
+                    rows={3}
+                    placeholder="Dominios / sistemas autorizados…"
+                    className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#0a1324] px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-cyan-400/60 focus:outline-none"
+                  />
+                </label>
+                {err ? <p className="text-sm text-rose-400">{err}</p> : null}
+                <PrimaryButton type="submit" disabled={creating || !title.trim()}>
+                  {creating ? "Enviando…" : "Crear solicitud"}
+                </PrimaryButton>
+              </form>
+            </section>
+
+            {/* Requests list */}
+            <section>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Tus solicitudes</h2>
+              {reqs.length === 0 ? (
+                <p className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] p-5 text-sm text-slate-400">
+                  Aún no tienes solicitudes. Crea la primera a la izquierda.
+                </p>
+              ) : (
+                <ul className="mt-4 space-y-3">
+                  {reqs.map((r) => (
+                    <li key={r.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-semibold text-white">{r.title}</span>
+                        <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-300">
+                          {STATUS_LABEL[r.status] ?? r.status}
+                        </span>
+                      </div>
+                      {r.scope ? <p className="mt-1 text-xs text-slate-400">{r.scope}</p> : null}
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        #{r.id} · {new Date(r.created_at).toLocaleString()}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        ) : null}
 
         <p className="mt-10 text-xs text-slate-500">
           ¿Prefieres hablar con el equipo?{" "}

@@ -47,6 +47,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export type Org = { id: number; name: string; created_at: string };
+export type PortalRole = "owner" | "admin" | "member";
 export type PortalRequest = {
   id: number;
   title: string;
@@ -54,6 +55,19 @@ export type PortalRequest = {
   status: string;
   created_at: string;
 };
+export type Member = {
+  id: number;
+  email: string;
+  role: PortalRole;
+  created_at: string;
+};
+export type Invite = {
+  id: number;
+  email: string;
+  role: PortalRole;
+  created_at: string;
+};
+export type Me = { user: { id: number; role: PortalRole; email: string }; org: Org };
 
 export const portalApi = {
   register: (org_name: string, email: string, password: string) =>
@@ -63,8 +77,30 @@ export const portalApi = {
     }),
   login: (email: string, password: string) =>
     req<{ token: string }>("/login", { method: "POST", body: JSON.stringify({ email, password }) }),
-  me: () => req<{ user: { id: number }; org: Org }>("/me"),
+  me: () => req<Me>("/me"),
   listRequests: () => req<{ requests: PortalRequest[] }>("/requests"),
   createRequest: (title: string, scope: string) =>
     req<{ ok: boolean; id: number }>("/requests", { method: "POST", body: JSON.stringify({ title, scope }) }),
+
+  // --- team management (admin+) ---
+  listMembers: () => req<{ members: Member[] }>("/members"),
+  updateMemberRole: (id: number, role: PortalRole) =>
+    req<{ ok: boolean }>(`/members/${id}`, { method: "PATCH", body: JSON.stringify({ role }) }),
+  removeMember: (id: number) => req<{ ok: boolean }>(`/members/${id}`, { method: "DELETE" }),
+  listInvites: () => req<{ invites: Invite[] }>("/invites"),
+  createInvite: (email: string, role: PortalRole) =>
+    req<{ ok: boolean; id: number; token: string; email: string; role: PortalRole }>("/invites", {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    }),
+  revokeInvite: (id: number) => req<{ ok: boolean }>(`/invites/${id}`, { method: "DELETE" }),
+
+  // --- invitation acceptance (public, token-gated; no auth header needed) ---
+  lookupInvite: (token: string) =>
+    req<{ email: string; role: PortalRole; org: string }>(`/invites/lookup?token=${encodeURIComponent(token)}`),
+  acceptInvite: (token: string, password: string) =>
+    req<{ token: string }>("/invites/accept", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }),
 };

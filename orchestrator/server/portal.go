@@ -190,7 +190,16 @@ func (s *Server) portalMe(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 404, "organización no encontrada")
 		return
 	}
-	writeJSON(w, 200, map[string]any{"user": map[string]any{"id": userID}, "org": org})
+	role := ""
+	email := ""
+	if u, err := pg.GetPortalUserByID(userID); err == nil && u != nil {
+		role = u.Role
+		email = u.Email
+	}
+	writeJSON(w, 200, map[string]any{
+		"user": map[string]any{"id": userID, "role": role, "email": email},
+		"org":  org,
+	})
 }
 
 // POST /api/portal/requests {title, scope}

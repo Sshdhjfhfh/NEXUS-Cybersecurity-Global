@@ -64,6 +64,17 @@ CREATE TABLE IF NOT EXISTS portal_requests (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_portal_requests_org ON portal_requests(org_id);
+CREATE TABLE IF NOT EXISTS portal_invites (
+    id          BIGSERIAL PRIMARY KEY,
+    org_id      BIGINT NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+    email       TEXT NOT NULL,
+    role        TEXT NOT NULL DEFAULT 'member',
+    token       TEXT NOT NULL UNIQUE,
+    created_by  BIGINT REFERENCES portal_users(id) ON DELETE SET NULL,
+    accepted    BOOLEAN NOT NULL DEFAULT false,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_portal_invites_org ON portal_invites(org_id);
 `
 
 // EnsurePortalTables crea las tablas del portal si no existen (aditivo, reversible).
@@ -165,4 +176,181 @@ func (d *DB) ListPortalRequests(orgID int64) ([]PortalRequest, error) {
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+// Member es un usuario del portal visible en la gestión de equipo (sin hash).
+type Member struct {
+	ID        int64     `json:"id"`
+	OrgID     int64     `json:"org_id"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// PortalInvite es una invitación pendiente/aceptada a una organización.
+type PortalInvite struct {
+	ID        int64     `json:"id"`
+	OrgID     int64     `json:"org_id"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	Token     string    `json:"token,omitempty"`
+	Accepted  bool      `json:"accepted"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// GetPortalUserByID devuelve el usuario por id (o nil si no existe). Se usa para
+// resolver el rol actual desde la base de datos en cada petición (no desde el JWT,
+// que podría quedar obsoleto si cambia el rol).
+func (d *DB) GetPortalUserByID(id int64) (*PortalUser, error) {
+	var u PortalUser
+	err := d.QueryRow(
+		`SELECT id, org_id, email, password_hash, role FROM portal_users WHERE id = $1`, id,
+	).Scan(&u.ID, &u.OrgID, &u.Email, &u.PasswordHash, &u.Role)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+// ListMembers devuelve SOLO los miembros de la organización dada (aislamiento).
+func (d *DB) ListMembers(orgID int64) ([]Member, error) {
+	rows, err := d.Query(
+		`SELECT id, org_id, email, role, created_at FROM portal_users
+         WHERE org_id = $1 ORDER BY created_at ASC LIMIT 500`, orgID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Member{}
+	for rows.Next() {
+		var m Member
+		if err := rows.Scan(&m.ID, &m.OrgID, &m.Email, &m.Role, &m.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+// CountOwners cuenta los propietarios activos de una organización. Se usa para
+// impedir que una organización se quede sin ningún owner.
+func (d *DB) CountOwners(orgID int64) (int, error) {
+	var n int
+	err := d.QueryRow(
+		`SELECT COUNT(*) FROM portal_users WHERE org_id = $1 AND role = 'owner'`, orgID,
+	).Scan(&n)
+	return n, err
+}
+
+// UpdateMemberRole cambia el rol de un miembro, siempre acotado a su organización.
+func (d *DB) UpdateMemberRole(orgID, userID int64, role string) error {
+	res, err := d.Exec(
+		`UPDATE portal_users SET role = $1 WHERE id = $2 AND org_id = $3`, role, userID, orgID,
+	)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// DeleteMember elimina un miembro de la organización (acotado a org_id).
+func (d *DB) DeleteMember(orgID, userID int64) error {
+	res, err := d.Exec(`DELETE FROM portal_users WHERE id = $1 AND org_id = $2`, userID, orgID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// CreateInvite crea una invitación pendiente para la organización dada.
+func (d *DB) CreateInvite(orgID, createdBy int64, email, role, token string) (int64, error) {
+	var id int64
+	err := d.QueryRow(
+		`INSERT INTO portal_invites(org_id, email, role, token, created_by) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+		orgID, email, role, token, createdBy,
+	).Scan(&id)
+	return id, err
+}
+
+// GetInviteByToken resuelve una invitación por su token (o nil si no existe).
+func (d *DB) GetInviteByToken(token string) (*PortalInvite, error) {
+	var inv PortalInvite
+	err := d.QueryRow(
+		`SELECT id, org_id, email, role, token, accepted, created_at FROM portal_invites WHERE token = $1`, token,
+	).Scan(&inv.ID, &inv.OrgID, &inv.Email, &inv.Role, &inv.Token, &inv.Accepted, &inv.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &inv, nil
+}
+
+// ListInvites devuelve SOLO las invitaciones pendientes de la organización dada.
+func (d *DB) ListInvites(orgID int64) ([]PortalInvite, error) {
+	rows, err := d.Query(
+		`SELECT id, org_id, email, role, accepted, created_at FROM portal_invites
+         WHERE org_id = $1 AND accepted = false ORDER BY created_at DESC LIMIT 500`, orgID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []PortalInvite{}
+	for rows.Next() {
+		var inv PortalInvite
+		if err := rows.Scan(&inv.ID, &inv.OrgID, &inv.Email, &inv.Role, &inv.Accepted, &inv.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, inv)
+	}
+	return out, rows.Err()
+}
+
+// DeleteInvite revoca una invitación (acotado a org_id).
+func (d *DB) DeleteInvite(orgID, id int64) error {
+	res, err := d.Exec(`DELETE FROM portal_invites WHERE id = $1 AND org_id = $2`, id, orgID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// AcceptInvite crea el usuario de la invitación y la marca aceptada en una
+// transacción. Devuelve ErrEmailTaken si el email ya está registrado.
+func (d *DB) AcceptInvite(inviteID, orgID int64, email, role, passwordHash string) (userID int64, err error) {
+	tx, err := d.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback() //nolint:errcheck
+	err = tx.QueryRow(
+		`INSERT INTO portal_users(org_id, email, password_hash, role) VALUES ($1,$2,$3,$4) RETURNING id`,
+		orgID, email, passwordHash, role,
+	).Scan(&userID)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return 0, ErrEmailTaken
+		}
+		return 0, err
+	}
+	if _, err = tx.Exec(`UPDATE portal_invites SET accepted = true WHERE id = $1`, inviteID); err != nil {
+		return 0, err
+	}
+	return userID, tx.Commit()
 }

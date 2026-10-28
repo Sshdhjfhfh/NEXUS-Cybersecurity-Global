@@ -692,6 +692,16 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/portal/me", s.portalMe)
 	mux.HandleFunc("POST /api/portal/requests", s.portalCreateRequest)
 	mux.HandleFunc("GET /api/portal/requests", s.portalListRequests)
+	// Team management: members, roles (RBAC) and invitations. Role is enforced
+	// server-side; invite accept + lookup are public (token-gated).
+	mux.HandleFunc("GET /api/portal/members", s.portalListMembers)
+	mux.HandleFunc("PATCH /api/portal/members/{id}", s.portalUpdateMember)
+	mux.HandleFunc("DELETE /api/portal/members/{id}", s.portalDeleteMember)
+	mux.HandleFunc("GET /api/portal/invites", s.portalListInvites)
+	mux.HandleFunc("POST /api/portal/invites", s.portalCreateInvite)
+	mux.HandleFunc("DELETE /api/portal/invites/{id}", s.portalDeleteInvite)
+	mux.HandleFunc("GET /api/portal/invites/lookup", s.portalLookupInvite)
+	mux.HandleFunc("POST /api/portal/invites/accept", s.portalAcceptInvite)
 
 	mux.HandleFunc("GET /api/stats", s.stats)
 	mux.HandleFunc("GET /api/logs", s.getLogs)

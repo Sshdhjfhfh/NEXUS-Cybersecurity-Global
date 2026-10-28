@@ -1,6 +1,9 @@
 package server
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestPortalJWTRoundTripAndTypeGuard(t *testing.T) {
 	key := []byte("0123456789abcdef0123456789abcdef")
@@ -22,5 +25,60 @@ func TestPortalJWTRoundTripAndTypeGuard(t *testing.T) {
 	}
 	if _, _, ok := parsePortalJWT(consoleTok, key); ok {
 		t.Fatal("a console token must not be accepted as a portal token")
+	}
+}
+
+func TestRoleHierarchy(t *testing.T) {
+	// owner outranks admin outranks member; unknown roles have no privilege.
+	if !(roleRank("owner") > roleRank("admin") && roleRank("admin") > roleRank("member")) {
+		t.Fatal("role ranks must be strictly ordered owner > admin > member")
+	}
+	if roleRank("") != 0 || roleRank("superuser") != 0 {
+		t.Fatal("unknown roles must rank 0")
+	}
+	// A member must not satisfy an admin requirement; an owner must.
+	if roleRank("member") >= roleRank("admin") {
+		t.Fatal("member must not satisfy an admin gate")
+	}
+	if roleRank("owner") < roleRank("admin") {
+		t.Fatal("owner must satisfy an admin gate")
+	}
+}
+
+func TestInviteRoleValidation(t *testing.T) {
+	// Invitations may only grant admin or member, never owner or garbage.
+	if !validInviteRole("admin") || !validInviteRole("member") {
+		t.Fatal("admin/member must be invitable")
+	}
+	if validInviteRole("owner") || validInviteRole("") || validInviteRole("root") {
+		t.Fatal("owner and unknown roles must not be invitable")
+	}
+	// validRole accepts the three real roles and rejects the rest.
+	if !validRole("owner") || !validRole("admin") || !validRole("member") {
+		t.Fatal("the three real roles must be valid")
+	}
+	if validRole("") || validRole("guest") {
+		t.Fatal("unknown roles must be invalid")
+	}
+}
+
+func TestInviteTokenUniqueAndURLSafe(t *testing.T) {
+	seen := map[string]bool{}
+	for i := 0; i < 256; i++ {
+		tok, err := newInviteToken()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(tok) < 24 {
+			t.Fatalf("token too short: %q", tok)
+		}
+		if seen[tok] {
+			t.Fatalf("duplicate token generated: %q", tok)
+		}
+		seen[tok] = true
+		// base64url (RawURLEncoding) must not contain +, / or =.
+		if strings.ContainsAny(tok, "+/=") {
+			t.Fatalf("token not URL-safe: %q", tok)
+		}
 	}
 }

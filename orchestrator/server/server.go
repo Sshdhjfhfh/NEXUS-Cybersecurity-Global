@@ -670,6 +670,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/auth/init", s.authInit)
 	mux.HandleFunc("POST /api/auth/login", s.authLogin)
 	mux.HandleFunc("POST /api/auth/change-password", s.authChangePassword)
+	mux.HandleFunc("GET /api/auth/mfa/status", s.mfaStatus)
+	mux.HandleFunc("POST /api/auth/mfa/setup", s.mfaSetup)
+	mux.HandleFunc("POST /api/auth/mfa/enable", s.mfaEnable)
+	mux.HandleFunc("POST /api/auth/mfa/disable", s.mfaDisable)
 
 	mux.HandleFunc("GET /api/health", s.health)
 	mux.HandleFunc("GET /api/ready", s.ready)

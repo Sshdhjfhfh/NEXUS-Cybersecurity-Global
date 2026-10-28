@@ -24,9 +24,12 @@ backend. Rutas desconocidas → **404 de marca**, no exponen la consola.
 - **`/.well-known/security.txt`** (RFC 9116) apuntando a la política de divulgación `/legal/vdp`.
 - **Contraseñas**: bcrypt; validación de longitud (8–72). Cookie de sesión `SameSite=Lax`.
 - **Autenticación de API**: Bearer token; SSE por `?token=` sobre mismo origen.
+- **MFA (2FA TOTP, RFC 6238)** para la consola: enrolamiento en `/system/mfa`, código de 6
+  dígitos en el login, **secreto cifrado en reposo** (AES-256-GCM con clave derivada de la
+  clave JWT). Endpoints `/api/auth/mfa/{status,setup,enable,disable}`. Unit-tested.
 
 ## Pendiente (recomendado, honesto)
-- **CSP enforced + nonce** (hoy report-only) y **MFA** para la consola.
+- **CSP enforced + nonce** (hoy report-only).
 - **Revocación de tokens** (lista de revocados / rotación de clave) y expiración más corta.
 - **Defensa CSRF explícita** para métodos que mutan si se admite auth por cookie
   (hoy el API usa Bearer; la cookie es para el guard de rutas).

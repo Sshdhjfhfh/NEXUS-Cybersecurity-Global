@@ -284,6 +284,7 @@ func (s *Server) authLogin(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
+		Code     string `json:"code"` // TOTP code, required when MFA is enabled
 	}
 	if err := decode(r, &req); err != nil {
 		writeErr(w, 400, "请求格式错误")
@@ -306,6 +307,12 @@ func (s *Server) authLogin(w http.ResponseWriter, r *http.Request) {
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.Password)); err != nil {
 		loginBrute.fail(ip)
 		writeErr(w, 401, "用户名或密码错误")
+		return
+	}
+	// Second factor: when MFA is enabled, a valid TOTP code is required.
+	if s.mfaEnabled(pg) && !s.mfaCheckPasses(pg, req.Code) {
+		loginBrute.fail(ip)
+		writeJSON(w, 401, map[string]any{"error": "código de verificación requerido o inválido", "mfa_required": true})
 		return
 	}
 	loginBrute.success(ip)

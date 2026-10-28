@@ -1,5 +1,3 @@
-import { t } from '@/lib/i18n';
-
 import {
   Activity,
   Ban,
@@ -20,11 +18,14 @@ import {
   ScrollText,
   Settings2,
   ShieldAlert,
+  ShieldCheck,
   Sparkles,
   Target,
   Terminal,
   Wrench,
 } from "lucide-react";
+
+import { t } from "@/lib/i18n";
 
 export type NavBadge = "new" | "soon";
 
@@ -97,6 +98,7 @@ export const sidebarItems: NavGroup[] = [
       { id: "asset-intercept", title: t("ui.a6d0b2b98aeb2541"), url: "/system/intercept/assets", icon: Ban },
       { id: "approvals", title: t("ui.23fbeb68396df26c"), url: "/system/intercept/approvals", icon: ClipboardList },
       { id: "logs", title: t("nav.logs"), url: "/system/logs", icon: ScrollText },
+      { id: "mfa", title: "2FA", url: "/system/mfa", icon: ShieldCheck },
       { id: "settings", title: t("ui.65a323f0c17c4950"), url: "/system/settings", icon: Settings2 },
     ],
   },

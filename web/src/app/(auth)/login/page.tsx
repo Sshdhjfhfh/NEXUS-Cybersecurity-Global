@@ -1,7 +1,5 @@
 "use client";
 
-import { t } from '@/lib/i18n';
-
 import { useEffect, useRef, useState } from "react";
 
 import { useRouter } from "next/navigation";
@@ -15,10 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { auth } from "@/lib/auth";
+import { t } from "@/lib/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -70,11 +70,12 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const { token } = await api.login("ARTEX", password);
+      const { token } = await api.login("ARTEX", password, code.trim() || undefined);
       auth.setToken(token);
       window.location.replace("/function/tasks");
-    } catch {
-      setError(t("ui.e17bb972e42bb8f7"));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      setError(/mfa|verificaci|código|code/i.test(msg) ? msg : t("ui.e17bb972e42bb8f7"));
     } finally {
       setLoading(false);
     }
@@ -83,7 +84,8 @@ export default function LoginPage() {
   if (checking) {
     return (
       <div role="status" className="flex min-h-dvh items-center justify-center text-muted-foreground">
-         {t("ui.499f61d94a755c67")} </div>
+        {t("ui.499f61d94a755c67")}{" "}
+      </div>
     );
   }
 
@@ -124,6 +126,17 @@ export default function LoginPage() {
                 autoComplete="current-password"
               />
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="mfa-code">Código 2FA (si está activado)</Label>
+              <Input
+                id="mfa-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="123456"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+              />
+            </div>
             <div className="flex items-start gap-2">
               <Checkbox
                 id="agree-terms"
@@ -132,12 +145,14 @@ export default function LoginPage() {
                 className="mt-0.5"
               />
               <Label htmlFor="agree-terms" className="text-sm font-normal leading-relaxed text-muted-foreground">
-                 {t("ui.f838f709b2e6e746")} <button
+                {t("ui.f838f709b2e6e746")}{" "}
+                <button
                   type="button"
                   onClick={() => setTermsOpen(true)}
                   className="mx-0.5 font-medium text-primary underline-offset-4 hover:underline"
                 >
-                   {t("ui.4cc0c870a16f626b")} </button>
+                  {t("ui.4cc0c870a16f626b")}{" "}
+                </button>
               </Label>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
@@ -156,8 +171,7 @@ export default function LoginPage() {
             </div>
             <div className="space-y-0.5">
               <DialogTitle className="text-base">{t("ui.3cd8049b7145473b")}</DialogTitle>
-              <p className="text-xs text-muted-foreground">
-                 {t("ui.4aa65f34991e2a76")} </p>
+              <p className="text-xs text-muted-foreground">{t("ui.4aa65f34991e2a76")} </p>
             </div>
           </DialogHeader>
 
@@ -167,9 +181,8 @@ export default function LoginPage() {
             className="max-h-[60vh] space-y-5 overflow-y-auto px-6 py-5 text-sm leading-relaxed text-muted-foreground"
           >
             <p className="rounded-lg border bg-muted/40 p-3 text-foreground/80">
-               {t("ui.5a7c86c86f54542e")} <span className="font-medium text-foreground">
-                {" "}
-                 {t("ui.91381c38f27d284d")} </span>
+              {t("ui.5a7c86c86f54542e")}{" "}
+              <span className="font-medium text-foreground"> {t("ui.91381c38f27d284d")} </span>
             </p>
 
             <section className="space-y-1.5">
@@ -177,9 +190,9 @@ export default function LoginPage() {
                 <span className="flex size-5 items-center justify-center rounded-md bg-muted text-xs font-semibold text-muted-foreground">
                   1
                 </span>
-                 {t("ui.e7056e7c0083afe1")} </h4>
-              <p className="pl-7">
-                 {t("ui.b514b75e7605de0a")} </p>
+                {t("ui.e7056e7c0083afe1")}{" "}
+              </h4>
+              <p className="pl-7">{t("ui.b514b75e7605de0a")} </p>
             </section>
 
             <section className="space-y-1.5">
@@ -187,9 +200,9 @@ export default function LoginPage() {
                 <span className="flex size-5 items-center justify-center rounded-md bg-muted text-xs font-semibold text-muted-foreground">
                   2
                 </span>
-                 {t("ui.1c762a562959ee11")} </h4>
-              <p className="pl-7">
-                 {t("ui.ac34cb98a9289067")} </p>
+                {t("ui.1c762a562959ee11")}{" "}
+              </h4>
+              <p className="pl-7">{t("ui.ac34cb98a9289067")} </p>
             </section>
 
             <section className="space-y-2">
@@ -198,10 +211,10 @@ export default function LoginPage() {
                   3
                 </span>
                 <AlertTriangle className="size-4" />
-                 {t("ui.08314c48ff997fa1")} </h4>
+                {t("ui.08314c48ff997fa1")}{" "}
+              </h4>
               <ul className="ml-7 list-decimal space-y-1.5 rounded-lg border border-destructive/20 bg-destructive/5 p-3 pl-8 text-foreground/80 marker:text-destructive/70">
-                <li>
-                   {t("ui.3661dfb7da01c3ba")} </li>
+                <li>{t("ui.3661dfb7da01c3ba")} </li>
                 <li>{t("ui.67965c2256b9024c")}</li>
                 <li>{t("ui.530cfc40022bc215")}</li>
                 <li>{t("ui.6053f1ad659a4f4d")}</li>
@@ -214,9 +227,9 @@ export default function LoginPage() {
                 <span className="flex size-5 items-center justify-center rounded-md bg-muted text-xs font-semibold text-muted-foreground">
                   4
                 </span>
-                 {t("ui.e0aa25d0c12fd5c0")} </h4>
-              <p className="pl-7">
-                 {t("ui.0d105152be2fde3f")} </p>
+                {t("ui.e0aa25d0c12fd5c0")}{" "}
+              </h4>
+              <p className="pl-7">{t("ui.0d105152be2fde3f")} </p>
             </section>
 
             <section className="space-y-1.5">
@@ -224,9 +237,9 @@ export default function LoginPage() {
                 <span className="flex size-5 items-center justify-center rounded-md bg-muted text-xs font-semibold text-muted-foreground">
                   5
                 </span>
-                 {t("ui.55aa84ccdeafe5e7")} </h4>
-              <p className="pl-7">
-                 {t("ui.f78159909c68f11c")} </p>
+                {t("ui.55aa84ccdeafe5e7")}{" "}
+              </h4>
+              <p className="pl-7">{t("ui.f78159909c68f11c")} </p>
             </section>
 
             <section className="space-y-1.5">
@@ -234,11 +247,11 @@ export default function LoginPage() {
                 <span className="flex size-5 items-center justify-center rounded-md bg-muted text-xs font-semibold text-muted-foreground">
                   6
                 </span>
-                 {t("ui.9354738742e552f4")} </h4>
+                {t("ui.9354738742e552f4")}{" "}
+              </h4>
               <p className="pl-7">
-                 {t("ui.59e6806b7747ab97")} <span className="font-medium text-foreground">
-                  {" "}
-                   {t("ui.a9f9a1d26d4553be")} </span>
+                {t("ui.59e6806b7747ab97")}{" "}
+                <span className="font-medium text-foreground"> {t("ui.a9f9a1d26d4553be")} </span>
               </p>
             </section>
 
@@ -247,9 +260,9 @@ export default function LoginPage() {
                 <span className="flex size-5 items-center justify-center rounded-md bg-muted text-xs font-semibold text-muted-foreground">
                   7
                 </span>
-                 {t("ui.7c372ca0b41a6af9")} </h4>
-              <p className="pl-7">
-                 {t("ui.a5391cc84c107dc6")} </p>
+                {t("ui.7c372ca0b41a6af9")}{" "}
+              </h4>
+              <p className="pl-7">{t("ui.a5391cc84c107dc6")} </p>
             </section>
 
             <section className="space-y-1.5">
@@ -257,9 +270,9 @@ export default function LoginPage() {
                 <span className="flex size-5 items-center justify-center rounded-md bg-muted text-xs font-semibold text-muted-foreground">
                   8
                 </span>
-                 {t("ui.d067c744eb938b79")} </h4>
-              <p className="pl-7">
-                 {t("ui.b46fcb9e8fdb6f02")} </p>
+                {t("ui.d067c744eb938b79")}{" "}
+              </h4>
+              <p className="pl-7">{t("ui.b46fcb9e8fdb6f02")} </p>
             </section>
           </div>
 
@@ -276,7 +289,8 @@ export default function LoginPage() {
                   setError("");
                 }}
               >
-                 {t("ui.587d97e9ccbb8c7b")} </Button>
+                {t("ui.587d97e9ccbb8c7b")}{" "}
+              </Button>
             </DialogClose>
           </DialogFooter>
         </DialogContent>

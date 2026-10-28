@@ -1,4 +1,4 @@
-import { t, localizeText, localizeApiDisplay } from '@/lib/i18n';
+import { localizeApiDisplay, localizeText, t } from "@/lib/i18n";
 
 // Real backend client. /api/* is proxied to the Go backend (next.config rewrites).
 // Returns the domain types in lib/types.ts. Shapes match the backend handlers;
@@ -146,7 +146,7 @@ export async function http<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(localizeText(message));
   }
   if (r.status === 204) return undefined as T;
-  return localizeApiDisplay(await r.json() as T, path);
+  return localizeApiDisplay((await r.json()) as T, path);
 }
 
 // sseUrl builds a URL for Server-Sent Events streams.
@@ -219,21 +219,32 @@ function interceptPageQuery(page: number, size: number, filter: InterceptApprova
 export const api = {
   labStatus: () => get<import("./laboratory").LabStatus>("/lab/status"),
   labRuns: (task: string) => get<import("./laboratory").LabRun[]>(`/lab/tasks/${encodeURIComponent(task)}/runs`),
-  labPredictions: (task: string) => get<import("./laboratory").LabPrediction[]>(`/lab/tasks/${encodeURIComponent(task)}/predictions`),
+  labPredictions: (task: string) =>
+    get<import("./laboratory").LabPrediction[]>(`/lab/tasks/${encodeURIComponent(task)}/predictions`),
   labAnalyze: (task: string, input: { target: string; evidence_ids: string[] }) =>
     post<import("./laboratory").LabRun>(`/lab/tasks/${encodeURIComponent(task)}/runs`, input),
   labFeedback: (task: string, run: string, input: { class: string; evidence_id: string; confirmed: boolean }) =>
-    post<{ recorded: boolean }>(`/lab/tasks/${encodeURIComponent(task)}/runs/${encodeURIComponent(run)}/feedback`, input),
+    post<{ recorded: boolean }>(
+      `/lab/tasks/${encodeURIComponent(task)}/runs/${encodeURIComponent(run)}/feedback`,
+      input,
+    ),
 
   // número de versión de la aplicación backend（release tiempo ldflags Inyección, predeterminado "dev"）。
   health: () => get<{ ok: boolean; service: string; version: string }>("/health"),
 
   // ---- auth ----
   authStatus: () => get<{ initialized: boolean }>("/auth/status"),
-  login: (username: string, password: string) => post<{ token: string }>("/auth/login", { username, password }),
+  login: (username: string, password: string, code?: string) =>
+    post<{ token: string }>("/auth/login", { username, password, code }),
   initPassword: (password: string) => post<{ token: string }>("/auth/init", { password }),
   changePassword: (oldPassword: string, newPassword: string) =>
     post<{ ok: boolean }>("/auth/change-password", { old_password: oldPassword, new_password: newPassword }),
+
+  // ---- multi-factor authentication (TOTP) ----
+  mfaStatus: () => get<{ enabled: boolean }>("/auth/mfa/status"),
+  mfaSetup: () => post<{ secret: string; otpauth: string }>("/auth/mfa/setup", {}),
+  mfaEnable: (code: string) => post<{ ok: boolean }>("/auth/mfa/enable", { code }),
+  mfaDisable: (code: string) => post<{ ok: boolean }>("/auth/mfa/disable", { code }),
 
   // ---- tasks ----
   tasks: () =>
@@ -817,8 +828,7 @@ export const api = {
   // El canal es un recurso de instancias múltiples (el mismo tipo puede equiparse con múltiples robots, cada uno con sus propias reglas de filtrado), por lo que se agrupa de forma independiente.，
   // Plano no relleno settings En valor clave。
   notifyMeta: () => get<NotificationMeta>(`/notify/meta`),
-  notifyChannels: () =>
-    get<{ channels: NotificationChannel[] }>(`/notify/channels`).then((r) => arr(r.channels)),
+  notifyChannels: () => get<{ channels: NotificationChannel[] }>(`/notify/channels`).then((r) => arr(r.channels)),
   notifyCreateChannel: (payload: {
     name: string;
     kind: string;

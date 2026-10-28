@@ -113,7 +113,8 @@ func (s *Server) portalResetPassword(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudo actualizar la contraseña")
 		return
 	}
-	_ = pg.InvalidatePortalTokens(userID, "reset") // retire any other outstanding links
+	_ = pg.InvalidatePortalTokens(userID, "reset")   // retire any other outstanding links
+	_ = pg.RevokePortalUserSessionsByID(userID)      // kill any sessions after a reset
 	if u, err := pg.GetPortalUserByID(userID); err == nil && u != nil {
 		s.audit(r, &u.OrgID, u.Email, "portal_user", "password.reset", "user:"+strconv.FormatInt(userID, 10), "")
 	}

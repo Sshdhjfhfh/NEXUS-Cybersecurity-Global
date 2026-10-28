@@ -2,7 +2,7 @@
 
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
-import { CopyIcon, Trash2Icon, UserPlusIcon } from "lucide-react";
+import { CopyIcon, LogOutIcon, Trash2Icon, UserPlusIcon } from "lucide-react";
 
 import { type Invite, type Me, type Member, type PortalRole, portalApi } from "./portal";
 import { Field, PrimaryButton } from "./ui";
@@ -105,6 +105,28 @@ export function TeamPanel({ me }: { me: Me }) {
     }
   }
 
+  async function toggleDisabled(id: number, disabled: boolean) {
+    setErr("");
+    try {
+      await portalApi.setMemberDisabled(id, disabled);
+      await load();
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : "No se pudo actualizar la cuenta");
+    }
+  }
+
+  async function revokeSessions(id: number, email: string) {
+    setErr("");
+    if (!window.confirm(`¿Cerrar todas las sesiones de ${email}? Tendrá que volver a iniciar sesión.`)) {
+      return;
+    }
+    try {
+      await portalApi.revokeMemberSessions(id);
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : "No se pudieron revocar las sesiones");
+    }
+  }
+
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(newLink);
@@ -189,6 +211,11 @@ export function TeamPanel({ me }: { me: Me }) {
                       <span className="block truncate font-medium text-white">
                         {m.email}
                         {isSelf ? <span className="ml-1.5 text-[11px] text-slate-500">(tú)</span> : null}
+                        {m.disabled ? (
+                          <span className="ml-2 rounded-full border border-rose-400/30 bg-rose-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-300">
+                            Desactivado
+                          </span>
+                        ) : null}
                       </span>
                       <span className="text-[11px] text-slate-500">
                         Desde {new Date(m.created_at).toLocaleDateString()}
@@ -208,6 +235,30 @@ export function TeamPanel({ me }: { me: Me }) {
                           <option value="member">Miembro</option>
                         </select>
                       )}
+                      {!isSelf && !lockedOwner ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleDisabled(m.id, !m.disabled)}
+                          className={`rounded-md border px-2 py-1 text-xs transition-colors ${
+                            m.disabled
+                              ? "border-emerald-400/40 text-emerald-300 hover:bg-emerald-400/10"
+                              : "border-white/15 text-slate-300 hover:border-amber-400/50 hover:text-amber-300"
+                          }`}
+                        >
+                          {m.disabled ? "Reactivar" : "Desactivar"}
+                        </button>
+                      ) : null}
+                      {!isSelf && !lockedOwner && !m.disabled ? (
+                        <button
+                          type="button"
+                          onClick={() => revokeSessions(m.id, m.email)}
+                          title="Cerrar todas sus sesiones"
+                          aria-label={`Cerrar sesiones de ${m.email}`}
+                          className="rounded-md border border-white/10 p-1.5 text-slate-400 hover:border-cyan-400/40 hover:text-cyan-300"
+                        >
+                          <LogOutIcon className="size-3.5" />
+                        </button>
+                      ) : null}
                       {!isSelf && !lockedOwner ? (
                         <button
                           type="button"

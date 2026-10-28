@@ -38,7 +38,7 @@ func signPortalJWT(key []byte, userID, orgID int64) (string, error) {
 	}).SignedString(key)
 }
 
-func parsePortalJWT(tokenStr string, key []byte) (orgID, userID int64, ok bool) {
+func parsePortalJWT(tokenStr string, key []byte) (orgID, userID, iat int64, ok bool) {
 	t, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")
@@ -46,33 +46,53 @@ func parsePortalJWT(tokenStr string, key []byte) (orgID, userID int64, ok bool) 
 		return key, nil
 	})
 	if err != nil || !t.Valid {
-		return 0, 0, false
+		return 0, 0, 0, false
 	}
 	claims, ok := t.Claims.(jwt.MapClaims)
 	if !ok {
-		return 0, 0, false
+		return 0, 0, 0, false
 	}
 	if typ, _ := claims["typ"].(string); typ != "portal" {
-		return 0, 0, false // a console token must not be accepted as a portal token
+		return 0, 0, 0, false // a console token must not be accepted as a portal token
 	}
 	orgF, _ := claims["org"].(float64)
 	uid, _ := strconv.ParseInt(fmt.Sprint(claims["sub"]), 10, 64)
+	iatF, _ := claims["iat"].(float64)
 	if orgF <= 0 || uid <= 0 {
-		return 0, 0, false
+		return 0, 0, 0, false
 	}
-	return int64(orgF), uid, true
+	return int64(orgF), uid, int64(iatF), true
 }
 
 func (s *Server) portalAuth(w http.ResponseWriter, r *http.Request) (orgID, userID int64, ok bool) {
-	orgID, userID, ok = parsePortalJWT(extractToken(r), s.jwtKey)
+	orgID, userID, iat, ok := parsePortalJWT(extractToken(r), s.jwtKey)
 	if !ok {
 		writeErr(w, 401, "no autorizado")
 		return 0, 0, false
 	}
-	// A suspended organization is locked out immediately, even with a valid token.
-	if s.orgSuspended(orgID) {
-		writeErr(w, 403, "organización suspendida")
-		return 0, 0, false
+	// One query resolves everything that can revoke access mid-session: the org
+	// being suspended, the user being deactivated, or their sessions being revoked
+	// (token issued before sessions_revoked_at). Fails open only on a DB error.
+	if s.m != nil && s.m.pg != nil {
+		_, disabled, revokedAt, suspended, found, err := s.m.pg.PortalAuthState(userID)
+		if err == nil {
+			if !found {
+				writeErr(w, 401, "no autorizado")
+				return 0, 0, false
+			}
+			if suspended {
+				writeErr(w, 403, "organización suspendida")
+				return 0, 0, false
+			}
+			if disabled {
+				writeErr(w, 403, "cuenta desactivada")
+				return 0, 0, false
+			}
+			if revokedAt != nil && iat < revokedAt.Unix() {
+				writeErr(w, 401, "sesión revocada; inicia sesión de nuevo")
+				return 0, 0, false
+			}
+		}
 	}
 	return orgID, userID, true
 }
@@ -189,6 +209,11 @@ func (s *Server) portalLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	portalBrute.success(key)
+	if u.Disabled {
+		s.audit(r, &u.OrgID, u.Email, "portal_user", "auth.login_blocked", "", "cuenta desactivada")
+		writeErr(w, 403, "tu cuenta ha sido desactivada; contacta con un administrador")
+		return
+	}
 	if s.orgSuspended(u.OrgID) {
 		s.audit(r, &u.OrgID, u.Email, "portal_user", "auth.login_blocked", "", "org suspendida")
 		writeErr(w, 403, "organización suspendida; contacta con soporte")

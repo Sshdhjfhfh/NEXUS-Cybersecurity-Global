@@ -191,6 +191,101 @@ func (s *Server) portalDeleteMember(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"ok": true})
 }
 
+// POST /api/portal/members/{id}/disable {disabled} — deactivate or reactivate a
+// member (admin+). A disabled user is blocked at login and on every request.
+// Guards: you cannot disable yourself, nor the last active owner.
+func (s *Server) portalSetMemberDisabled(w http.ResponseWriter, r *http.Request) {
+	orgID, actorID, _, ok := s.portalRequireRole(w, r, "admin")
+	if !ok {
+		return
+	}
+	pg := s.portalDB(w)
+	if pg == nil {
+		return
+	}
+	targetID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || targetID <= 0 {
+		writeErr(w, 400, "id inválido")
+		return
+	}
+	var req struct {
+		Disabled bool `json:"disabled"`
+	}
+	if err := decode(r, &req); err != nil {
+		writeErr(w, 400, "cuerpo inválido")
+		return
+	}
+	if req.Disabled && targetID == actorID {
+		writeErr(w, 400, "no puedes desactivar tu propia cuenta")
+		return
+	}
+	target, err := pg.GetPortalUserByID(targetID)
+	if err != nil {
+		writeErr(w, 503, "almacenamiento no disponible")
+		return
+	}
+	if target == nil || target.OrgID != orgID {
+		writeErr(w, 404, "miembro no encontrado")
+		return
+	}
+	if req.Disabled && target.Role == "owner" {
+		owners, err := pg.CountActiveOwners(orgID)
+		if err != nil {
+			writeErr(w, 503, "almacenamiento no disponible")
+			return
+		}
+		if owners <= 1 {
+			writeErr(w, 409, "la organización debe conservar al menos un propietario activo")
+			return
+		}
+	}
+	if err := pg.SetPortalUserDisabled(orgID, targetID, req.Disabled); err != nil {
+		writeErr(w, 500, "no se pudo actualizar la cuenta")
+		return
+	}
+	action := "member.enable"
+	if req.Disabled {
+		action = "member.disable"
+	}
+	s.audit(r, &orgID, "user:"+strconv.FormatInt(actorID, 10), "portal_user", action,
+		"user:"+strconv.FormatInt(targetID, 10), "email="+target.Email)
+	writeJSON(w, 200, map[string]any{"ok": true, "disabled": req.Disabled})
+}
+
+// POST /api/portal/members/{id}/revoke-sessions — invalidate a member's active
+// tokens (admin+), forcing them to sign in again.
+func (s *Server) portalRevokeMemberSessions(w http.ResponseWriter, r *http.Request) {
+	orgID, actorID, _, ok := s.portalRequireRole(w, r, "admin")
+	if !ok {
+		return
+	}
+	pg := s.portalDB(w)
+	if pg == nil {
+		return
+	}
+	targetID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || targetID <= 0 {
+		writeErr(w, 400, "id inválido")
+		return
+	}
+	target, err := pg.GetPortalUserByID(targetID)
+	if err != nil {
+		writeErr(w, 503, "almacenamiento no disponible")
+		return
+	}
+	if target == nil || target.OrgID != orgID {
+		writeErr(w, 404, "miembro no encontrado")
+		return
+	}
+	if err := pg.RevokePortalUserSessions(orgID, targetID); err != nil {
+		writeErr(w, 500, "no se pudieron revocar las sesiones")
+		return
+	}
+	s.audit(r, &orgID, "user:"+strconv.FormatInt(actorID, 10), "portal_user", "member.revoke_sessions",
+		"user:"+strconv.FormatInt(targetID, 10), "email="+target.Email)
+	writeJSON(w, 200, map[string]any{"ok": true})
+}
+
 // POST /api/portal/invites {email, role} — create an invitation (admin+).
 // Returns a one-time token the admin shares with the invitee (no email yet).
 func (s *Server) portalCreateInvite(w http.ResponseWriter, r *http.Request) {

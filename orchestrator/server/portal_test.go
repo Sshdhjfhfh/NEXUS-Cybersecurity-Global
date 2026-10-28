@@ -11,11 +11,14 @@ func TestPortalJWTRoundTripAndTypeGuard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	org, uid, ok := parsePortalJWT(tok, key)
+	org, uid, iat, ok := parsePortalJWT(tok, key)
 	if !ok || org != 42 || uid != 7 {
 		t.Fatalf("roundtrip failed: org=%d uid=%d ok=%v", org, uid, ok)
 	}
-	if _, _, ok := parsePortalJWT(tok, []byte("ffffffffffffffffffffffffffffffff")); ok {
+	if iat <= 0 {
+		t.Fatal("iat must be present for session-revocation checks")
+	}
+	if _, _, _, ok := parsePortalJWT(tok, []byte("ffffffffffffffffffffffffffffffff")); ok {
 		t.Fatal("a token signed with another key must not validate")
 	}
 	// A console token (no typ=portal) must NOT be accepted as a portal token.
@@ -23,7 +26,7 @@ func TestPortalJWTRoundTripAndTypeGuard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, ok := parsePortalJWT(consoleTok, key); ok {
+	if _, _, _, ok := parsePortalJWT(consoleTok, key); ok {
 		t.Fatal("a console token must not be accepted as a portal token")
 	}
 	// And the reverse: a portal token (same signing key) must NOT authenticate

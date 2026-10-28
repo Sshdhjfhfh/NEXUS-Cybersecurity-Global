@@ -31,6 +31,7 @@ type PortalUser struct {
 	MFASecret     string `json:"-"` // encrypted at rest; empty when no secret set
 	MFAEnabled    bool   `json:"mfa_enabled"`
 	EmailVerified bool   `json:"email_verified"`
+	Disabled      bool   `json:"disabled"`
 }
 
 type PortalRequest struct {
@@ -75,6 +76,10 @@ ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS mfa_secret TEXT NOT NULL DEFAU
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS mfa_enabled BOOLEAN NOT NULL DEFAULT false;
 -- Email verification state.
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
+-- Per-user deactivation + session revocation. A disabled user is blocked at login
+-- and on every request; tokens issued at/before sessions_revoked_at are rejected.
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS sessions_revoked_at TIMESTAMPTZ;
 -- One-time tokens for password reset and email verification. Only the SHA-256 of
 -- the token is stored; the plaintext lives only in the email sent to the user.
 CREATE TABLE IF NOT EXISTS portal_tokens (
@@ -164,8 +169,8 @@ func (d *DB) CreateOrgWithOwner(orgName, email, passwordHash string) (orgID, use
 func (d *DB) GetPortalUserByEmail(email string) (*PortalUser, error) {
 	var u PortalUser
 	err := d.QueryRow(
-		`SELECT id, org_id, email, password_hash, role, mfa_secret, mfa_enabled, email_verified FROM portal_users WHERE email = $1`, email,
-	).Scan(&u.ID, &u.OrgID, &u.Email, &u.PasswordHash, &u.Role, &u.MFASecret, &u.MFAEnabled, &u.EmailVerified)
+		`SELECT id, org_id, email, password_hash, role, mfa_secret, mfa_enabled, email_verified, disabled FROM portal_users WHERE email = $1`, email,
+	).Scan(&u.ID, &u.OrgID, &u.Email, &u.PasswordHash, &u.Role, &u.MFASecret, &u.MFAEnabled, &u.EmailVerified, &u.Disabled)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -281,6 +286,7 @@ type Member struct {
 	OrgID     int64     `json:"org_id"`
 	Email     string    `json:"email"`
 	Role      string    `json:"role"`
+	Disabled  bool      `json:"disabled"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -301,8 +307,8 @@ type PortalInvite struct {
 func (d *DB) GetPortalUserByID(id int64) (*PortalUser, error) {
 	var u PortalUser
 	err := d.QueryRow(
-		`SELECT id, org_id, email, password_hash, role, mfa_secret, mfa_enabled, email_verified FROM portal_users WHERE id = $1`, id,
-	).Scan(&u.ID, &u.OrgID, &u.Email, &u.PasswordHash, &u.Role, &u.MFASecret, &u.MFAEnabled, &u.EmailVerified)
+		`SELECT id, org_id, email, password_hash, role, mfa_secret, mfa_enabled, email_verified, disabled FROM portal_users WHERE id = $1`, id,
+	).Scan(&u.ID, &u.OrgID, &u.Email, &u.PasswordHash, &u.Role, &u.MFASecret, &u.MFAEnabled, &u.EmailVerified, &u.Disabled)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -315,7 +321,7 @@ func (d *DB) GetPortalUserByID(id int64) (*PortalUser, error) {
 // ListMembers devuelve SOLO los miembros de la organización dada (aislamiento).
 func (d *DB) ListMembers(orgID int64) ([]Member, error) {
 	rows, err := d.Query(
-		`SELECT id, org_id, email, role, created_at FROM portal_users
+		`SELECT id, org_id, email, role, disabled, created_at FROM portal_users
          WHERE org_id = $1 ORDER BY created_at ASC LIMIT 500`, orgID,
 	)
 	if err != nil {
@@ -325,7 +331,7 @@ func (d *DB) ListMembers(orgID int64) ([]Member, error) {
 	out := []Member{}
 	for rows.Next() {
 		var m Member
-		if err := rows.Scan(&m.ID, &m.OrgID, &m.Email, &m.Role, &m.CreatedAt); err != nil {
+		if err := rows.Scan(&m.ID, &m.OrgID, &m.Email, &m.Role, &m.Disabled, &m.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, m)
@@ -341,6 +347,74 @@ func (d *DB) CountOwners(orgID int64) (int, error) {
 		`SELECT COUNT(*) FROM portal_users WHERE org_id = $1 AND role = 'owner'`, orgID,
 	).Scan(&n)
 	return n, err
+}
+
+// CountActiveOwners cuenta los propietarios NO desactivados. Impide dejar la
+// organización sin ningún owner que pueda acceder.
+func (d *DB) CountActiveOwners(orgID int64) (int, error) {
+	var n int
+	err := d.QueryRow(
+		`SELECT COUNT(*) FROM portal_users WHERE org_id = $1 AND role = 'owner' AND disabled = false`, orgID,
+	).Scan(&n)
+	return n, err
+}
+
+// PortalAuthState resuelve, en una sola consulta, el estado necesario para
+// autorizar cada petición del portal: si el usuario existe, si está desactivado,
+// cuándo se revocaron sus sesiones, y si su organización está suspendida.
+func (d *DB) PortalAuthState(userID int64) (orgID int64, disabled bool, revokedAt *time.Time, suspended bool, found bool, err error) {
+	var rev sql.NullTime
+	err = d.QueryRow(
+		`SELECT u.org_id, u.disabled, u.sessions_revoked_at, o.suspended
+         FROM portal_users u JOIN orgs o ON o.id = u.org_id WHERE u.id = $1`, userID,
+	).Scan(&orgID, &disabled, &rev, &suspended)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, false, nil, false, false, nil
+	}
+	if err != nil {
+		return 0, false, nil, false, false, err
+	}
+	if rev.Valid {
+		t := rev.Time
+		revokedAt = &t
+	}
+	return orgID, disabled, revokedAt, suspended, true, nil
+}
+
+// SetPortalUserDisabled desactiva o reactiva un usuario (acotado a su org).
+func (d *DB) SetPortalUserDisabled(orgID, userID int64, disabled bool) error {
+	res, err := d.Exec(
+		`UPDATE portal_users SET disabled = $1 WHERE id = $2 AND org_id = $3`, disabled, userID, orgID,
+	)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// RevokePortalUserSessions invalida todos los tokens activos de un usuario (los
+// emitidos hasta ahora) marcando sessions_revoked_at = now. Acotado a la org.
+func (d *DB) RevokePortalUserSessions(orgID, userID int64) error {
+	res, err := d.Exec(
+		`UPDATE portal_users SET sessions_revoked_at = now() WHERE id = $1 AND org_id = $2`, userID, orgID,
+	)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// RevokePortalUserSessionsByID invalida las sesiones de un usuario sin acotar a
+// una org (se usa tras un restablecimiento de contraseña).
+func (d *DB) RevokePortalUserSessionsByID(userID int64) error {
+	_, err := d.Exec(`UPDATE portal_users SET sessions_revoked_at = now() WHERE id = $1`, userID)
+	return err
 }
 
 // UpdateMemberRole cambia el rol de un miembro, siempre acotado a su organización.

@@ -59,6 +59,7 @@ export type Member = {
   id: number;
   email: string;
   role: PortalRole;
+  disabled: boolean;
   created_at: string;
 };
 export type Invite = {
@@ -100,6 +101,13 @@ export const portalApi = {
   updateMemberRole: (id: number, role: PortalRole) =>
     req<{ ok: boolean }>(`/members/${id}`, { method: "PATCH", body: JSON.stringify({ role }) }),
   removeMember: (id: number) => req<{ ok: boolean }>(`/members/${id}`, { method: "DELETE" }),
+  setMemberDisabled: (id: number, disabled: boolean) =>
+    req<{ ok: boolean; disabled: boolean }>(`/members/${id}/disable`, {
+      method: "POST",
+      body: JSON.stringify({ disabled }),
+    }),
+  revokeMemberSessions: (id: number) =>
+    req<{ ok: boolean }>(`/members/${id}/revoke-sessions`, { method: "POST", body: "{}" }),
   listInvites: () => req<{ invites: Invite[] }>("/invites"),
   createInvite: (email: string, role: PortalRole) =>
     req<{ ok: boolean; id: number; token: string; email: string; role: PortalRole }>("/invites", {

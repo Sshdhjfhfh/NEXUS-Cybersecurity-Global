@@ -697,6 +697,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/portal/members", s.portalListMembers)
 	mux.HandleFunc("PATCH /api/portal/members/{id}", s.portalUpdateMember)
 	mux.HandleFunc("DELETE /api/portal/members/{id}", s.portalDeleteMember)
+	mux.HandleFunc("POST /api/portal/members/{id}/disable", s.portalSetMemberDisabled)
+	mux.HandleFunc("POST /api/portal/members/{id}/revoke-sessions", s.portalRevokeMemberSessions)
 	mux.HandleFunc("GET /api/portal/invites", s.portalListInvites)
 	mux.HandleFunc("POST /api/portal/invites", s.portalCreateInvite)
 	mux.HandleFunc("DELETE /api/portal/invites/{id}", s.portalDeleteInvite)

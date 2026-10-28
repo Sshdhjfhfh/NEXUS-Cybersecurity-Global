@@ -85,6 +85,12 @@ export function SiteHeader() {
           >
             {lang === "en" ? "Request Demo" : "Solicitar demo"} <span aria-hidden>→</span>
           </Link>
+          <Link
+            href="/portal/login"
+            className="hidden text-[13px] font-medium text-slate-300 transition-colors hover:text-white sm:block"
+          >
+            {lang === "en" ? "Portal" : "Portal"}
+          </Link>
           <LangToggle />
           <button
             type="button"

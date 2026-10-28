@@ -685,6 +685,14 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/leads", s.listLeads)
 	mux.HandleFunc("PATCH /api/leads/{id}", s.updateLeadStatus)
 
+	// Multi-tenant client portal (own auth via /api/portal/ prefix, exempt from
+	// the console JWT in requireAuth). Every portal read is scoped to the org.
+	mux.HandleFunc("POST /api/portal/register", s.portalRegister)
+	mux.HandleFunc("POST /api/portal/login", s.portalLogin)
+	mux.HandleFunc("GET /api/portal/me", s.portalMe)
+	mux.HandleFunc("POST /api/portal/requests", s.portalCreateRequest)
+	mux.HandleFunc("GET /api/portal/requests", s.portalListRequests)
+
 	mux.HandleFunc("GET /api/stats", s.stats)
 	mux.HandleFunc("GET /api/logs", s.getLogs)
 	mux.HandleFunc("GET /api/logs/history", s.getLogsHistory)

@@ -12,7 +12,11 @@ backend. Rutas desconocidas → **404 de marca**, no exponen la consola.
 ## Aplicado
 - **Cabeceras de seguridad del API** (`secureHeaders`): `X-Content-Type-Options: nosniff`,
   `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cross-Origin-Resource-Policy:
-  same-origin`, `Cache-Control: no-store`. (La web ya tenía HSTS, CSP report-only, etc.)
+  same-origin`, `Cache-Control: no-store`. (La web ya tenía HSTS, nosniff, etc.)
+- **CSP con nonce (anti-XSS)**: el middleware genera un nonce por petición y fija la
+  `Content-Security-Policy` **estricta en producción** (`script-src 'self' 'nonce-…'
+  'strict-dynamic'`, `object-src 'none'`, `frame-ancestors 'none'`, `upgrade-insecure-requests`).
+  En dev va en **report-only** para no romper el HMR. El script inline de arranque usa el nonce.
 - **CORS con allowlist** (`corsHandler`): se elimina el `Access-Control-Allow-Origin: *`.
   Por defecto **no** se permite cross-origin; se configura con `NEXUS_CORS_ORIGINS`.
 - **Anti-fuerza-bruta en login**: bloqueo por IP tras 5 fallos en 15 min, por 15 min
@@ -29,7 +33,8 @@ backend. Rutas desconocidas → **404 de marca**, no exponen la consola.
   clave JWT). Endpoints `/api/auth/mfa/{status,setup,enable,disable}`. Unit-tested.
 
 ## Pendiente (recomendado, honesto)
-- **CSP enforced + nonce** (hoy report-only).
+- **Verificar la CSP estricta con un build de producción** (`next build && next start`) y
+  resolver cualquier violación residual antes de publicar.
 - **Revocación de tokens** (lista de revocados / rotación de clave) y expiración más corta.
 - **Defensa CSRF explícita** para métodos que mutan si se admite auth por cookie
   (hoy el API usa Bearer; la cookie es para el guard de rutas).

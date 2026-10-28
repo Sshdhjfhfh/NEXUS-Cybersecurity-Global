@@ -24,8 +24,9 @@ Rastrea el avance hacia una revisión de lanzamiento (Directiva §20). Marca `[x
       Cookies, AUP, Security, VDP publicadas en `/legal`. *(DPA, SLA, Subprocesadores, Aviso Legal: listados como pendientes)*
 - [ ] Libro de Reclamaciones (SOLO si aplica la modalidad consumidor en Perú).
 - [x] Trust Center con clasificación de controles (Implementado/En desarrollo/Planificado) → `/trust`.
-- [~] Endurecimiento de seguridad: **cabeceras base hechas** (nosniff, X-Frame-Options, Referrer-Policy,
-      Permissions-Policy, HSTS). *(CSP en Report-Only → enforced+nonce pendiente; revisión ASVS y MFA pendientes)*
+- [x] Endurecimiento de seguridad: cabeceras base, **CSP con nonce** (estricta en prod, report-only en dev),
+      CORS con allowlist, anti-fuerza-bruta en login, sin fugas de error, **MFA (2FA TOTP)**.
+      *(Pendiente: verificar CSP con build de prod, revisión ASVS externa, escáneres en CI)*
 - [ ] Auditoría de accesibilidad WCAG 2.2 AA.
 - [~] Pruebas E2E (Playwright): **suite escrita** (`web/e2e/`: smoke, nav, i18n, formulario, cookies,
       404, responsive 1440/390). **Ejecución pendiente**: instalar libs del navegador con

@@ -5,27 +5,9 @@ import { fileURLToPath } from "node:url";
 const isExport = process.env.NEXT_EXPORT === "1";
 // Vercel demo：整站走 mock，无后端，无需 /api 反代。
 const isMock = process.env.NEXT_PUBLIC_MOCK === "1";
-const isDev = process.env.NODE_ENV !== "production";
-
-// Content-Security-Policy. Kept in Report-Only for now (ThemeBootScript and the
-// framework rely on inline scripts; dev/HMR needs eval + websockets). Switch to
-// enforcing `Content-Security-Policy` once violations are verified clean and
-// inline scripts are nonce-based. Tracked in docs/compliance/LAUNCH_CHECKLIST.md.
-const csp = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "media-src 'self'",
-  "font-src 'self' data:",
-  `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
-  "frame-ancestors 'self'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "object-src 'none'",
-].join("; ");
 
 // Verifiable baseline security headers (OWASP-aligned). Applied to all routes.
+// Note: Content-Security-Policy is set per-request with a nonce in proxy.ts.
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
@@ -33,7 +15,7 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-DNS-Prefetch-Control", value: "on" },
-  { key: "Content-Security-Policy-Report-Only", value: csp },
+  // CSP is set per-request (with a nonce) in the proxy middleware, not here.
 ];
 
 async function securityHeadersFn() {

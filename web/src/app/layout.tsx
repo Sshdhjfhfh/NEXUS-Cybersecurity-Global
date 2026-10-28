@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { headers } from "next/headers";
+
 import type { Metadata } from "next";
 
 import { I18nProvider } from "@/components/i18n-provider";
@@ -20,9 +22,11 @@ export const metadata: Metadata = {
   description: APP_CONFIG.meta.description,
 };
 
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   const { theme_mode, theme_preset, content_layout, navbar_style, sidebar_variant, sidebar_collapsible, font } =
     PREFERENCE_DEFAULTS;
+  // Nonce for the pre-hydration inline script under the strict CSP (set in proxy.ts).
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html
       lang="es"
@@ -41,7 +45,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         {/* The app handles translation; browser translators can replace nodes React owns. */}
         <meta name="google" content="notranslate" />
         {/* Applies theme and layout preferences on load to avoid flicker and unnecessary server rerenders. */}
-        <ThemeBootScript />
+        <ThemeBootScript nonce={nonce} />
       </head>
       <body className={`${fontVars} min-h-screen antialiased`}>
         <TooltipProvider>

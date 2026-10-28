@@ -707,6 +707,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/admin/portal/requests", s.adminListPortalRequests)
 	mux.HandleFunc("POST /api/admin/portal/requests/{id}/promote", s.adminPromoteRequest)
 	mux.HandleFunc("PATCH /api/admin/portal/requests/{id}", s.adminUpdateRequestStatus)
+	// Platform-admin: manage every organization (list with counts, suspend/reactivate).
+	mux.HandleFunc("GET /api/admin/portal/orgs", s.adminListOrgs)
+	mux.HandleFunc("GET /api/admin/portal/orgs/{id}/members", s.adminListOrgMembers)
+	mux.HandleFunc("PATCH /api/admin/portal/orgs/{id}", s.adminSuspendOrg)
 
 	mux.HandleFunc("GET /api/stats", s.stats)
 	mux.HandleFunc("GET /api/logs", s.getLogs)

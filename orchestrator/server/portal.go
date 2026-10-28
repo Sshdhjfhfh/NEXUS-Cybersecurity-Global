@@ -69,7 +69,24 @@ func (s *Server) portalAuth(w http.ResponseWriter, r *http.Request) (orgID, user
 		writeErr(w, 401, "no autorizado")
 		return 0, 0, false
 	}
+	// A suspended organization is locked out immediately, even with a valid token.
+	if s.orgSuspended(orgID) {
+		writeErr(w, 403, "organización suspendida")
+		return 0, 0, false
+	}
 	return orgID, userID, true
+}
+
+// orgSuspended reports whether an org is suspended. It reads the raw DB handle
+// directly (no error written to the client) and fails open on a DB error so a
+// transient blip never locks every tenant out; login + this gate still block a
+// definitively-suspended org.
+func (s *Server) orgSuspended(orgID int64) bool {
+	if s.m == nil || s.m.pg == nil {
+		return false
+	}
+	suspended, err := s.m.pg.OrgSuspended(orgID)
+	return err == nil && suspended
 }
 
 func (s *Server) portalDB(w http.ResponseWriter) *db.DB {
@@ -167,6 +184,10 @@ func (s *Server) portalLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	portalBrute.success(key)
+	if s.orgSuspended(u.OrgID) {
+		writeErr(w, 403, "organización suspendida; contacta con soporte")
+		return
+	}
 	tok, err := signPortalJWT(s.jwtKey, u.ID, u.OrgID)
 	if err != nil {
 		writeErr(w, 500, "no se pudo emitir el token")

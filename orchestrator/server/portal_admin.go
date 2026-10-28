@@ -137,6 +137,66 @@ func (s *Server) adminPromoteRequest(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GET /api/admin/portal/orgs — all organizations with member/request counts.
+func (s *Server) adminListOrgs(w http.ResponseWriter, r *http.Request) {
+	pg := s.portalDB(w)
+	if pg == nil {
+		return
+	}
+	orgs, err := pg.AdminListOrgs()
+	if err != nil {
+		writeErr(w, 500, "no se pudieron listar las organizaciones")
+		return
+	}
+	writeJSON(w, 200, map[string]any{"orgs": orgs})
+}
+
+// GET /api/admin/portal/orgs/{id}/members — members of one organization.
+func (s *Server) adminListOrgMembers(w http.ResponseWriter, r *http.Request) {
+	pg := s.portalDB(w)
+	if pg == nil {
+		return
+	}
+	orgID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || orgID <= 0 {
+		writeErr(w, 400, "id inválido")
+		return
+	}
+	members, err := pg.ListMembers(orgID)
+	if err != nil {
+		writeErr(w, 500, "no se pudieron listar los miembros")
+		return
+	}
+	writeJSON(w, 200, map[string]any{"members": members})
+}
+
+// PATCH /api/admin/portal/orgs/{id} {suspended} — suspend or reactivate an org.
+// A suspended org is locked out of the portal (login and every authenticated
+// call) until reactivated.
+func (s *Server) adminSuspendOrg(w http.ResponseWriter, r *http.Request) {
+	pg := s.portalDB(w)
+	if pg == nil {
+		return
+	}
+	orgID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || orgID <= 0 {
+		writeErr(w, 400, "id inválido")
+		return
+	}
+	var body struct {
+		Suspended bool `json:"suspended"`
+	}
+	if err := decode(r, &body); err != nil {
+		writeErr(w, 400, "cuerpo inválido")
+		return
+	}
+	if err := pg.SetOrgSuspended(orgID, body.Suspended); err != nil {
+		writeErr(w, 500, "no se pudo actualizar la organización")
+		return
+	}
+	writeJSON(w, 200, map[string]any{"ok": true, "suspended": body.Suspended})
+}
+
 // PATCH /api/admin/portal/requests/{id} {status} — operator sets the status the
 // client sees (scheduled / in_progress / done).
 func (s *Server) adminUpdateRequestStatus(w http.ResponseWriter, r *http.Request) {

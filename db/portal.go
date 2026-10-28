@@ -18,6 +18,7 @@ var ErrEmailTaken = errors.New("email already registered")
 type Org struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
+	Suspended bool      `json:"suspended"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -64,6 +65,8 @@ CREATE TABLE IF NOT EXISTS portal_requests (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_portal_requests_org ON portal_requests(org_id);
+-- Platform operator can suspend an organization (blocks all portal access).
+ALTER TABLE orgs ADD COLUMN IF NOT EXISTS suspended BOOLEAN NOT NULL DEFAULT false;
 -- Link a promoted request to the engine task an operator created from it.
 ALTER TABLE portal_requests ADD COLUMN IF NOT EXISTS engine_task_id BIGINT;
 CREATE TABLE IF NOT EXISTS portal_invites (
@@ -138,7 +141,8 @@ func (d *DB) GetPortalUserByEmail(email string) (*PortalUser, error) {
 // GetOrg devuelve la organización por id.
 func (d *DB) GetOrg(id int64) (*Org, error) {
 	var o Org
-	err := d.QueryRow(`SELECT id, name, created_at FROM orgs WHERE id = $1`, id).Scan(&o.ID, &o.Name, &o.CreatedAt)
+	err := d.QueryRow(`SELECT id, name, suspended, created_at FROM orgs WHERE id = $1`, id).
+		Scan(&o.ID, &o.Name, &o.Suspended, &o.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -146,6 +150,60 @@ func (d *DB) GetOrg(id int64) (*Org, error) {
 		return nil, err
 	}
 	return &o, nil
+}
+
+// OrgSummary es una organización con contadores agregados, para la consola de
+// plataforma del operador.
+type OrgSummary struct {
+	Org
+	MemberCount  int `json:"member_count"`
+	RequestCount int `json:"request_count"`
+}
+
+// AdminListOrgs lista TODAS las organizaciones con sus contadores (operador).
+func (d *DB) AdminListOrgs() ([]OrgSummary, error) {
+	rows, err := d.Query(
+		`SELECT o.id, o.name, o.suspended, o.created_at,
+                (SELECT COUNT(*) FROM portal_users u WHERE u.org_id = o.id)    AS members,
+                (SELECT COUNT(*) FROM portal_requests r WHERE r.org_id = o.id) AS requests
+         FROM orgs o ORDER BY o.created_at DESC LIMIT 1000`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []OrgSummary{}
+	for rows.Next() {
+		var s OrgSummary
+		if err := rows.Scan(&s.ID, &s.Name, &s.Suspended, &s.CreatedAt, &s.MemberCount, &s.RequestCount); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// SetOrgSuspended suspende o reactiva una organización.
+func (d *DB) SetOrgSuspended(id int64, suspended bool) error {
+	res, err := d.Exec(`UPDATE orgs SET suspended = $1 WHERE id = $2`, suspended, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// OrgSuspended indica si la organización está suspendida. Se usa para bloquear el
+// acceso del portal en cada petición autenticada.
+func (d *DB) OrgSuspended(id int64) (bool, error) {
+	var suspended bool
+	err := d.QueryRow(`SELECT suspended FROM orgs WHERE id = $1`, id).Scan(&suspended)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return suspended, err
 }
 
 // CreatePortalRequest crea una solicitud de evaluación para la organización dada.

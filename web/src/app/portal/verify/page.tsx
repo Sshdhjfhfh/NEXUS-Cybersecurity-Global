@@ -35,19 +35,19 @@ function VerifyInner() {
       title="Verificación de email"
       subtitle={subtitle}
       footer={
-        <Link href="/portal/login" className="text-cyan-300 hover:text-cyan-200">
+        <Link href="/portal/login" className="text-cyan-600 hover:text-cyan-700">
           Ir a iniciar sesión
         </Link>
       }
     >
       {state === "ok" ? (
-        <p className="text-sm text-emerald-300">✓ Gracias, tu dirección de email está confirmada.</p>
+        <p className="text-sm text-emerald-600">✓ Gracias, tu dirección de email está confirmada.</p>
       ) : state === "error" ? (
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-slate-500">
           Inicia sesión y vuelve a enviar el correo de verificación desde la pestaña Seguridad.
         </p>
       ) : (
-        <p className="text-sm text-slate-400">Un momento…</p>
+        <p className="text-sm text-slate-500">Un momento…</p>
       )}
     </PortalAuthShell>
   );
@@ -57,7 +57,9 @@ export default function PortalVerify() {
   return (
     <Suspense
       fallback={
-        <div className="grid min-h-screen place-items-center bg-[#060b18] text-sm text-slate-400">Cargando…</div>
+        <div className="grid min-h-screen place-items-center bg-gradient-to-br from-slate-50 via-[#eef4fb] to-[#e6eefb] text-sm text-slate-500">
+          Cargando…
+        </div>
       }
     >
       <VerifyInner />

@@ -16,10 +16,10 @@ const ROLE_LABEL: Record<PortalRole, string> = {
 function RoleBadge({ role }: { role: PortalRole }) {
   const tone =
     role === "owner"
-      ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
+      ? "border-amber-200 bg-amber-50 text-amber-700"
       : role === "admin"
-        ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-300"
-        : "border-white/15 bg-white/5 text-slate-300";
+        ? "border-cyan-200 bg-cyan-50 text-cyan-700"
+        : "border-slate-200 bg-slate-100 text-slate-600";
   return (
     <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${tone}`}>
       {ROLE_LABEL[role]}
@@ -140,14 +140,14 @@ export function TeamPanel({ me }: { me: Me }) {
   const canManageOwners = me.user.role === "owner";
 
   if (loading) {
-    return <p className="mt-4 text-sm text-slate-400">Cargando equipo…</p>;
+    return <p className="mt-4 text-sm text-slate-500">Cargando equipo…</p>;
   }
 
   return (
     <div className="mt-4 grid gap-8 lg:grid-cols-[1fr_1.4fr]">
       {/* Invite */}
-      <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-cyan-300">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-cyan-700">
           <UserPlusIcon className="size-4" /> Invitar miembro
         </h2>
         <form onSubmit={invite} className="mt-4 space-y-4">
@@ -159,35 +159,35 @@ export function TeamPanel({ me }: { me: Me }) {
             placeholder="colega@empresa.com"
             required
           />
-          <label className="block text-xs font-medium text-slate-400">
+          <label className="block text-xs font-medium text-slate-600">
             Rol
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as PortalRole)}
-              className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#0a1324] px-3 py-2.5 text-sm text-white focus:border-cyan-400/60 focus:outline-none"
+              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-cyan-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-cyan-100"
             >
               <option value="member">Miembro (crear y ver solicitudes)</option>
               <option value="admin">Administrador (gestiona el equipo)</option>
             </select>
           </label>
-          {err ? <p className="text-sm text-rose-400">{err}</p> : null}
+          {err ? <p className="text-sm text-rose-500">{err}</p> : null}
           <PrimaryButton type="submit" disabled={busy || !email.trim()}>
             {busy ? "Generando…" : "Generar invitación"}
           </PrimaryButton>
         </form>
         {newLink ? (
-          <div className="mt-5 rounded-xl border border-cyan-400/25 bg-cyan-400/5 p-4">
-            <p className="text-xs text-slate-300">
+          <div className="mt-5 rounded-xl border border-cyan-200 bg-cyan-50 p-4">
+            <p className="text-xs text-slate-600">
               Comparte este enlace con la persona invitada. Es de un solo uso y fija su email y rol.
             </p>
             <div className="mt-2 flex items-center gap-2">
-              <code className="min-w-0 flex-1 truncate rounded-md bg-[#0a1324] px-2.5 py-1.5 text-[11px] text-cyan-200">
+              <code className="min-w-0 flex-1 truncate rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-cyan-700">
                 {newLink}
               </code>
               <button
                 type="button"
                 onClick={copyLink}
-                className="inline-flex shrink-0 items-center gap-1 rounded-md border border-white/15 px-2.5 py-1.5 text-[11px] text-slate-200 hover:border-cyan-400/50 hover:text-white"
+                className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-600 hover:border-cyan-400 hover:text-cyan-700"
               >
                 <CopyIcon className="size-3.5" /> {copied ? "Copiado" : "Copiar"}
               </button>
@@ -199,25 +199,25 @@ export function TeamPanel({ me }: { me: Me }) {
       {/* Members + pending invites */}
       <section className="space-y-6">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Miembros ({members.length})</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-700">Miembros ({members.length})</h2>
           <ul className="mt-4 space-y-3">
             {members.map((m) => {
               const isSelf = m.id === me.user.id;
               const lockedOwner = m.role === "owner" && !canManageOwners;
               return (
-                <li key={m.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <li key={m.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <span className="block truncate font-medium text-white">
+                      <span className="block truncate font-medium text-slate-900">
                         {m.email}
-                        {isSelf ? <span className="ml-1.5 text-[11px] text-slate-500">(tú)</span> : null}
+                        {isSelf ? <span className="ml-1.5 text-[11px] text-slate-400">(tú)</span> : null}
                         {m.disabled ? (
-                          <span className="ml-2 rounded-full border border-rose-400/30 bg-rose-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-300">
+                          <span className="ml-2 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700">
                             Desactivado
                           </span>
                         ) : null}
                       </span>
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-[11px] text-slate-400">
                         Desde {new Date(m.created_at).toLocaleDateString()}
                       </span>
                     </div>
@@ -228,7 +228,7 @@ export function TeamPanel({ me }: { me: Me }) {
                         <select
                           value={m.role}
                           onChange={(e) => changeRole(m.id, e.target.value as PortalRole)}
-                          className="rounded-md border border-white/15 bg-[#0a1324] px-2 py-1 text-xs text-white focus:border-cyan-400/60 focus:outline-none"
+                          className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-100"
                         >
                           {canManageOwners ? <option value="owner">Propietario</option> : null}
                           <option value="admin">Administrador</option>
@@ -241,8 +241,8 @@ export function TeamPanel({ me }: { me: Me }) {
                           onClick={() => toggleDisabled(m.id, !m.disabled)}
                           className={`rounded-md border px-2 py-1 text-xs transition-colors ${
                             m.disabled
-                              ? "border-emerald-400/40 text-emerald-300 hover:bg-emerald-400/10"
-                              : "border-white/15 text-slate-300 hover:border-amber-400/50 hover:text-amber-300"
+                              ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                              : "border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-700"
                           }`}
                         >
                           {m.disabled ? "Reactivar" : "Desactivar"}
@@ -254,7 +254,7 @@ export function TeamPanel({ me }: { me: Me }) {
                           onClick={() => revokeSessions(m.id, m.email)}
                           title="Cerrar todas sus sesiones"
                           aria-label={`Cerrar sesiones de ${m.email}`}
-                          className="rounded-md border border-white/10 p-1.5 text-slate-400 hover:border-cyan-400/40 hover:text-cyan-300"
+                          className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:border-cyan-400 hover:text-cyan-700"
                         >
                           <LogOutIcon className="size-3.5" />
                         </button>
@@ -264,7 +264,7 @@ export function TeamPanel({ me }: { me: Me }) {
                           type="button"
                           onClick={() => remove(m.id)}
                           aria-label={`Eliminar ${m.email}`}
-                          className="rounded-md border border-white/10 p-1.5 text-slate-400 hover:border-rose-400/40 hover:text-rose-300"
+                          className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:border-rose-300 hover:text-rose-600"
                         >
                           <Trash2Icon className="size-3.5" />
                         </button>
@@ -279,23 +279,23 @@ export function TeamPanel({ me }: { me: Me }) {
 
         {invites.length > 0 ? (
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
               Invitaciones pendientes ({invites.length})
             </h2>
             <ul className="mt-4 space-y-2.5">
               {invites.map((inv) => (
                 <li
                   key={inv.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] p-3.5"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 bg-white p-3.5"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-200">{inv.email}</span>
+                    <span className="text-sm text-slate-700">{inv.email}</span>
                     <RoleBadge role={inv.role} />
                   </div>
                   <button
                     type="button"
                     onClick={() => revoke(inv.id)}
-                    className="text-[11px] text-slate-400 hover:text-rose-300"
+                    className="text-[11px] text-slate-500 hover:text-rose-600"
                   >
                     Revocar
                   </button>

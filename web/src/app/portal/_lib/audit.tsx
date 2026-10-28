@@ -44,19 +44,19 @@ export function AuditPanel() {
   }, [load]);
 
   if (loading) {
-    return <p className="mt-4 text-sm text-slate-400">Cargando auditoría…</p>;
+    return <p className="mt-4 text-sm text-slate-500">Cargando auditoría…</p>;
   }
   if (err) {
-    return <p className="mt-4 text-sm text-rose-400">{err}</p>;
+    return <p className="mt-4 text-sm text-rose-500">{err}</p>;
   }
 
   return (
     <div className="mt-4">
-      <p className="mb-3 text-sm text-slate-400">
+      <p className="mb-3 text-sm text-slate-500">
         Registro de actividad de tu organización. {entries.length} evento(s).
       </p>
       {entries.length === 0 ? (
-        <p className="rounded-xl border border-white/10 bg-white/[0.02] p-5 text-sm text-slate-400">
+        <p className="rounded-xl border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-500">
           Aún no hay eventos registrados.
         </p>
       ) : (
@@ -64,12 +64,12 @@ export function AuditPanel() {
           {entries.map((e) => (
             <li
               key={e.id}
-              className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-white/10 bg-white/[0.03] p-3.5 text-sm"
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-slate-200 bg-white p-3.5 text-sm shadow-sm"
             >
-              <span className="font-medium text-white">{ACTION_LABEL[e.action] ?? e.action}</span>
-              <span className="text-slate-400">{e.actor}</span>
-              {e.detail ? <span className="text-xs text-slate-500">{e.detail}</span> : null}
-              <span className="ml-auto text-xs text-slate-500">{new Date(e.created_at).toLocaleString()}</span>
+              <span className="font-medium text-slate-900">{ACTION_LABEL[e.action] ?? e.action}</span>
+              <span className="text-slate-500">{e.actor}</span>
+              {e.detail ? <span className="text-xs text-slate-400">{e.detail}</span> : null}
+              <span className="ml-auto text-xs text-slate-400">{new Date(e.created_at).toLocaleString()}</span>
             </li>
           ))}
         </ul>

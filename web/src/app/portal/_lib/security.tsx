@@ -156,25 +156,25 @@ export function SecurityPanel({ me }: { me: Me }) {
   }
 
   if (enabled === null) {
-    return <p className="mt-4 text-sm text-slate-400">Cargando…</p>;
+    return <p className="mt-4 text-sm text-slate-500">Cargando…</p>;
   }
 
   return (
     <div className="mt-4 max-w-lg">
-      <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-cyan-300">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-cyan-700">
           <ShieldIcon className="size-4" /> Autenticación en dos pasos (2FA)
         </h2>
 
-        {note ? <p className="mt-3 text-sm text-emerald-300">{note}</p> : null}
-        {err ? <p className="mt-3 text-sm text-rose-400">{err}</p> : null}
+        {note ? <p className="mt-3 text-sm text-emerald-600">{note}</p> : null}
+        {err ? <p className="mt-3 text-sm text-rose-500">{err}</p> : null}
 
         {enabled ? (
           <div className="mt-4 space-y-4">
-            <p className="flex items-center gap-2 text-sm text-emerald-300">
+            <p className="flex items-center gap-2 text-sm text-emerald-600">
               <CheckCircle2Icon className="size-4" /> 2FA activo en tu cuenta.
             </p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               Para desactivarlo, introduce un código actual de tu app de autenticación.
             </p>
             <Field
@@ -188,23 +188,23 @@ export function SecurityPanel({ me }: { me: Me }) {
               type="button"
               onClick={() => void disable()}
               disabled={busy || code.trim().length < 6}
-              className="w-full rounded-lg border border-rose-400/40 px-4 py-2.5 text-sm font-semibold text-rose-300 transition-colors hover:bg-rose-400/10 disabled:opacity-60"
+              className="w-full rounded-xl border border-rose-300 px-4 py-2.5 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-60"
             >
               {busy ? "Desactivando…" : "Desactivar 2FA"}
             </button>
           </div>
         ) : setup ? (
           <div className="mt-4 space-y-4">
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-slate-600">
               1. Escanea o añade esta clave en tu app (Google Authenticator, Authy, 1Password…):
             </p>
-            <code className="block break-all rounded-lg bg-[#0a1324] px-3 py-2.5 text-sm tracking-widest text-cyan-200">
+            <code className="block break-all rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm tracking-widest text-cyan-700">
               {setup.secret}
             </code>
-            <a href={setup.otpauth} className="inline-block text-xs text-cyan-300 underline-offset-2 hover:underline">
+            <a href={setup.otpauth} className="inline-block text-xs text-cyan-600 underline-offset-2 hover:underline">
               Abrir en la app (otpauth://…)
             </a>
-            <p className="text-sm text-slate-300">2. Introduce el código de 6 dígitos que genera:</p>
+            <p className="text-sm text-slate-600">2. Introduce el código de 6 dígitos que genera:</p>
             <Field
               label="Código de verificación"
               inputMode="numeric"
@@ -218,7 +218,7 @@ export function SecurityPanel({ me }: { me: Me }) {
           </div>
         ) : (
           <div className="mt-4 space-y-4">
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-500">
               Protege tu cuenta con un segundo factor. Recomendado para organizaciones con requisitos de seguridad.
             </p>
             <PrimaryButton type="button" onClick={() => void startSetup()} disabled={busy}>
@@ -229,32 +229,32 @@ export function SecurityPanel({ me }: { me: Me }) {
       </section>
 
       {/* Email verification */}
-      <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Email</h2>
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-700">Email</h2>
         {verified ? (
-          <p className="mt-3 flex items-center gap-2 text-sm text-emerald-300">
+          <p className="mt-3 flex items-center gap-2 text-sm text-emerald-600">
             <MailCheckIcon className="size-4" /> {me.user.email} — verificado.
           </p>
         ) : (
           <div className="mt-3 space-y-3">
-            <p className="flex items-center gap-2 text-sm text-amber-300">
+            <p className="flex items-center gap-2 text-sm text-amber-600">
               <MailWarningIcon className="size-4" /> {me.user.email} — sin verificar.
             </p>
             <button
               type="button"
               onClick={() => void resendVerification()}
-              className="rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-200 transition-colors hover:border-cyan-400/50 hover:text-white"
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 transition-colors hover:border-cyan-400 hover:text-cyan-700"
             >
               Reenviar verificación
             </button>
-            {resendMsg ? <p className="text-xs text-slate-400">{resendMsg}</p> : null}
+            {resendMsg ? <p className="text-xs text-slate-500">{resendMsg}</p> : null}
           </div>
         )}
       </section>
 
       {/* Change password */}
-      <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Cambiar contraseña</h2>
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-700">Cambiar contraseña</h2>
         <form onSubmit={changePassword} className="mt-4 space-y-4">
           <Field
             label="Contraseña actual"
@@ -270,8 +270,8 @@ export function SecurityPanel({ me }: { me: Me }) {
             onChange={(e) => setNewPw(e.target.value)}
             autoComplete="new-password"
           />
-          {pwErr ? <p className="text-sm text-rose-400">{pwErr}</p> : null}
-          {pwMsg ? <p className="text-sm text-emerald-300">{pwMsg}</p> : null}
+          {pwErr ? <p className="text-sm text-rose-500">{pwErr}</p> : null}
+          {pwMsg ? <p className="text-sm text-emerald-600">{pwMsg}</p> : null}
           <PrimaryButton type="submit" disabled={pwBusy || !oldPw || newPw.length < 8}>
             {pwBusy ? "Guardando…" : "Actualizar contraseña"}
           </PrimaryButton>
@@ -279,10 +279,10 @@ export function SecurityPanel({ me }: { me: Me }) {
       </section>
 
       {/* Data & privacy */}
-      <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Datos y privacidad</h2>
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-700">Datos y privacidad</h2>
         <div className="mt-4 space-y-3">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             Descarga una copia de todos los datos de tu organización (perfil, miembros, solicitudes, resultados
             publicados y registro de auditoría).
           </p>
@@ -290,17 +290,17 @@ export function SecurityPanel({ me }: { me: Me }) {
             type="button"
             onClick={() => void exportData()}
             disabled={exporting}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-200 transition-colors hover:border-cyan-400/50 hover:text-white disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 transition-colors hover:border-cyan-400 hover:text-cyan-700 disabled:opacity-60"
           >
             <DownloadIcon className="size-4" /> {exporting ? "Exportando…" : "Exportar mis datos"}
           </button>
-          {exportErr ? <p className="text-sm text-rose-400">{exportErr}</p> : null}
+          {exportErr ? <p className="text-sm text-rose-500">{exportErr}</p> : null}
         </div>
 
         {me.user.role === "owner" ? (
-          <div className="mt-6 border-t border-rose-400/20 pt-5">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-rose-300">Zona de peligro</h3>
-            <p className="mt-2 text-sm text-slate-400">
+          <div className="mt-6 border-t border-rose-100 pt-5">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-rose-600">Zona de peligro</h3>
+            <p className="mt-2 text-sm text-slate-500">
               Eliminar la organización borra de forma permanente todos sus datos y los de sus miembros. Esta acción no
               se puede deshacer.
             </p>
@@ -308,7 +308,7 @@ export function SecurityPanel({ me }: { me: Me }) {
               <button
                 type="button"
                 onClick={() => setDelConfirm(true)}
-                className="mt-3 rounded-lg border border-rose-400/40 px-4 py-2 text-sm font-semibold text-rose-300 transition-colors hover:bg-rose-400/10"
+                className="mt-3 rounded-lg border border-rose-300 px-4 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50"
               >
                 Eliminar organización
               </button>
@@ -321,7 +321,7 @@ export function SecurityPanel({ me }: { me: Me }) {
                   onChange={(e) => setDelPw(e.target.value)}
                   autoComplete="current-password"
                 />
-                {delErr ? <p className="text-sm text-rose-400">{delErr}</p> : null}
+                {delErr ? <p className="text-sm text-rose-500">{delErr}</p> : null}
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -338,7 +338,7 @@ export function SecurityPanel({ me }: { me: Me }) {
                       setDelPw("");
                       setDelErr("");
                     }}
-                    className="rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-300 hover:text-white"
+                    className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
                   >
                     Cancelar
                   </button>

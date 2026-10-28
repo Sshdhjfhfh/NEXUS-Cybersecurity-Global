@@ -42,7 +42,7 @@ export default function PortalRegister() {
       footer={
         <>
           ¿Ya tienes cuenta?{" "}
-          <Link href="/portal/login" className="text-cyan-300 hover:text-cyan-200">
+          <Link href="/portal/login" className="text-cyan-600 hover:text-cyan-700">
             Iniciar sesión
           </Link>
         </>
@@ -64,7 +64,7 @@ export default function PortalRegister() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
         />
-        {err ? <p className="text-sm text-rose-400">{err}</p> : null}
+        {err ? <p className="text-sm text-rose-500">{err}</p> : null}
         <PrimaryButton type="submit" disabled={loading || !orgName || !email || password.length < 8}>
           {loading ? "Creando…" : "Crear cuenta"}
         </PrimaryButton>

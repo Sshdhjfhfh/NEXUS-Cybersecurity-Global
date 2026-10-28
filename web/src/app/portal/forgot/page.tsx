@@ -30,13 +30,13 @@ export default function PortalForgot() {
       title="Restablecer contraseña"
       subtitle="Te enviaremos un enlace para crear una nueva."
       footer={
-        <Link href="/portal/login" className="text-cyan-300 hover:text-cyan-200">
+        <Link href="/portal/login" className="text-cyan-600 hover:text-cyan-700">
           Volver a iniciar sesión
         </Link>
       }
     >
       {sent ? (
-        <p className="text-sm text-slate-300">
+        <p className="text-sm text-slate-600">
           Si existe una cuenta con ese email, te hemos enviado un enlace para restablecer la contraseña. Revisa tu
           bandeja de entrada.
         </p>

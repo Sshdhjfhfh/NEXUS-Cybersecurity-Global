@@ -55,7 +55,7 @@ function AcceptInner() {
   if (checking) {
     return (
       <PortalAuthShell title="Invitación" subtitle="Verificando…">
-        <p className="text-sm text-slate-400">Un momento…</p>
+        <p className="text-sm text-slate-500">Un momento…</p>
       </PortalAuthShell>
     );
   }
@@ -66,12 +66,12 @@ function AcceptInner() {
         title="Invitación no válida"
         subtitle={fatal}
         footer={
-          <Link href="/portal/login" className="text-cyan-300 hover:text-cyan-200">
+          <Link href="/portal/login" className="text-cyan-600 hover:text-cyan-700">
             Ir a iniciar sesión
           </Link>
         }
       >
-        <p className="text-sm text-slate-400">Pide a quien te invitó que genere un nuevo enlace de invitación.</p>
+        <p className="text-sm text-slate-500">Pide a quien te invitó que genere un nuevo enlace de invitación.</p>
       </PortalAuthShell>
     );
   }
@@ -81,7 +81,7 @@ function AcceptInner() {
       title="Unirte a tu equipo"
       subtitle={info ? `${info.org} · ${info.email}` : undefined}
       footer={
-        <Link href="/portal/login" className="text-cyan-300 hover:text-cyan-200">
+        <Link href="/portal/login" className="text-cyan-600 hover:text-cyan-700">
           Iniciar sesión
         </Link>
       }
@@ -95,7 +95,7 @@ function AcceptInner() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
         />
-        {err ? <p className="text-sm text-rose-400">{err}</p> : null}
+        {err ? <p className="text-sm text-rose-500">{err}</p> : null}
         <PrimaryButton type="submit" disabled={loading || password.length < 8}>
           {loading ? "Creando cuenta…" : "Unirme"}
         </PrimaryButton>
@@ -108,7 +108,7 @@ export default function PortalAccept() {
   return (
     <Suspense
       fallback={
-        <div className="grid min-h-screen place-items-center bg-[#060b18] text-sm text-slate-400">Cargando…</div>
+        <div className="grid min-h-screen place-items-center bg-[#060b18] text-sm text-slate-500">Cargando…</div>
       }
     >
       <AcceptInner />

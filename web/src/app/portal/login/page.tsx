@@ -45,12 +45,12 @@ export default function PortalLogin() {
       subtitle="Inicia sesión en tu organización."
       footer={
         <>
-          <Link href="/portal/forgot" className="text-cyan-300 hover:text-cyan-200">
+          <Link href="/portal/forgot" className="text-cyan-600 hover:text-cyan-700">
             ¿Olvidaste tu contraseña?
           </Link>
           <span className="mt-2 block">
             ¿No tienes cuenta?{" "}
-            <Link href="/portal/register" className="text-cyan-300 hover:text-cyan-200">
+            <Link href="/portal/register" className="text-cyan-600 hover:text-cyan-700">
               Crear organización
             </Link>
           </span>
@@ -84,7 +84,7 @@ export default function PortalLogin() {
             autoFocus
           />
         ) : null}
-        {err ? <p className="text-sm text-rose-400">{err}</p> : null}
+        {err ? <p className="text-sm text-rose-500">{err}</p> : null}
         <PrimaryButton type="submit" disabled={loading || !email || !password || (needMfa && code.trim().length < 6)}>
           {loading ? "Entrando…" : needMfa ? "Verificar" : "Entrar"}
         </PrimaryButton>

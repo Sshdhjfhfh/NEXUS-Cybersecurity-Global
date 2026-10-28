@@ -41,12 +41,12 @@ function ResetInner() {
         title="Enlace inválido"
         subtitle="Falta el token de restablecimiento."
         footer={
-          <Link href="/portal/forgot" className="text-cyan-300 hover:text-cyan-200">
+          <Link href="/portal/forgot" className="text-cyan-600 hover:text-cyan-700">
             Solicitar uno nuevo
           </Link>
         }
       >
-        <p className="text-sm text-slate-400">Vuelve a solicitar el enlace de restablecimiento.</p>
+        <p className="text-sm text-slate-500">Vuelve a solicitar el enlace de restablecimiento.</p>
       </PortalAuthShell>
     );
   }
@@ -55,13 +55,13 @@ function ResetInner() {
     <PortalAuthShell
       title="Nueva contraseña"
       footer={
-        <Link href="/portal/login" className="text-cyan-300 hover:text-cyan-200">
+        <Link href="/portal/login" className="text-cyan-600 hover:text-cyan-700">
           Iniciar sesión
         </Link>
       }
     >
       {done ? (
-        <p className="text-sm text-emerald-300">Contraseña actualizada. Redirigiendo al inicio de sesión…</p>
+        <p className="text-sm text-emerald-600">Contraseña actualizada. Redirigiendo al inicio de sesión…</p>
       ) : (
         <form onSubmit={submit} className="space-y-4">
           <Field
@@ -71,7 +71,7 @@ function ResetInner() {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
           />
-          {err ? <p className="text-sm text-rose-400">{err}</p> : null}
+          {err ? <p className="text-sm text-rose-500">{err}</p> : null}
           <PrimaryButton type="submit" disabled={loading || password.length < 8}>
             {loading ? "Guardando…" : "Guardar contraseña"}
           </PrimaryButton>
@@ -85,7 +85,9 @@ export default function PortalReset() {
   return (
     <Suspense
       fallback={
-        <div className="grid min-h-screen place-items-center bg-[#060b18] text-sm text-slate-400">Cargando…</div>
+        <div className="grid min-h-screen place-items-center bg-gradient-to-br from-slate-50 via-[#eef4fb] to-[#e6eefb] text-sm text-slate-500">
+          Cargando…
+        </div>
       }
     >
       <ResetInner />

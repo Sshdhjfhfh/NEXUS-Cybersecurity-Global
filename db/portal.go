@@ -85,6 +85,38 @@ ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS sessions_revoked_at TIMESTAMPT
 -- by role) and the interface language ('es' | 'en' | '' = browser default).
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS view_profile TEXT NOT NULL DEFAULT '';
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS lang TEXT NOT NULL DEFAULT '';
+-- Client-side remediation tracking for a released finding. The engine's finding
+-- row is never modified from the portal: "fixed" is only ever set by a NEXUS
+-- retest. client_state is what the client's team reports.
+CREATE TABLE IF NOT EXISTS portal_remediation (
+    org_id              BIGINT NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+    finding_id          BIGINT NOT NULL REFERENCES findings(id) ON DELETE CASCADE,
+    assignee_id         BIGINT REFERENCES portal_users(id) ON DELETE SET NULL,
+    due_date            DATE,
+    client_state        TEXT NOT NULL DEFAULT 'open'
+                        CHECK (client_state IN ('open','in_progress','ready_for_retest','risk_accepted')),
+    retest_requested_at TIMESTAMPTZ,
+    retest_requested_by BIGINT REFERENCES portal_users(id) ON DELETE SET NULL,
+    retest_note         TEXT NOT NULL DEFAULT '',
+    risk_reason         TEXT NOT NULL DEFAULT '',
+    risk_expires_at     DATE,
+    risk_accepted_by    BIGINT REFERENCES portal_users(id) ON DELETE SET NULL,
+    risk_accepted_at    TIMESTAMPTZ,
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (org_id, finding_id)
+);
+CREATE INDEX IF NOT EXISTS idx_portal_remediation_state ON portal_remediation(client_state);
+-- Per-finding remediation timeline (comments + changes), shown to the client.
+CREATE TABLE IF NOT EXISTS portal_remediation_events (
+    id          BIGSERIAL PRIMARY KEY,
+    org_id      BIGINT NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+    finding_id  BIGINT NOT NULL REFERENCES findings(id) ON DELETE CASCADE,
+    actor       TEXT NOT NULL DEFAULT '',
+    kind        TEXT NOT NULL,
+    detail      TEXT NOT NULL DEFAULT '',
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_portal_remediation_events ON portal_remediation_events(org_id, finding_id, id);
 -- One-time tokens for password reset and email verification. Only the SHA-256 of
 -- the token is stored; the plaintext lives only in the email sent to the user.
 CREATE TABLE IF NOT EXISTS portal_tokens (

@@ -79,6 +79,27 @@ export const SERVER_ERRORS_EN: Record<string, string> = {
     "Your account has been deactivated; please contact an administrator",
   "título inválido": "Invalid title",
   "usuario no encontrado": "User not found",
+  // remediation workspace
+  "no se pudo cargar la remediación": "Remediation could not be loaded",
+  "responsable inválido": "Invalid owner",
+  "el responsable debe ser un miembro activo de la organización":
+    "The owner must be an active member of the organization",
+  "fecha inválida": "Invalid date",
+  "estado inválido": "Invalid state",
+  "solo un administrador puede revocar una aceptación de riesgo": "Only an administrator can revoke a risk acceptance",
+  "el hallazgo ya está corregido y verificado": "This finding is already fixed and verified",
+  "el comentario debe tener entre 1 y 2000 caracteres": "Comments must be between 1 and 2000 characters",
+  "no se pudo guardar el comentario": "The comment could not be saved",
+  "la nota debe tener como máximo 1000 caracteres": "The note must be at most 1000 characters",
+  "ya hay una verificación pendiente para este hallazgo": "A verification is already pending for this finding",
+  "el riesgo está aceptado; revócalo antes de solicitar una verificación":
+    "The risk is accepted; revoke the acceptance before requesting a verification",
+  "no se pudo solicitar la verificación": "The verification could not be requested",
+  "la justificación debe tener entre 10 y 2000 caracteres": "The justification must be between 10 and 2000 characters",
+  "la aceptación debe caducar entre mañana y dentro de 365 días":
+    "The acceptance must expire between tomorrow and 365 days from now",
+  "no se pudo aceptar el riesgo": "The risk could not be accepted",
+  "no hay una aceptación de riesgo que revocar": "There is no risk acceptance to revoke",
 };
 
 // Internal infrastructure messages that must never be shown verbatim to a client

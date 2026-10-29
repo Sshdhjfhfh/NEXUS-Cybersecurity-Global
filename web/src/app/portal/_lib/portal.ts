@@ -91,8 +91,10 @@ export type OverviewFinding = {
   name: string;
   vulnclass: string;
   severity: string;
-  status: string;
+  status: RemediationState;
   created_at: string;
+  due_date?: string;
+  overdue: boolean;
 };
 export type OverviewResponse = {
   overview: {
@@ -101,6 +103,7 @@ export type OverviewResponse = {
     released_requests: number;
     by_severity: Record<string, SeverityBucket>;
     top_open: OverviewFinding[];
+    overdue: number;
     monthly: { month: string; count: number }[];
   };
   generated_at: string;
@@ -144,6 +147,55 @@ export type ResultsResponse = {
   total?: number;
 };
 
+// Effective remediation state, computed server-side from the client's progress,
+// NEXUS retests and risk acceptances. Only a NEXUS retest yields verified_fixed.
+export type RemediationState =
+  | "open"
+  | "in_progress"
+  | "retest_requested"
+  | "retest_running"
+  | "still_vulnerable"
+  | "verified_fixed"
+  | "risk_accepted";
+export type RemediationBucket = "open" | "in_progress" | "remediated" | "risk_accepted";
+export type RemediationItem = {
+  finding_id: number;
+  request_id: number;
+  request_title: string;
+  name: string;
+  vulnclass: string;
+  severity: string;
+  summary: string;
+  detected_at: string;
+  state: RemediationState;
+  bucket: RemediationBucket;
+  assignee_id: number | null;
+  assignee_email?: string;
+  due_date?: string; // YYYY-MM-DD
+  due_source?: "custom" | "sla";
+  sla_days?: number;
+  overdue: boolean;
+  risk_reason?: string;
+  risk_expires_at?: string;
+  risk_expired?: boolean;
+  risk_accepted_by?: string;
+  retest_requested_at?: string;
+  retest_note?: string;
+  last_retest?: {
+    status: "pending" | "running" | "completed" | "failed" | "stopped";
+    verdict: "" | "reproduced" | "fixed" | "inconclusive";
+    created_at: string;
+    finished_at?: string;
+  };
+};
+export type RemediationEvent = { id: number; actor: string; kind: string; detail: string; created_at: string };
+export type RemediationUpdate = {
+  assignee_id?: number | null;
+  due_date?: string | null;
+  state?: "open" | "in_progress";
+};
+type ItemResponse = { ok: boolean; item: RemediationItem };
+
 export const portalApi = {
   register: (org_name: string, email: string, password: string) =>
     req<{ token: string; org: Org }>("/register", {
@@ -161,6 +213,23 @@ export const portalApi = {
     req<{ ok: boolean; id: number }>("/requests", { method: "POST", body: JSON.stringify({ title, scope }) }),
   requestResults: (id: number) => req<ResultsResponse>(`/requests/${id}/results`),
   requestFinding: (id: number, fid: number) => req<{ finding: ClientFindingDetail }>(`/requests/${id}/findings/${fid}`),
+
+  // --- remediation workspace ---
+  listRemediation: () => req<{ items: RemediationItem[]; sla_days: Record<string, number> }>("/remediation"),
+  getRemediation: (fid: number) =>
+    req<{ item: RemediationItem; report: string; events: RemediationEvent[] }>(`/remediation/${fid}`),
+  updateRemediation: (fid: number, patch: RemediationUpdate) =>
+    req<ItemResponse>(`/remediation/${fid}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  commentRemediation: (fid: number, text: string) =>
+    req<{ ok: boolean }>(`/remediation/${fid}/comments`, { method: "POST", body: JSON.stringify({ text }) }),
+  requestRetest: (fid: number, note: string) =>
+    req<ItemResponse>(`/remediation/${fid}/retest`, { method: "POST", body: JSON.stringify({ note }) }),
+  acceptRisk: (fid: number, reason: string, expires_at: string) =>
+    req<ItemResponse>(`/remediation/${fid}/accept-risk`, {
+      method: "POST",
+      body: JSON.stringify({ reason, expires_at }),
+    }),
+  revokeRisk: (fid: number) => req<ItemResponse>(`/remediation/${fid}/revoke-risk`, { method: "POST", body: "{}" }),
 
   // --- team management (admin+) ---
   listMembers: () => req<{ members: Member[] }>("/members"),

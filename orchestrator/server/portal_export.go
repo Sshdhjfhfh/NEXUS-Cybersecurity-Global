@@ -65,13 +65,27 @@ func (s *Server) portalExport(w http.ResponseWriter, r *http.Request) {
 		reqsOut = append(reqsOut, ro)
 	}
 	audit, _ := pg.ListAudit(&orgID, 2000)
+	remediation, err := pg.ListRemediation(orgID, time.Now())
+	if err != nil {
+		writeErr(w, 500, "no se pudo exportar")
+		return
+	}
+	remEvents, err := pg.ListOrgRemediationEvents(orgID)
+	if err != nil {
+		writeErr(w, 500, "no se pudo exportar")
+		return
+	}
 
 	bundle := map[string]any{
 		"exported_at":  time.Now().UTC().Format(time.RFC3339),
 		"organization": org,
 		"members":      members, // Member DTO carries no password hash or secrets
 		"requests":     reqsOut,
-		"audit":        audit,
+		"remediation": map[string]any{
+			"items":  remediation,
+			"events": remEvents,
+		},
+		"audit": audit,
 	}
 	s.audit(r, &orgID, org.Name, "portal_user", "data.export", "org:"+strconv.FormatInt(orgID, 10), "")
 

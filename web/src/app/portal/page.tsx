@@ -18,6 +18,7 @@ import {
   portalApi,
   type ViewProfile,
 } from "./_lib/portal";
+import { RemediationPanel } from "./_lib/remediation";
 import { ResultsPanel } from "./_lib/results";
 import { SecurityPanel } from "./_lib/security";
 import { TeamPanel } from "./_lib/team";
@@ -30,7 +31,7 @@ const STATUS_TONE: Record<string, string> = {
   done: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
 
-type Tab = "overview" | "requests" | "team" | "audit" | "security";
+type Tab = "overview" | "remediation" | "requests" | "team" | "audit" | "security";
 type View = Exclude<ViewProfile, "">;
 
 // Default perspective when the user has not chosen one: owners usually answer to
@@ -57,6 +58,8 @@ export default function PortalDashboard() {
   const [reqs, setReqs] = useState<PortalRequest[]>([]);
   const [tab, setTab] = useState<Tab>("overview");
   const [openResults, setOpenResults] = useState<number | null>(null);
+  const [focusFinding, setFocusFinding] = useState<number | null>(null);
+  const clearFocusFinding = useCallback(() => setFocusFinding(null), []);
   const [title, setTitle] = useState("");
   const [scope, setScope] = useState("");
   const [err, setErr] = useState("");
@@ -128,6 +131,11 @@ export default function PortalDashboard() {
     setTab("requests");
   }
 
+  function openFinding(id: number) {
+    setFocusFinding(id);
+    setTab("remediation");
+  }
+
   function logout() {
     clearPortalToken();
     router.replace("/portal/login");
@@ -146,6 +154,7 @@ export default function PortalDashboard() {
 
   const tabs: { id: Tab; label: string; show: boolean }[] = [
     { id: "overview", label: t.tabs.overview, show: true },
+    { id: "remediation", label: t.tabs.remediation, show: true },
     { id: "requests", label: t.tabs.requests, show: true },
     { id: "team", label: t.tabs.team, show: canManageTeam },
     { id: "audit", label: t.tabs.audit, show: canManageTeam },
@@ -228,8 +237,12 @@ export default function PortalDashboard() {
             view={view}
             onViewChange={changeView}
             onOpenRequest={openRequest}
+            onOpenFinding={openFinding}
             onGoTab={(x) => setTab(x)}
           />
+        ) : null}
+        {tab === "remediation" ? (
+          <RemediationPanel me={me} focusId={focusFinding} onFocusHandled={clearFocusFinding} />
         ) : null}
         {tab === "team" && canManageTeam ? <TeamPanel me={me} /> : null}
         {tab === "audit" && canManageTeam ? <AuditPanel /> : null}

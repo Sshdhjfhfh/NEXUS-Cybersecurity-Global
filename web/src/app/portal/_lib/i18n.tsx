@@ -57,6 +57,7 @@ type Ctx = {
   setLang: (l: PortalLang) => void;
   fmtNumber: (n: number) => string;
   fmtDate: (iso: string) => string;
+  fmtDay: (yyyyMmDd: string) => string;
   fmtDateTime: (iso: string) => string;
   fmtMonth: (yyyyMm: string) => string;
   fmtRelative: (iso: string) => string;
@@ -91,6 +92,9 @@ export function PortalI18nProvider({ children }: { children: ReactNode }) {
     const locale = LOCALE[lang];
     const num = new Intl.NumberFormat(locale);
     const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+    // Calendar days (YYYY-MM-DD, e.g. due dates) are zone-less: format them in UTC
+    // so they never shift a day in timezones behind UTC.
+    const day = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" });
     const dt = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
     const month = new Intl.DateTimeFormat(locale, { month: "short", year: "numeric", timeZone: "UTC" });
     const rel = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
@@ -100,6 +104,7 @@ export function PortalI18nProvider({ children }: { children: ReactNode }) {
       setLang,
       fmtNumber: (n) => num.format(n),
       fmtDate: (iso) => date.format(new Date(iso)),
+      fmtDay: (d) => day.format(new Date(`${d}T00:00:00Z`)),
       fmtDateTime: (iso) => dt.format(new Date(iso)),
       fmtMonth: (m) => {
         const [y, mo] = m.split("-").map(Number);

@@ -55,7 +55,7 @@ function sevLabel(t: PortalDict, sev: string): string {
   return (t.sev as Record<string, string>)[sev] ?? t.sev.unrated;
 }
 
-function SevBadge({ sev }: { sev: string }) {
+export function SevBadge({ sev }: { sev: string }) {
   const { t } = usePortalI18n();
   const key = (SEVERITIES as readonly string[]).includes(sev) ? (sev as Sev) : "unrated";
   return (
@@ -115,10 +115,11 @@ type Props = {
   view: Exclude<ViewProfile, "">;
   onViewChange: (v: Exclude<ViewProfile, "">) => void;
   onOpenRequest: (requestId: number) => void;
-  onGoTab: (tab: "requests" | "team" | "audit" | "security") => void;
+  onOpenFinding: (findingId: number) => void;
+  onGoTab: (tab: "remediation" | "requests" | "team" | "audit" | "security") => void;
 };
 
-export function OverviewPanel({ me, view, onViewChange, onOpenRequest, onGoTab }: Props) {
+export function OverviewPanel({ me, view, onViewChange, onOpenRequest, onOpenFinding, onGoTab }: Props) {
   const { t, fmtRelative } = usePortalI18n();
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [err, setErr] = useState(false);
@@ -187,9 +188,21 @@ export function OverviewPanel({ me, view, onViewChange, onOpenRequest, onGoTab }
       ) : !data ? (
         <OverviewSkeleton />
       ) : view === "executive" ? (
-        <ExecutiveView data={data} canAdmin={canAdmin} onOpenRequest={onOpenRequest} onGoTab={onGoTab} />
+        <ExecutiveView
+          data={data}
+          canAdmin={canAdmin}
+          onOpenRequest={onOpenRequest}
+          onOpenFinding={onOpenFinding}
+          onGoTab={onGoTab}
+        />
       ) : (
-        <TechnicalView data={data} canAdmin={canAdmin} onOpenRequest={onOpenRequest} onGoTab={onGoTab} />
+        <TechnicalView
+          data={data}
+          canAdmin={canAdmin}
+          onOpenRequest={onOpenRequest}
+          onOpenFinding={onOpenFinding}
+          onGoTab={onGoTab}
+        />
       )}
     </div>
   );
@@ -213,8 +226,18 @@ type ViewProps = {
   data: OverviewResponse;
   canAdmin: boolean;
   onOpenRequest: (id: number) => void;
+  onOpenFinding: (id: number) => void;
   onGoTab: Props["onGoTab"];
 };
+
+function OverdueTag() {
+  const { t } = usePortalI18n();
+  return (
+    <span className="rounded-full border border-rose-200 bg-rose-50 px-1.5 py-px text-[10px] font-semibold uppercase text-rose-700">
+      {t.rem.overdue}
+    </span>
+  );
+}
 
 function EmptyResults({ onGoTab }: { onGoTab: Props["onGoTab"] }) {
   const { t } = usePortalI18n();
@@ -236,7 +259,7 @@ function EmptyResults({ onGoTab }: { onGoTab: Props["onGoTab"] }) {
   );
 }
 
-function ExecutiveView({ data, canAdmin, onOpenRequest, onGoTab }: ViewProps) {
+function ExecutiveView({ data, canAdmin, onOpenFinding, onGoTab }: ViewProps) {
   const { t, lang, fmtNumber } = usePortalI18n();
   const d = derive(data);
   const tone = EXPOSURE_TONE[d.exposure];
@@ -289,7 +312,8 @@ function ExecutiveView({ data, canAdmin, onOpenRequest, onGoTab }: ViewProps) {
               icon={<ShieldAlertIcon className="size-4" />}
               label={t.ov.openFindings}
               value={fmtNumber(d.open)}
-              hint={t.ov.openFindingsHint(d.inProgress)}
+              hint={t.ov.openFindingsHint(d.inProgress, data.overview.overdue ?? 0)}
+              action={{ label: t.tabs.remediation, onClick: () => onGoTab("remediation") }}
             />
             <div className={card}>
               <p className="flex items-center gap-2 text-xs font-medium text-slate-500">
@@ -345,14 +369,16 @@ function ExecutiveView({ data, canAdmin, onOpenRequest, onGoTab }: ViewProps) {
                     <div className="flex flex-wrap items-center gap-2">
                       <SevBadge sev={f.severity} />
                       <span className="truncate font-medium text-slate-900">{f.name || f.vulnclass}</span>
+                      {f.overdue ? <OverdueTag /> : null}
                     </div>
                     <p className="mt-0.5 text-xs text-slate-500">
-                      {t.ov.inEvaluation(f.request_title)} · {t.ov.openSince(daysSince(f.created_at))}
+                      {t.ov.inEvaluation(f.request_title)} · {t.ov.openSince(daysSince(f.created_at))} ·{" "}
+                      {t.rem.state[f.status] ?? f.status}
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => onOpenRequest(f.request_id)}
+                    onClick={() => onOpenFinding(f.id)}
                     className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-cyan-700 hover:bg-cyan-50 ${focusRing}`}
                   >
                     {t.ov.viewDetail} <ArrowRightIcon className="size-3.5" aria-hidden />
@@ -461,7 +487,7 @@ function AccountSecurityCard({
   );
 }
 
-function TechnicalView({ data, canAdmin, onOpenRequest, onGoTab }: ViewProps) {
+function TechnicalView({ data, canAdmin, onOpenRequest, onOpenFinding, onGoTab }: ViewProps) {
   const { t, fmtNumber, fmtMonth, fmtRelative } = usePortalI18n();
   const d = derive(data);
   const maxMonth = Math.max(1, ...data.overview.monthly.map((m) => m.count));
@@ -617,12 +643,23 @@ function TechnicalView({ data, canAdmin, onOpenRequest, onGoTab }: ViewProps) {
                         <SevBadge sev={f.severity} />
                       </td>
                       <td className={td}>
-                        <span className="font-medium text-slate-900">{f.name || f.vulnclass}</span>
+                        <button
+                          type="button"
+                          onClick={() => onOpenFinding(f.id)}
+                          className={`rounded text-left font-medium text-slate-900 hover:text-cyan-800 hover:underline ${focusRing}`}
+                        >
+                          {f.name || f.vulnclass}
+                        </button>
                         {f.name && f.vulnclass ? (
                           <span className="block text-xs text-slate-500">{f.vulnclass}</span>
                         ) : null}
                       </td>
-                      <td className={td}>{t.findingStatus[f.status] ?? f.status}</td>
+                      <td className={td}>
+                        <span className="inline-flex flex-wrap items-center gap-1.5">
+                          {t.rem.state[f.status] ?? f.status}
+                          {f.overdue ? <OverdueTag /> : null}
+                        </span>
+                      </td>
                       <td className={td}>
                         <button
                           type="button"

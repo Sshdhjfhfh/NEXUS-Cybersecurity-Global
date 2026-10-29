@@ -28,8 +28,10 @@ type OverviewFinding struct {
 	Name         string    `json:"name"`
 	VulnClass    string    `json:"vulnclass"`
 	Severity     string    `json:"severity"`
-	Status       string    `json:"status"`
+	Status       string    `json:"status"` // effective remediation state
 	CreatedAt    time.Time `json:"created_at"`
+	DueDate      string    `json:"due_date,omitempty"`
+	Overdue      bool      `json:"overdue"`
 }
 
 // MonthCount is the number of published findings detected in a calendar month.
@@ -45,6 +47,7 @@ type OrgOverview struct {
 	ReleasedRequests int                              `json:"released_requests"`
 	BySeverity       map[string]*SeverityStatusCounts `json:"by_severity"`
 	TopOpen          []OverviewFinding                `json:"top_open"`
+	Overdue          int                              `json:"overdue"` // open items past their target date
 	Monthly          []MonthCount                     `json:"monthly"`
 }
 
@@ -106,23 +109,15 @@ func (d *DB) GetOrgOverview(orgID int64, now time.Time) (*OrgOverview, error) {
 		return nil, err
 	}
 
-	// Findings by severity × lifecycle bucket.
-	rows, err = d.Query(releasedTasksCTE+
-		`SELECT f.severity, f.status, count(*)
-         FROM findings f JOIN rel ON f.task_id = rel.task_id
-         WHERE f.status IN `+clientVisibleStatuses+`
-         GROUP BY f.severity, f.status`, orgID)
+	// Findings by severity × lifecycle bucket, from the SAME effective state the
+	// remediation workspace shows (client progress, retests, risk acceptance and
+	// its expiry included), so the two views can never disagree.
+	items, err := d.ListRemediation(orgID, now)
 	if err != nil {
 		return nil, err
 	}
-	for rows.Next() {
-		var sev, status string
-		var n int
-		if err := rows.Scan(&sev, &status, &n); err != nil {
-			rows.Close()
-			return nil, err
-		}
-		b, ok := ov.BySeverity[sev]
+	for _, it := range items {
+		b, ok := ov.BySeverity[it.Severity]
 		if !ok {
 			// Findings without a recognized severity are still real: count them in
 			// their own "unrated" bucket instead of guessing a severity or
@@ -132,43 +127,29 @@ func (d *DB) GetOrgOverview(orgID int64, now time.Time) (*OrgOverview, error) {
 			}
 			b = ov.BySeverity["unrated"]
 		}
-		switch status {
-		case "confirmed":
-			b.Open += n
+		switch it.Bucket {
+		case "open":
+			b.Open++
 		case "in_progress":
-			b.InProgress += n
-		case "resolved", "fixed":
-			b.Remediated += n
+			b.InProgress++
+		case "remediated":
+			b.Remediated++
 		case "risk_accepted":
-			b.RiskAccepted += n
+			b.RiskAccepted++
 		}
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	// Highest-priority open findings: most severe first, then oldest first (the
-	// longer a serious issue stays open, the more urgent it is).
-	rows, err = d.Query(releasedTasksCTE+
-		`SELECT f.id, rel.request_id, rel.title, f.name, f.vulnclass, f.severity, f.status, f.created_at
-         FROM findings f JOIN rel ON f.task_id = rel.task_id
-         WHERE f.status IN ('confirmed','in_progress')
-         ORDER BY `+severityOrder+`, f.created_at ASC LIMIT 10`, orgID)
-	if err != nil {
-		return nil, err
-	}
-	for rows.Next() {
-		var f OverviewFinding
-		if err := rows.Scan(&f.ID, &f.RequestID, &f.RequestTitle, &f.Name, &f.VulnClass, &f.Severity, &f.Status, &f.CreatedAt); err != nil {
-			rows.Close()
-			return nil, err
+		// Highest-priority open findings: items are already most severe first,
+		// then oldest first (the longer a serious issue stays open, the more
+		// urgent it is).
+		if (it.Bucket == "open" || it.Bucket == "in_progress") && len(ov.TopOpen) < 10 {
+			ov.TopOpen = append(ov.TopOpen, OverviewFinding{
+				ID: it.FindingID, RequestID: it.RequestID, RequestTitle: it.RequestTitle, Name: it.Name,
+				VulnClass: it.VulnClass, Severity: it.Severity, Status: it.State, CreatedAt: it.DetectedAt,
+				DueDate: it.DueDate, Overdue: it.Overdue,
+			})
 		}
-		ov.TopOpen = append(ov.TopOpen, f)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
-		return nil, err
+		if it.Overdue {
+			ov.Overdue++
+		}
 	}
 
 	// Detection trend: published findings per calendar month (UTC), zero-filled so

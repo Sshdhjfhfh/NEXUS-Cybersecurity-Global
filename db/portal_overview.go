@@ -213,10 +213,11 @@ func (d *DB) GetPortalUserPrefs(userID int64) (viewProfile, lang string, err err
 
 // SetPortalUserPrefs updates a user's UI preferences. Values are validated by the
 // caller; nil leaves a field unchanged.
-func (d *DB) SetPortalUserPrefs(userID int64, viewProfile, lang *string) error {
+func (d *DB) SetPortalUserPrefs(userID int64, viewProfile, lang *string, notifyEmail *bool) error {
 	_, err := d.Exec(
-		`UPDATE portal_users SET view_profile = COALESCE($2, view_profile), lang = COALESCE($3, lang) WHERE id = $1`,
-		userID, viewProfile, lang,
+		`UPDATE portal_users SET view_profile = COALESCE($2, view_profile), lang = COALESCE($3, lang),
+notify_email = COALESCE($4, notify_email) WHERE id = $1`,
+		userID, viewProfile, lang, notifyEmail,
 	)
 	return err
 }

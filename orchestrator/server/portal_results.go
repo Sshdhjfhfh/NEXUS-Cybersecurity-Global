@@ -50,11 +50,11 @@ func (s *Server) portalRequestResults(w http.ResponseWriter, r *http.Request) {
 		counts[f.Severity]++
 	}
 	writeJSON(w, 200, map[string]any{
-		"state":     "released",
-		"released":  true,
-		"findings":  findings,
-		"summary":   counts,
-		"total":     len(findings),
+		"state":    "released",
+		"released": true,
+		"findings": findings,
+		"summary":  counts,
+		"total":    len(findings),
 	})
 }
 
@@ -141,5 +141,8 @@ func (s *Server) adminReleaseResults(w http.ResponseWriter, r *http.Request) {
 		action = "results.release"
 	}
 	s.audit(r, &pr.OrgID, "operator", "operator", action, "request:"+strconv.FormatInt(reqID, 10), "")
+	if body.Released {
+		s.portalNotify.resultsReleased(pr)
+	}
 	writeJSON(w, 200, map[string]any{"ok": true, "released": body.Released})
 }

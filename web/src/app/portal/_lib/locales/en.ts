@@ -217,6 +217,13 @@ const en: PortalDict = {
   },
 
   sec: {
+    notifyTitle: "Email notifications",
+    notifyHint:
+      "Published results, findings assigned to you, NEXUS verifications and a daily digest of overdue items. Emails never include technical details: those always stay in the portal.",
+    notifyNeedsVerified: "Verify your email to start receiving them.",
+    notifySecurity: "Security emails (password reset, email verification) are always sent.",
+    notifySaved: "Preference saved.",
+    notifyError: "The preference could not be saved",
     loadError: "The 2FA status could not be loaded",
     mfaTitle: "Two-factor authentication (2FA)",
     mfaOn: "2FA is active on your account.",

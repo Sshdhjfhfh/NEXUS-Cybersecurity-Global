@@ -216,6 +216,13 @@ const es = {
   },
 
   sec: {
+    notifyTitle: "Avisos por email",
+    notifyHint:
+      "Resultados publicados, hallazgos que te asignan, verificaciones de NEXUS y un resumen diario de plazos vencidos. Los correos no incluyen detalles técnicos: el detalle siempre está en el portal.",
+    notifyNeedsVerified: "Verifica tu email para empezar a recibirlos.",
+    notifySecurity: "Los correos de seguridad (restablecer contraseña, verificar email) se envían siempre.",
+    notifySaved: "Preferencia guardada.",
+    notifyError: "No se pudo guardar la preferencia",
     loadError: "No se pudo cargar el estado de 2FA",
     mfaTitle: "Autenticación en dos pasos (2FA)",
     mfaOn: "2FA activo en tu cuenta.",

@@ -2,7 +2,7 @@
 
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
-import { CheckCircle2Icon, DownloadIcon, MailCheckIcon, MailWarningIcon, ShieldIcon } from "lucide-react";
+import { BellIcon, CheckCircle2Icon, DownloadIcon, MailCheckIcon, MailWarningIcon, ShieldIcon } from "lucide-react";
 
 import { usePortalI18n } from "./i18n";
 import { clearPortalToken, downloadExport, type Me, portalApi } from "./portal";
@@ -30,6 +30,27 @@ export function SecurityPanel({ me }: { me: Me }) {
   const [pwMsg, setPwMsg] = useState("");
   const [pwErr, setPwErr] = useState("");
   const [pwBusy, setPwBusy] = useState(false);
+  const [notify, setNotify] = useState(me.user.notify_email !== false);
+  const [notifyBusy, setNotifyBusy] = useState(false);
+  const [notifyMsg, setNotifyMsg] = useState("");
+  const [notifyErr, setNotifyErr] = useState("");
+
+  // Opt in/out of notification mail. Server-side preference: the sender checks it
+  // on every email, so it applies on every device at once.
+  async function toggleNotify(next: boolean) {
+    setNotifyBusy(true);
+    setNotifyMsg("");
+    setNotifyErr("");
+    try {
+      await portalApi.setPreferences({ notify_email: next });
+      setNotify(next);
+      setNotifyMsg(t.sec.notifySaved);
+    } catch (ex) {
+      setNotifyErr(errText(ex, t.sec.notifyError));
+    } finally {
+      setNotifyBusy(false);
+    }
+  }
 
   async function resendVerification() {
     setResendMsg("");
@@ -280,6 +301,49 @@ export function SecurityPanel({ me }: { me: Me }) {
             ) : null}
           </div>
         )}
+      </section>
+
+      {/* Notification email preference */}
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2
+              id="notify-title"
+              className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-cyan-700"
+            >
+              <BellIcon className="size-4" aria-hidden /> {t.sec.notifyTitle}
+            </h2>
+            <p id="notify-hint" className="mt-2 text-sm text-slate-600">
+              {t.sec.notifyHint}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={notify}
+            aria-labelledby="notify-title"
+            aria-describedby="notify-hint"
+            disabled={notifyBusy}
+            onClick={() => void toggleNotify(!notify)}
+            className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 disabled:opacity-60 ${notify ? "bg-cyan-700" : "bg-slate-300"}`}
+          >
+            <span
+              className={`inline-block size-5 rounded-full bg-white shadow transition-transform ${notify ? "translate-x-5" : "translate-x-0.5"}`}
+            />
+          </button>
+        </div>
+        {notify && !verified ? <p className="mt-3 text-xs text-amber-700">{t.sec.notifyNeedsVerified}</p> : null}
+        <p className="mt-3 text-xs text-slate-500">{t.sec.notifySecurity}</p>
+        {notifyMsg ? (
+          <p role="status" className="mt-2 text-xs text-emerald-700">
+            {notifyMsg}
+          </p>
+        ) : null}
+        {notifyErr ? (
+          <p role="alert" className="mt-2 text-xs text-rose-600">
+            {notifyErr}
+          </p>
+        ) : null}
       </section>
 
       {/* Change password */}

@@ -79,6 +79,7 @@ export type Me = {
     email_verified: boolean;
     view_profile: ViewProfile;
     lang: "" | "es" | "en";
+    notify_email?: boolean;
   };
   org: Org;
 };
@@ -205,7 +206,7 @@ export const portalApi = {
   login: (email: string, password: string, code?: string) =>
     req<{ token: string }>("/login", { method: "POST", body: JSON.stringify({ email, password, code }) }),
   me: () => req<Me>("/me"),
-  setPreferences: (prefs: { view_profile?: ViewProfile; lang?: "es" | "en" }) =>
+  setPreferences: (prefs: { view_profile?: ViewProfile; lang?: "es" | "en"; notify_email?: boolean }) =>
     req<{ ok: boolean }>("/me/preferences", { method: "PATCH", body: JSON.stringify(prefs) }),
   overview: () => req<OverviewResponse>("/overview"),
   listRequests: () => req<{ requests: PortalRequest[] }>("/requests"),

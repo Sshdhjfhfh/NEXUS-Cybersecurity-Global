@@ -5,6 +5,7 @@
 package server
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -31,10 +32,23 @@ func (s *Server) sendVerification(userID int64, email string) {
 	if err := pg.CreatePortalToken(userID, "verify", hashToken(tok), verifyTokenTTL); err != nil {
 		return
 	}
-	link := portalLink("/portal/verify?token=" + tok)
-	_ = sendPortalMail(email, "Verifica tu email · NEXUS",
-		"Confirma tu dirección de email para tu cuenta de NEXUS:\n\n"+link+
-			"\n\nSi no creaste esta cuenta, ignora este mensaje.")
+	t := notifyTextFor(userLang(pg, userID))
+	s.sendSecurityMailAsync(email, mailContent{
+		Lang: t.Lang, Subject: t.VerifySubject, Preheader: t.VerifyIntro, Title: t.VerifyTitle,
+		Intro: []string{t.VerifyIntro}, CTA: t.VerifyCTA, CTALink: portalLink("/portal/verify?token=" + tok),
+		Note: t.VerifyNote,
+	})
+}
+
+// sendSecurityMailAsync sends account-security mail off the request path, so a
+// slow mail server never delays the response (or leaks, through timing, whether
+// an account exists on forgot-password).
+func (s *Server) sendSecurityMailAsync(to string, c mailContent) {
+	go func() {
+		if err := sendSecurityMail(to, c); err != nil {
+			log.Printf("[portal-mail] security mail to %s failed: %v", to, err)
+		}
+	}()
 }
 
 // sendPasswordReset issues a reset token and mails the link.
@@ -50,10 +64,12 @@ func (s *Server) sendPasswordReset(userID int64, email string) {
 	if err := pg.CreatePortalToken(userID, "reset", hashToken(tok), resetTokenTTL); err != nil {
 		return
 	}
-	link := portalLink("/portal/reset?token=" + tok)
-	_ = sendPortalMail(email, "Restablece tu contraseña · NEXUS",
-		"Has solicitado restablecer tu contraseña de NEXUS. Abre este enlace (válido 1 hora):\n\n"+link+
-			"\n\nSi no fuiste tú, ignora este mensaje; tu contraseña no cambiará.")
+	t := notifyTextFor(userLang(pg, userID))
+	s.sendSecurityMailAsync(email, mailContent{
+		Lang: t.Lang, Subject: t.ResetSubject, Preheader: t.ResetIntro, Title: t.ResetTitle,
+		Intro: []string{t.ResetIntro}, CTA: t.ResetCTA, CTALink: portalLink("/portal/reset?token=" + tok),
+		Note: t.ResetNote,
+	})
 }
 
 // POST /api/portal/password/forgot {email} — public; always 200 (no enumeration).
@@ -113,8 +129,8 @@ func (s *Server) portalResetPassword(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudo actualizar la contraseña")
 		return
 	}
-	_ = pg.InvalidatePortalTokens(userID, "reset")   // retire any other outstanding links
-	_ = pg.RevokePortalUserSessionsByID(userID)      // kill any sessions after a reset
+	_ = pg.InvalidatePortalTokens(userID, "reset") // retire any other outstanding links
+	_ = pg.RevokePortalUserSessionsByID(userID)    // kill any sessions after a reset
 	if u, err := pg.GetPortalUserByID(userID); err == nil && u != nil {
 		s.audit(r, &u.OrgID, u.Email, "portal_user", "password.reset", "user:"+strconv.FormatInt(userID, 10), "")
 	}

@@ -34,6 +34,43 @@ const STATUS_TONE: Record<string, string> = {
 type Tab = "overview" | "remediation" | "requests" | "team" | "audit" | "security";
 type View = Exclude<ViewProfile, "">;
 
+const TABS: readonly Tab[] = ["overview", "remediation", "requests", "team", "audit", "security"];
+const DEEP_LINK_KEY = "nexus_portal_deeplink";
+
+// Links in notification emails open a tab — and optionally one finding or one
+// evaluation — directly: /portal?tab=remediation&finding=12 or
+// /portal?tab=requests&request=3. The target is parked in sessionStorage so it
+// survives the redirect through the login page, and the URL is cleaned up.
+function stashDeepLink() {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("tab")) {
+      sessionStorage.setItem(DEEP_LINK_KEY, q.toString());
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  } catch {
+    /* storage unavailable: the link just opens the default tab */
+  }
+}
+
+function takeDeepLink(): { tab: Tab; finding: number | null; request: number | null } | null {
+  try {
+    const raw = sessionStorage.getItem(DEEP_LINK_KEY);
+    sessionStorage.removeItem(DEEP_LINK_KEY);
+    if (!raw) return null;
+    const q = new URLSearchParams(raw);
+    const tab = TABS.find((x) => x === q.get("tab"));
+    if (!tab) return null;
+    const id = (k: string) => {
+      const n = Number(q.get(k));
+      return Number.isSafeInteger(n) && n > 0 ? n : null;
+    };
+    return { tab, finding: id("finding"), request: id("request") };
+  } catch {
+    return null;
+  }
+}
+
 // Default perspective when the user has not chosen one: owners usually answer to
 // the business (executive); everyone else is typically hands-on (technical).
 function defaultView(me: Me): View {
@@ -75,6 +112,12 @@ export default function PortalDashboard() {
       if (isPortalLang(meData.user.lang)) setLang(meData.user.lang);
       const { requests } = await portalApi.listRequests();
       setReqs(requests ?? []);
+      const link = takeDeepLink();
+      if (link) {
+        setTab(link.tab);
+        if (link.tab === "remediation" && link.finding) setFocusFinding(link.finding);
+        if (link.tab === "requests" && link.request) setOpenResults(link.request);
+      }
     } catch {
       router.replace("/portal/login");
     } finally {
@@ -83,6 +126,7 @@ export default function PortalDashboard() {
   }, [router, setLang]);
 
   useEffect(() => {
+    stashDeepLink();
     if (!getPortalToken()) {
       router.replace("/portal/login");
       return;

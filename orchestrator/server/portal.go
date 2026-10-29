@@ -262,10 +262,14 @@ func (s *Server) portalMe(w http.ResponseWriter, r *http.Request) {
 		verified = u.EmailVerified
 	}
 	viewProfile, lang, _ := pg.GetPortalUserPrefs(userID)
+	notifyEmail, err := pg.GetPortalUserNotifyEmail(userID)
+	if err != nil {
+		notifyEmail = true
+	}
 	writeJSON(w, 200, map[string]any{
 		"user": map[string]any{
 			"id": userID, "role": role, "email": email, "email_verified": verified,
-			"view_profile": viewProfile, "lang": lang,
+			"view_profile": viewProfile, "lang": lang, "notify_email": notifyEmail,
 		},
 		"org": org,
 	})

@@ -161,6 +161,38 @@ CREATE TABLE IF NOT EXISTS portal_audit (
 );
 CREATE INDEX IF NOT EXISTS idx_portal_audit_org ON portal_audit(org_id);
 CREATE INDEX IF NOT EXISTS idx_portal_audit_id_desc ON portal_audit(id DESC);
+-- Email notifications. notify_email is the user's opt-out for non-security mail
+-- (password reset / email verification are always sent).
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS notify_email BOOLEAN NOT NULL DEFAULT true;
+-- Ledger of notifications already claimed, so an event is mailed at most once
+-- (claimed with INSERT ... ON CONFLICT DO NOTHING before anything is queued).
+CREATE TABLE IF NOT EXISTS portal_notifications (
+    id         BIGSERIAL PRIMARY KEY,
+    org_id     BIGINT NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL,
+    ref        TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (org_id, kind, ref)
+);
+-- Outbox for notification mail: delivered by a background worker with retries,
+-- so a slow or failing SMTP server never blocks a request. Never holds tokens.
+CREATE TABLE IF NOT EXISTS portal_mail_outbox (
+    id         BIGSERIAL PRIMARY KEY,
+    org_id     BIGINT REFERENCES orgs(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL DEFAULT '',
+    to_addr    TEXT NOT NULL,
+    subject    TEXT NOT NULL,
+    text_body  TEXT NOT NULL,
+    html_body  TEXT NOT NULL,
+    status     TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','sent','failed')),
+    attempts   INT NOT NULL DEFAULT 0,
+    last_error TEXT NOT NULL DEFAULT '',
+    next_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    sent_at    TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_portal_mail_outbox_pending ON portal_mail_outbox(next_at) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_portal_mail_outbox_id_desc ON portal_mail_outbox(id DESC);
 `
 
 // EnsurePortalTables crea las tablas del portal si no existen (aditivo, reversible).

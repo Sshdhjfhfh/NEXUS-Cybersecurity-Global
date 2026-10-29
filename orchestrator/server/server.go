@@ -54,6 +54,8 @@ type Server struct {
 	skillDir string // root directory for skill subdirectories
 	jwtKey   []byte // HS256 signing key loaded from / generated into dataDir/jwt.key
 
+	portalNotify *portalNotifier // client-portal email notifications (nil without Postgres)
+
 	// concMu serializes concurrency-cap decisions (admission + reconcile) so a
 	// scheduler tick and an HTTP settings change / task creation can't both count
 	// free slots off the same snapshot and over-promote past the limit.
@@ -244,6 +246,9 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string, keyDi
 		// 漏洞 IM 推送投递引擎。与 Scheduler 并列但独立：推送的实时性要求(3s)
 		// 与触发器的业务节奏不同，且两者失败互不牵连——推送卡住不该影响 agent 触发。
 		go newNotifier(s).Run(s.ctx)
+		// Client-portal email: outbox delivery with retries + remediation sweep.
+		s.portalNotify = newPortalNotifier(s)
+		go s.portalNotify.run(s.ctx)
 		// Fill the tool cache for any enabled MCP that has none yet (notably the
 		// seeded browser MCP on first run). Async so it never blocks startup.
 		go s.discoverEmptyMCPsOnStartup()
@@ -741,6 +746,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PATCH /api/admin/portal/requests/{id}", s.adminUpdateRequestStatus)
 	mux.HandleFunc("GET /api/admin/portal/retest-requests", s.adminListRetestRequests)
 	mux.HandleFunc("GET /api/admin/portal/requests/{id}/report", s.adminRequestReport)
+	// Client email notifications (operator): run a sweep now, inspect the outbox.
+	mux.HandleFunc("POST /api/admin/portal/notifications/run", s.adminRunNotifications)
+	mux.HandleFunc("GET /api/admin/portal/mail-outbox", s.adminListMailOutbox)
+	mux.HandleFunc("GET /api/admin/portal/mail-outbox/{id}/preview", s.adminPreviewMail)
 	// Platform-admin: manage every organization (list with counts, suspend/reactivate).
 	mux.HandleFunc("GET /api/admin/portal/orgs", s.adminListOrgs)
 	mux.HandleFunc("GET /api/admin/portal/orgs/{id}/members", s.adminListOrgMembers)

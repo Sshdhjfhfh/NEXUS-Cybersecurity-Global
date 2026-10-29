@@ -107,7 +107,7 @@ func (s *Server) portalGetRemediation(w http.ResponseWriter, r *http.Request) {
 // PATCH /api/portal/remediation/{fid} {assignee_id?, due_date?, state?}
 // assignee_id / due_date accept null to clear (due falls back to the SLA).
 func (s *Server) portalUpdateRemediation(w http.ResponseWriter, r *http.Request) {
-	pg, orgID, _, role, actor, it, ok := s.remediationTarget(w, r)
+	pg, orgID, userID, role, actor, it, ok := s.remediationTarget(w, r)
 	if !ok {
 		return
 	}
@@ -214,6 +214,9 @@ func (s *Server) portalUpdateRemediation(w http.ResponseWriter, r *http.Request)
 		s.remediationChanged(r, pg, orgID, fid, actor, "state", *req.State, "remediation.state")
 	}
 	updated, _ := pg.GetRemediation(orgID, fid, time.Now())
+	if assignee != nil && (it.AssigneeID == nil || *it.AssigneeID != *assignee) {
+		s.portalNotify.findingAssigned(orgID, *assignee, userID, actor, updated)
+	}
 	writeJSON(w, 200, map[string]any{"ok": true, "item": updated})
 }
 
@@ -276,6 +279,7 @@ func (s *Server) portalRequestRetest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.remediationChanged(r, pg, orgID, it.FindingID, actor, "retest_requested", req.Note, "remediation.retest_request")
+	s.portalNotify.retestRequested(orgID, it)
 	updated, _ := pg.GetRemediation(orgID, it.FindingID, time.Now())
 	writeJSON(w, 200, map[string]any{"ok": true, "item": updated})
 }

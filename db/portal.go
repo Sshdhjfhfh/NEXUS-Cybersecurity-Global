@@ -23,10 +23,10 @@ type Org struct {
 }
 
 type PortalUser struct {
-	ID           int64  `json:"id"`
-	OrgID        int64  `json:"org_id"`
-	Email        string `json:"email"`
-	PasswordHash string `json:"-"`
+	ID            int64  `json:"id"`
+	OrgID         int64  `json:"org_id"`
+	Email         string `json:"email"`
+	PasswordHash  string `json:"-"`
 	Role          string `json:"role"`
 	MFASecret     string `json:"-"` // encrypted at rest; empty when no secret set
 	MFAEnabled    bool   `json:"mfa_enabled"`
@@ -80,6 +80,11 @@ ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NUL
 -- and on every request; tokens issued at/before sessions_revoked_at are rejected.
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS sessions_revoked_at TIMESTAMPTZ;
+-- Per-user UI preferences, kept server-side so they follow the user across
+-- devices: the dashboard perspective ('executive' | 'technical' | '' = default
+-- by role) and the interface language ('es' | 'en' | '' = browser default).
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS view_profile TEXT NOT NULL DEFAULT '';
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS lang TEXT NOT NULL DEFAULT '';
 -- One-time tokens for password reset and email verification. Only the SHA-256 of
 -- the token is stored; the plaintext lives only in the email sent to the user.
 CREATE TABLE IF NOT EXISTS portal_tokens (

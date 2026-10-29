@@ -68,9 +68,49 @@ export type Invite = {
   role: PortalRole;
   created_at: string;
 };
+export type ViewProfile = "" | "executive" | "technical";
 export type Me = {
-  user: { id: number; role: PortalRole; email: string; email_verified: boolean };
+  user: {
+    id: number;
+    role: PortalRole;
+    email: string;
+    email_verified: boolean;
+    view_profile: ViewProfile;
+    lang: "" | "es" | "en";
+  };
   org: Org;
+};
+
+export type SeverityBucket = { open: number; in_progress: number; remediated: number; risk_accepted: number };
+export type OverviewFinding = {
+  id: number;
+  request_id: number;
+  request_title: string;
+  name: string;
+  vulnclass: string;
+  severity: string;
+  status: string;
+  created_at: string;
+};
+export type OverviewResponse = {
+  overview: {
+    requests: Record<string, number>;
+    requests_total: number;
+    released_requests: number;
+    by_severity: Record<string, SeverityBucket>;
+    top_open: OverviewFinding[];
+    monthly: { month: string; count: number }[];
+  };
+  generated_at: string;
+  // admin+ only
+  account_security?: {
+    active_members: number;
+    mfa_enabled: number;
+    unverified: number;
+    disabled: number;
+    pending_invites: number;
+  };
+  activity?: AuditEntry[];
 };
 export type AuditEntry = {
   id: number;
@@ -111,6 +151,9 @@ export const portalApi = {
   login: (email: string, password: string, code?: string) =>
     req<{ token: string }>("/login", { method: "POST", body: JSON.stringify({ email, password, code }) }),
   me: () => req<Me>("/me"),
+  setPreferences: (prefs: { view_profile?: ViewProfile; lang?: "es" | "en" }) =>
+    req<{ ok: boolean }>("/me/preferences", { method: "PATCH", body: JSON.stringify(prefs) }),
+  overview: () => req<OverviewResponse>("/overview"),
   listRequests: () => req<{ requests: PortalRequest[] }>("/requests"),
   createRequest: (title: string, scope: string) =>
     req<{ ok: boolean; id: number }>("/requests", { method: "POST", body: JSON.stringify({ title, scope }) }),

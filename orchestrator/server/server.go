@@ -690,6 +690,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/portal/register", s.portalRegister)
 	mux.HandleFunc("POST /api/portal/login", s.portalLogin)
 	mux.HandleFunc("GET /api/portal/me", s.portalMe)
+	mux.HandleFunc("PATCH /api/portal/me/preferences", s.portalSetPreferences)
+	mux.HandleFunc("GET /api/portal/overview", s.portalOverview)
 	mux.HandleFunc("POST /api/portal/requests", s.portalCreateRequest)
 	mux.HandleFunc("GET /api/portal/requests", s.portalListRequests)
 	// Client-facing assessment results (org-isolated, released by the operator).

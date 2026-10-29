@@ -73,6 +73,31 @@ func TestInviteRoleValidation(t *testing.T) {
 	}
 }
 
+func TestPortalPreferenceValidation(t *testing.T) {
+	// The view profile is presentational only; empty means "default by role".
+	for _, v := range []string{"", "executive", "technical"} {
+		if !validViewProfile(v) {
+			t.Fatalf("view profile %q must be valid", v)
+		}
+	}
+	for _, v := range []string{"admin", "owner", "EXECUTIVE", "<script>"} {
+		if validViewProfile(v) {
+			t.Fatalf("view profile %q must be rejected", v)
+		}
+	}
+	// Only languages with a complete translation are accepted.
+	for _, v := range []string{"", "es", "en"} {
+		if !validPortalLang(v) {
+			t.Fatalf("lang %q must be valid", v)
+		}
+	}
+	for _, v := range []string{"fr", "es-ES", "zz"} {
+		if validPortalLang(v) {
+			t.Fatalf("lang %q must be rejected", v)
+		}
+	}
+}
+
 func TestInviteTokenUniqueAndURLSafe(t *testing.T) {
 	seen := map[string]bool{}
 	for i := 0; i < 256; i++ {

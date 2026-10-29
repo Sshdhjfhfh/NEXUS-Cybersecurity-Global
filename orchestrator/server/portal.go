@@ -261,9 +261,13 @@ func (s *Server) portalMe(w http.ResponseWriter, r *http.Request) {
 		email = u.Email
 		verified = u.EmailVerified
 	}
+	viewProfile, lang, _ := pg.GetPortalUserPrefs(userID)
 	writeJSON(w, 200, map[string]any{
-		"user": map[string]any{"id": userID, "role": role, "email": email, "email_verified": verified},
-		"org":  org,
+		"user": map[string]any{
+			"id": userID, "role": role, "email": email, "email_verified": verified,
+			"view_profile": viewProfile, "lang": lang,
+		},
+		"org": org,
 	})
 }
 

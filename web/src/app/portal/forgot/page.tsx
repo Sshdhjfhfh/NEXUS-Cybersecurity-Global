@@ -4,10 +4,12 @@ import { type FormEvent, useState } from "react";
 
 import Link from "next/link";
 
+import { usePortalI18n } from "../_lib/i18n";
 import { portalApi } from "../_lib/portal";
-import { Field, PortalAuthShell, PrimaryButton } from "../_lib/ui";
+import { authLink, Field, PortalAuthShell, PrimaryButton } from "../_lib/ui";
 
 export default function PortalForgot() {
+  const { t } = usePortalI18n();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -27,30 +29,29 @@ export default function PortalForgot() {
 
   return (
     <PortalAuthShell
-      title="Restablecer contraseña"
-      subtitle="Te enviaremos un enlace para crear una nueva."
+      title={t.auth.forgotTitle}
+      subtitle={t.auth.forgotSubtitle}
       footer={
-        <Link href="/portal/login" className="text-cyan-600 hover:text-cyan-700">
-          Volver a iniciar sesión
+        <Link href="/portal/login" className={authLink}>
+          {t.auth.backToSignIn}
         </Link>
       }
     >
       {sent ? (
-        <p className="text-sm text-slate-600">
-          Si existe una cuenta con ese email, te hemos enviado un enlace para restablecer la contraseña. Revisa tu
-          bandeja de entrada.
+        <p role="status" className="text-sm text-slate-600">
+          {t.auth.forgotSent}
         </p>
       ) : (
         <form onSubmit={submit} className="space-y-4">
           <Field
-            label="Email"
+            label={t.email}
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
           />
           <PrimaryButton type="submit" disabled={loading || !email}>
-            {loading ? "Enviando…" : "Enviar enlace"}
+            {loading ? t.auth.sending : t.auth.sendLink}
           </PrimaryButton>
         </form>
       )}

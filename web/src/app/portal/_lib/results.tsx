@@ -2,34 +2,24 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { usePortalI18n } from "./i18n";
 import { type ClientFindingDetail, portalApi, type ResultsResponse, type Severity } from "./portal";
 
-const SEV_LABEL: Record<Severity, string> = {
-  critical: "Crítica",
-  high: "Alta",
-  medium: "Media",
-  low: "Baja",
-};
 const SEV_TONE: Record<Severity, string> = {
   critical: "border-rose-200 bg-rose-50 text-rose-700",
   high: "border-orange-200 bg-orange-50 text-orange-700",
-  medium: "border-amber-200 bg-amber-50 text-amber-700",
+  medium: "border-amber-200 bg-amber-50 text-amber-800",
   low: "border-sky-200 bg-sky-50 text-sky-700",
 };
-const STATUS_LABEL: Record<string, string> = {
-  confirmed: "Confirmada",
-  in_progress: "En análisis",
-  resolved: "Resuelta",
-  fixed: "Corregida",
-  risk_accepted: "Riesgo aceptado",
-};
+const UNRATED_TONE = "border-slate-200 bg-slate-100 text-slate-600";
 
-function SevBadge({ sev }: { sev: Severity }) {
+function SevBadge({ sev }: { sev: string }) {
+  const { t } = usePortalI18n();
+  const tone = SEV_TONE[sev as Severity] ?? UNRATED_TONE;
+  const label = (t.sev as Record<string, string>)[sev] ?? t.sev.unrated;
   return (
-    <span
-      className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${SEV_TONE[sev]}`}
-    >
-      {SEV_LABEL[sev]}
+    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${tone}`}>
+      {label}
     </span>
   );
 }
@@ -37,6 +27,7 @@ function SevBadge({ sev }: { sev: Severity }) {
 // ResultsPanel shows the released, curated results for one request. Everything it
 // renders comes from the org-scoped, operator-released endpoints.
 export function ResultsPanel({ requestId }: { requestId: number }) {
+  const { t } = usePortalI18n();
   const [data, setData] = useState<ResultsResponse | null>(null);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
@@ -48,7 +39,7 @@ export function ResultsPanel({ requestId }: { requestId: number }) {
     try {
       setData(await portalApi.requestResults(requestId));
     } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "No se pudieron cargar los resultados");
+      setErr(ex instanceof Error && ex.message ? ex.message : "error");
     } finally {
       setLoading(false);
     }
@@ -75,22 +66,26 @@ export function ResultsPanel({ requestId }: { requestId: number }) {
   }
 
   if (loading) {
-    return <p className="mt-3 text-xs text-slate-500">Cargando resultados…</p>;
+    return <p className="mt-3 text-xs text-slate-500">{t.results.loading}</p>;
   }
   if (err) {
-    return <p className="mt-3 text-xs text-rose-500">{err}</p>;
+    return (
+      <p role="alert" className="mt-3 text-xs text-rose-600">
+        {err === "error" ? t.results.loadError : err}
+      </p>
+    );
   }
   if (!data) {
     return null;
   }
 
   if (data.state === "not_started") {
-    return <p className="mt-3 text-xs text-slate-400">La evaluación aún no ha comenzado.</p>;
+    return <p className="mt-3 text-xs text-slate-500">{t.results.notStarted}</p>;
   }
   if (data.state === "in_progress") {
     return (
       <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-        Evaluación en curso. Los resultados aparecerán aquí cuando nuestro equipo los publique.
+        {t.results.inProgress}
       </p>
     );
   }
@@ -99,7 +94,7 @@ export function ResultsPanel({ requestId }: { requestId: number }) {
   return (
     <div className="mt-3 space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-[11px]">
-        <span className="text-slate-500">Resumen:</span>
+        <span className="text-slate-500">{t.results.summary}</span>
         {(["critical", "high", "medium", "low"] as Severity[]).map((sev) =>
           s[sev] > 0 ? (
             <span key={sev} className="inline-flex items-center gap-1 text-slate-600">
@@ -107,7 +102,7 @@ export function ResultsPanel({ requestId }: { requestId: number }) {
             </span>
           ) : null,
         )}
-        {data.total === 0 ? <span className="font-medium text-emerald-600">Sin hallazgos. 🎉</span> : null}
+        {data.total === 0 ? <span className="font-medium text-emerald-700">{t.results.none}</span> : null}
       </div>
 
       <ul className="space-y-2">
@@ -115,12 +110,13 @@ export function ResultsPanel({ requestId }: { requestId: number }) {
           <li key={f.id} className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50/60">
             <button
               type="button"
+              aria-expanded={open === f.id}
               onClick={() => toggle(f.id)}
-              className="flex w-full flex-wrap items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-100"
+              className="flex w-full flex-wrap items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400"
             >
               <SevBadge sev={f.severity} />
               <span className="font-medium text-slate-900">{f.name || f.vulnclass}</span>
-              <span className="text-[11px] text-slate-500">{STATUS_LABEL[f.status] ?? f.status}</span>
+              <span className="text-[11px] text-slate-500">{t.findingStatus[f.status] ?? f.status}</span>
             </button>
             {open === f.id ? (
               <div className="border-t border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-600">
@@ -128,7 +124,7 @@ export function ResultsPanel({ requestId }: { requestId: number }) {
                 {detail[f.id] ? (
                   <pre className="whitespace-pre-wrap font-sans text-slate-700">{detail[f.id].report || "—"}</pre>
                 ) : (
-                  <p className="text-slate-400">Cargando detalle…</p>
+                  <p className="text-slate-500">{t.results.loadingDetail}</p>
                 )}
               </div>
             ) : null}

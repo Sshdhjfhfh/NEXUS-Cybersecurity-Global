@@ -5,11 +5,13 @@ import { type FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { usePortalI18n } from "../_lib/i18n";
 import { portalApi, setPortalToken } from "../_lib/portal";
-import { Field, PortalAuthShell, PrimaryButton } from "../_lib/ui";
+import { authLink, Field, FormError, PortalAuthShell, PrimaryButton } from "../_lib/ui";
 
 export default function PortalLogin() {
   const router = useRouter();
+  const { t } = usePortalI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -30,9 +32,9 @@ export default function PortalLogin() {
       if (msg === "mfa_required") {
         // The account has 2FA: reveal the code field and ask for it.
         setNeedMfa(true);
-        setErr(code ? "Código inválido. Inténtalo de nuevo." : "");
+        setErr(code ? t.auth.mfaInvalid : "");
       } else {
-        setErr(msg && msg !== "unauthorized" ? msg : "Email o contraseña incorrectos");
+        setErr(msg && msg !== "unauthorized" ? msg : t.auth.badCredentials);
       }
     } finally {
       setLoading(false);
@@ -41,17 +43,17 @@ export default function PortalLogin() {
 
   return (
     <PortalAuthShell
-      title="Portal de clientes"
-      subtitle="Inicia sesión en tu organización."
+      title={t.auth.portalTitle}
+      subtitle={t.auth.loginSubtitle}
       footer={
         <>
-          <Link href="/portal/forgot" className="text-cyan-600 hover:text-cyan-700">
-            ¿Olvidaste tu contraseña?
+          <Link href="/portal/forgot" className={authLink}>
+            {t.auth.forgot}
           </Link>
           <span className="mt-2 block">
-            ¿No tienes cuenta?{" "}
-            <Link href="/portal/register" className="text-cyan-600 hover:text-cyan-700">
-              Crear organización
+            {t.auth.noAccount}{" "}
+            <Link href="/portal/register" className={authLink}>
+              {t.auth.createOrg}
             </Link>
           </span>
         </>
@@ -59,14 +61,14 @@ export default function PortalLogin() {
     >
       <form onSubmit={submit} className="space-y-4">
         <Field
-          label="Email"
+          label={t.email}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
         />
         <Field
-          label="Contraseña"
+          label={t.auth.password}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -74,7 +76,7 @@ export default function PortalLogin() {
         />
         {needMfa ? (
           <Field
-            label="Código de verificación (2FA)"
+            label={t.auth.mfaCode}
             inputMode="numeric"
             autoComplete="one-time-code"
             placeholder="123456"
@@ -84,9 +86,9 @@ export default function PortalLogin() {
             autoFocus
           />
         ) : null}
-        {err ? <p className="text-sm text-rose-500">{err}</p> : null}
+        {err ? <FormError>{err}</FormError> : null}
         <PrimaryButton type="submit" disabled={loading || !email || !password || (needMfa && code.trim().length < 6)}>
-          {loading ? "Entrando…" : needMfa ? "Verificar" : "Entrar"}
+          {loading ? t.auth.signingIn : needMfa ? t.auth.verify : t.auth.signIn}
         </PrimaryButton>
       </form>
     </PortalAuthShell>

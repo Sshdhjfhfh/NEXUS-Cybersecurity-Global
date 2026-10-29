@@ -5,11 +5,13 @@ import { type FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { usePortalI18n } from "../_lib/i18n";
 import { portalApi, setPortalToken } from "../_lib/portal";
-import { Field, PortalAuthShell, PrimaryButton } from "../_lib/ui";
+import { authLink, Field, FormError, PortalAuthShell, PrimaryButton } from "../_lib/ui";
 
 export default function PortalRegister() {
   const router = useRouter();
+  const { t } = usePortalI18n();
   const [orgName, setOrgName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +21,7 @@ export default function PortalRegister() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (password.length < 8) {
-      setErr("La contraseña debe tener al menos 8 caracteres.");
+      setErr(t.passwordMin);
       return;
     }
     setLoading(true);
@@ -29,7 +31,7 @@ export default function PortalRegister() {
       setPortalToken(token);
       router.replace("/portal");
     } catch (ex) {
-      setErr(ex instanceof Error && ex.message !== "unauthorized" ? ex.message : "No se pudo crear la cuenta");
+      setErr(ex instanceof Error && ex.message !== "unauthorized" ? ex.message : t.auth.registerError);
     } finally {
       setLoading(false);
     }
@@ -37,36 +39,41 @@ export default function PortalRegister() {
 
   return (
     <PortalAuthShell
-      title="Crear organización"
-      subtitle="Registra tu organización y su primer usuario."
+      title={t.auth.createOrg}
+      subtitle={t.auth.registerSubtitle}
       footer={
         <>
-          ¿Ya tienes cuenta?{" "}
-          <Link href="/portal/login" className="text-cyan-600 hover:text-cyan-700">
-            Iniciar sesión
+          {t.auth.haveAccount}{" "}
+          <Link href="/portal/login" className={authLink}>
+            {t.auth.goSignIn}
           </Link>
         </>
       }
     >
       <form onSubmit={submit} className="space-y-4">
-        <Field label="Nombre de la organización" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
         <Field
-          label="Email"
+          label={t.auth.orgName}
+          value={orgName}
+          onChange={(e) => setOrgName(e.target.value)}
+          autoComplete="organization"
+        />
+        <Field
+          label={t.email}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
         />
         <Field
-          label="Contraseña (mín. 8)"
+          label={t.auth.passwordNew}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
         />
-        {err ? <p className="text-sm text-rose-500">{err}</p> : null}
+        {err ? <FormError>{err}</FormError> : null}
         <PrimaryButton type="submit" disabled={loading || !orgName || !email || password.length < 8}>
-          {loading ? "Creando…" : "Crear cuenta"}
+          {loading ? t.auth.creating : t.auth.createAccount}
         </PrimaryButton>
       </form>
     </PortalAuthShell>

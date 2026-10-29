@@ -5,38 +5,40 @@ import { type FormEvent, Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { usePortalI18n } from "../_lib/i18n";
 import { portalApi, setPortalToken } from "../_lib/portal";
-import { Field, PortalAuthShell, PrimaryButton } from "../_lib/ui";
+import { authLink, Field, FormError, PortalAuthShell, PortalLoading, PrimaryButton } from "../_lib/ui";
 
 function AcceptInner() {
   const router = useRouter();
+  const { t } = usePortalI18n();
   const params = useSearchParams();
   const token = params.get("token") ?? "";
 
   const [info, setInfo] = useState<{ email: string; org: string; role: string } | null>(null);
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
-  const [fatal, setFatal] = useState("");
+  const [fatal, setFatal] = useState<"" | "missing" | "invalid">("");
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     if (!token) {
-      setFatal("Falta el token de invitación.");
+      setFatal("missing");
       setChecking(false);
       return;
     }
     portalApi
       .lookupInvite(token)
       .then((i) => setInfo({ email: i.email, org: i.org, role: i.role }))
-      .catch(() => setFatal("Esta invitación no es válida o ya fue utilizada."))
+      .catch(() => setFatal("invalid"))
       .finally(() => setChecking(false));
   }, [token]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (password.length < 8) {
-      setErr("La contraseña debe tener al menos 8 caracteres.");
+      setErr(t.passwordMin);
       return;
     }
     setLoading(true);
@@ -46,7 +48,7 @@ function AcceptInner() {
       setPortalToken(jwt);
       router.replace("/portal");
     } catch (ex) {
-      setErr(ex instanceof Error && ex.message !== "unauthorized" ? ex.message : "No se pudo aceptar la invitación");
+      setErr(ex instanceof Error && ex.message !== "unauthorized" ? ex.message : t.auth.joinError);
     } finally {
       setLoading(false);
     }
@@ -54,8 +56,8 @@ function AcceptInner() {
 
   if (checking) {
     return (
-      <PortalAuthShell title="Invitación" subtitle="Verificando…">
-        <p className="text-sm text-slate-500">Un momento…</p>
+      <PortalAuthShell title={t.auth.inviteTitle} subtitle={t.auth.verifyChecking}>
+        <p className="text-sm text-slate-500">{t.auth.oneMoment}</p>
       </PortalAuthShell>
     );
   }
@@ -63,41 +65,41 @@ function AcceptInner() {
   if (fatal) {
     return (
       <PortalAuthShell
-        title="Invitación no válida"
-        subtitle={fatal}
+        title={t.auth.inviteInvalidTitle}
+        subtitle={fatal === "missing" ? t.auth.inviteMissing : t.auth.inviteInvalid}
         footer={
-          <Link href="/portal/login" className="text-cyan-600 hover:text-cyan-700">
-            Ir a iniciar sesión
+          <Link href="/portal/login" className={authLink}>
+            {t.auth.goSignIn}
           </Link>
         }
       >
-        <p className="text-sm text-slate-500">Pide a quien te invitó que genere un nuevo enlace de invitación.</p>
+        <p className="text-sm text-slate-500">{t.auth.inviteAskNew}</p>
       </PortalAuthShell>
     );
   }
 
   return (
     <PortalAuthShell
-      title="Unirte a tu equipo"
+      title={t.auth.joinTitle}
       subtitle={info ? `${info.org} · ${info.email}` : undefined}
       footer={
-        <Link href="/portal/login" className="text-cyan-600 hover:text-cyan-700">
-          Iniciar sesión
+        <Link href="/portal/login" className={authLink}>
+          {t.auth.goSignIn}
         </Link>
       }
     >
       <form onSubmit={submit} className="space-y-4">
-        <Field label="Email" type="email" value={info?.email ?? ""} readOnly disabled />
+        <Field label={t.email} type="email" value={info?.email ?? ""} readOnly disabled />
         <Field
-          label="Crea tu contraseña (mín. 8)"
+          label={t.auth.createPassword}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
         />
-        {err ? <p className="text-sm text-rose-500">{err}</p> : null}
+        {err ? <FormError>{err}</FormError> : null}
         <PrimaryButton type="submit" disabled={loading || password.length < 8}>
-          {loading ? "Creando cuenta…" : "Unirme"}
+          {loading ? t.auth.joining : t.auth.join}
         </PrimaryButton>
       </form>
     </PortalAuthShell>
@@ -106,13 +108,7 @@ function AcceptInner() {
 
 export default function PortalAccept() {
   return (
-    <Suspense
-      fallback={
-        <div className="grid min-h-screen place-items-center bg-gradient-to-br from-slate-50 via-[#eef4fb] to-[#e6eefb] text-sm text-slate-500">
-          Cargando…
-        </div>
-      }
-    >
+    <Suspense fallback={<PortalLoading />}>
       <AcceptInner />
     </Suspense>
   );

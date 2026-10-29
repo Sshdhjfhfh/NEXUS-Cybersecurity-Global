@@ -4,31 +4,28 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 import { CopyIcon, LogOutIcon, Trash2Icon, UserPlusIcon } from "lucide-react";
 
+import { usePortalI18n } from "./i18n";
 import { type Invite, type Me, type Member, type PortalRole, portalApi } from "./portal";
 import { Field, PrimaryButton } from "./ui";
 
-const ROLE_LABEL: Record<PortalRole, string> = {
-  owner: "Propietario",
-  admin: "Administrador",
-  member: "Miembro",
-};
-
 function RoleBadge({ role }: { role: PortalRole }) {
+  const { t } = usePortalI18n();
   const tone =
     role === "owner"
-      ? "border-amber-200 bg-amber-50 text-amber-700"
+      ? "border-amber-200 bg-amber-50 text-amber-800"
       : role === "admin"
         ? "border-cyan-200 bg-cyan-50 text-cyan-700"
         : "border-slate-200 bg-slate-100 text-slate-600";
   return (
     <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${tone}`}>
-      {ROLE_LABEL[role]}
+      {t.role[role] ?? role}
     </span>
   );
 }
 
 // TeamPanel is only mounted for admin/owner (the server also enforces this).
 export function TeamPanel({ me }: { me: Me }) {
+  const { t, fmtDate } = usePortalI18n();
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [email, setEmail] = useState("");
@@ -39,6 +36,8 @@ export function TeamPanel({ me }: { me: Me }) {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const errText = (ex: unknown, fallback: string) => (ex instanceof Error && ex.message ? ex.message : fallback);
+
   const load = useCallback(async () => {
     setErr("");
     try {
@@ -46,11 +45,11 @@ export function TeamPanel({ me }: { me: Me }) {
       setMembers(m ?? []);
       setInvites(i ?? []);
     } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "No se pudo cargar el equipo");
+      setErr(ex instanceof Error && ex.message ? ex.message : t.team.loadError);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -69,7 +68,7 @@ export function TeamPanel({ me }: { me: Me }) {
       setRole("member");
       await load();
     } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "No se pudo crear la invitación");
+      setErr(errText(ex, t.team.inviteError));
     } finally {
       setBusy(false);
     }
@@ -81,17 +80,20 @@ export function TeamPanel({ me }: { me: Me }) {
       await portalApi.updateMemberRole(id, next);
       await load();
     } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "No se pudo cambiar el rol");
+      setErr(errText(ex, t.team.roleError));
     }
   }
 
-  async function remove(id: number) {
+  async function remove(id: number, memberEmail: string) {
     setErr("");
+    if (!window.confirm(t.team.confirmRemove(memberEmail))) {
+      return;
+    }
     try {
       await portalApi.removeMember(id);
       await load();
     } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "No se pudo eliminar el miembro");
+      setErr(errText(ex, t.team.removeError));
     }
   }
 
@@ -101,7 +103,7 @@ export function TeamPanel({ me }: { me: Me }) {
       await portalApi.revokeInvite(id);
       await load();
     } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "No se pudo revocar la invitación");
+      setErr(errText(ex, t.team.revokeError));
     }
   }
 
@@ -111,19 +113,19 @@ export function TeamPanel({ me }: { me: Me }) {
       await portalApi.setMemberDisabled(id, disabled);
       await load();
     } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "No se pudo actualizar la cuenta");
+      setErr(errText(ex, t.team.updateError));
     }
   }
 
-  async function revokeSessions(id: number, email: string) {
+  async function revokeSessions(id: number, memberEmail: string) {
     setErr("");
-    if (!window.confirm(`¿Cerrar todas las sesiones de ${email}? Tendrá que volver a iniciar sesión.`)) {
+    if (!window.confirm(t.team.confirmEndSessions(memberEmail))) {
       return;
     }
     try {
       await portalApi.revokeMemberSessions(id);
     } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "No se pudieron revocar las sesiones");
+      setErr(errText(ex, t.team.sessionsError));
     }
   }
 
@@ -140,46 +142,48 @@ export function TeamPanel({ me }: { me: Me }) {
   const canManageOwners = me.user.role === "owner";
 
   if (loading) {
-    return <p className="mt-4 text-sm text-slate-500">Cargando equipo…</p>;
+    return <p className="mt-4 text-sm text-slate-500">{t.team.loading}</p>;
   }
 
   return (
     <div className="mt-4 grid gap-8 lg:grid-cols-[1fr_1.4fr]">
       {/* Invite */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-cyan-700">
-          <UserPlusIcon className="size-4" /> Invitar miembro
+          <UserPlusIcon className="size-4" aria-hidden /> {t.team.invite}
         </h2>
         <form onSubmit={invite} className="mt-4 space-y-4">
           <Field
-            label="Email"
+            label={t.email}
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="colega@empresa.com"
+            placeholder={t.team.emailPlaceholder}
             required
           />
           <label className="block text-xs font-medium text-slate-600">
-            Rol
+            {t.team.role}
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as PortalRole)}
               className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-cyan-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-cyan-100"
             >
-              <option value="member">Miembro (crear y ver solicitudes)</option>
-              <option value="admin">Administrador (gestiona el equipo)</option>
+              <option value="member">{t.team.roleMemberOption}</option>
+              <option value="admin">{t.team.roleAdminOption}</option>
             </select>
           </label>
-          {err ? <p className="text-sm text-rose-500">{err}</p> : null}
+          {err ? (
+            <p role="alert" className="text-sm text-rose-600">
+              {err}
+            </p>
+          ) : null}
           <PrimaryButton type="submit" disabled={busy || !email.trim()}>
-            {busy ? "Generando…" : "Generar invitación"}
+            {busy ? t.team.generating : t.team.generate}
           </PrimaryButton>
         </form>
         {newLink ? (
           <div className="mt-5 rounded-xl border border-cyan-200 bg-cyan-50 p-4">
-            <p className="text-xs text-slate-600">
-              Comparte este enlace con la persona invitada. Es de un solo uso y fija su email y rol.
-            </p>
+            <p className="text-xs text-slate-600">{t.team.shareLink}</p>
             <div className="mt-2 flex items-center gap-2">
               <code className="min-w-0 flex-1 truncate rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-cyan-700">
                 {newLink}
@@ -189,7 +193,7 @@ export function TeamPanel({ me }: { me: Me }) {
                 onClick={copyLink}
                 className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-600 hover:border-cyan-400 hover:text-cyan-700"
               >
-                <CopyIcon className="size-3.5" /> {copied ? "Copiado" : "Copiar"}
+                <CopyIcon className="size-3.5" aria-hidden /> {copied ? t.copied : t.copy}
               </button>
             </div>
           </div>
@@ -199,7 +203,9 @@ export function TeamPanel({ me }: { me: Me }) {
       {/* Members + pending invites */}
       <section className="space-y-6">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-700">Miembros ({members.length})</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-700">
+            {t.team.members(members.length)}
+          </h2>
           <ul className="mt-4 space-y-3">
             {members.map((m) => {
               const isSelf = m.id === me.user.id;
@@ -210,16 +216,14 @@ export function TeamPanel({ me }: { me: Me }) {
                     <div className="min-w-0">
                       <span className="block truncate font-medium text-slate-900">
                         {m.email}
-                        {isSelf ? <span className="ml-1.5 text-[11px] text-slate-400">(tú)</span> : null}
+                        {isSelf ? <span className="ml-1.5 text-[11px] text-slate-500">{t.team.you}</span> : null}
                         {m.disabled ? (
                           <span className="ml-2 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700">
-                            Desactivado
+                            {t.team.disabled}
                           </span>
                         ) : null}
                       </span>
-                      <span className="text-[11px] text-slate-400">
-                        Desde {new Date(m.created_at).toLocaleDateString()}
-                      </span>
+                      <span className="text-[11px] text-slate-500">{t.team.since(fmtDate(m.created_at))}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       {lockedOwner ? (
@@ -227,12 +231,13 @@ export function TeamPanel({ me }: { me: Me }) {
                       ) : (
                         <select
                           value={m.role}
+                          aria-label={t.team.role}
                           onChange={(e) => changeRole(m.id, e.target.value as PortalRole)}
                           className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-100"
                         >
-                          {canManageOwners ? <option value="owner">Propietario</option> : null}
-                          <option value="admin">Administrador</option>
-                          <option value="member">Miembro</option>
+                          {canManageOwners ? <option value="owner">{t.role.owner}</option> : null}
+                          <option value="admin">{t.role.admin}</option>
+                          <option value="member">{t.role.member}</option>
                         </select>
                       )}
                       {!isSelf && !lockedOwner ? (
@@ -245,28 +250,29 @@ export function TeamPanel({ me }: { me: Me }) {
                               : "border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-700"
                           }`}
                         >
-                          {m.disabled ? "Reactivar" : "Desactivar"}
+                          {m.disabled ? t.team.reactivate : t.team.deactivate}
                         </button>
                       ) : null}
                       {!isSelf && !lockedOwner && !m.disabled ? (
                         <button
                           type="button"
                           onClick={() => revokeSessions(m.id, m.email)}
-                          title="Cerrar todas sus sesiones"
-                          aria-label={`Cerrar sesiones de ${m.email}`}
+                          title={t.team.endSessions}
+                          aria-label={t.team.endSessionsOf(m.email)}
                           className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:border-cyan-400 hover:text-cyan-700"
                         >
-                          <LogOutIcon className="size-3.5" />
+                          <LogOutIcon className="size-3.5" aria-hidden />
                         </button>
                       ) : null}
                       {!isSelf && !lockedOwner ? (
                         <button
                           type="button"
-                          onClick={() => remove(m.id)}
-                          aria-label={`Eliminar ${m.email}`}
+                          onClick={() => remove(m.id, m.email)}
+                          title={t.team.remove(m.email)}
+                          aria-label={t.team.remove(m.email)}
                           className="rounded-md border border-slate-200 p-1.5 text-slate-500 hover:border-rose-300 hover:text-rose-600"
                         >
-                          <Trash2Icon className="size-3.5" />
+                          <Trash2Icon className="size-3.5" aria-hidden />
                         </button>
                       ) : null}
                     </div>
@@ -280,7 +286,7 @@ export function TeamPanel({ me }: { me: Me }) {
         {invites.length > 0 ? (
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Invitaciones pendientes ({invites.length})
+              {t.team.pending(invites.length)}
             </h2>
             <ul className="mt-4 space-y-2.5">
               {invites.map((inv) => (
@@ -297,7 +303,7 @@ export function TeamPanel({ me }: { me: Me }) {
                     onClick={() => revoke(inv.id)}
                     className="text-[11px] text-slate-500 hover:text-rose-600"
                   >
-                    Revocar
+                    {t.team.revoke}
                   </button>
                 </li>
               ))}

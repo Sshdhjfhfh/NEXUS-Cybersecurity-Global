@@ -165,7 +165,7 @@ export default function PortalDashboard() {
           <div className="flex min-w-0 items-center gap-2 text-sm sm:gap-3">
             <LanguageSwitcher onChange={changeLang} />
             <span className="flex min-w-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-1.5 sm:px-3">
-              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-gradient-to-br from-cyan-500 to-sky-500 text-xs font-bold text-white">
+              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-gradient-to-br from-cyan-700 to-sky-700 text-xs font-bold text-white">
                 {initial}
               </span>
               <span className="hidden truncate font-medium text-slate-700 sm:inline">{me.org.name}</span>
@@ -295,7 +295,7 @@ export default function PortalDashboard() {
                       </div>
                       {r.scope ? <p className="mt-1 text-xs text-slate-500">{r.scope}</p> : null}
                       <div className="mt-1 flex items-center justify-between gap-2">
-                        <p className="text-[11px] text-slate-400">
+                        <p className="text-[11px] text-slate-500">
                           #{r.id} · {fmtDateTime(r.created_at)}
                         </p>
                         <button

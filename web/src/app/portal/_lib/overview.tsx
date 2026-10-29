@@ -220,7 +220,7 @@ function EmptyResults({ onGoTab }: { onGoTab: Props["onGoTab"] }) {
   const { t } = usePortalI18n();
   return (
     <section className={`${card} flex flex-col items-center px-6 py-10 text-center`}>
-      <span className="grid size-12 place-items-center rounded-2xl bg-cyan-50 text-cyan-600">
+      <span className="grid size-12 place-items-center rounded-2xl bg-cyan-50 text-cyan-700">
         <ClipboardListIcon className="size-6" />
       </span>
       <h2 className="mt-4 text-base font-semibold text-slate-900">{t.ov.emptyTitle}</h2>
@@ -228,7 +228,7 @@ function EmptyResults({ onGoTab }: { onGoTab: Props["onGoTab"] }) {
       <button
         type="button"
         onClick={() => onGoTab("requests")}
-        className={`mt-5 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-sky-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-105 ${focusRing}`}
+        className={`mt-5 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-700 to-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-105 ${focusRing}`}
       >
         {t.ov.emptyCta} <ArrowRightIcon className="size-4" />
       </button>
@@ -293,7 +293,7 @@ function ExecutiveView({ data, canAdmin, onOpenRequest, onGoTab }: ViewProps) {
             />
             <div className={card}>
               <p className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                <WrenchIcon className="size-4 text-cyan-600" aria-hidden /> {t.ov.remediation}
+                <WrenchIcon className="size-4 text-cyan-700" aria-hidden /> {t.ov.remediation}
               </p>
               <p className="mt-2 text-2xl font-bold text-slate-900">{d.pct === null ? "—" : `${d.pct}%`}</p>
               <div
@@ -387,7 +387,7 @@ function Kpi({
   return (
     <div className={card}>
       <p className="flex items-center gap-2 text-xs font-medium text-slate-500">
-        <span className="text-cyan-600" aria-hidden>
+        <span className="text-cyan-700" aria-hidden>
           {icon}
         </span>
         {label}
@@ -426,7 +426,7 @@ function AccountSecurityCard({
     <section className={card} aria-labelledby="acct-title">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="acct-title" className={`flex items-center gap-2 ${sectionTitle}`}>
-          <UsersIcon className="size-4 text-cyan-600" aria-hidden /> {t.ov.accountSecurity}
+          <UsersIcon className="size-4 text-cyan-700" aria-hidden /> {t.ov.accountSecurity}
         </h2>
         <button
           type="button"
@@ -650,7 +650,7 @@ function TechnicalView({ data, canAdmin, onOpenRequest, onGoTab }: ViewProps) {
         <section className={card} aria-labelledby="act-title">
           <div className="flex items-center justify-between gap-3">
             <h2 id="act-title" className={`flex items-center gap-2 ${sectionTitle}`}>
-              <ActivityIcon className="size-4 text-cyan-600" aria-hidden /> {t.ov.activity}
+              <ActivityIcon className="size-4 text-cyan-700" aria-hidden /> {t.ov.activity}
             </h2>
             <button
               type="button"
@@ -666,9 +666,9 @@ function TechnicalView({ data, canAdmin, onOpenRequest, onGoTab }: ViewProps) {
             <ul className="mt-3 divide-y divide-slate-100">
               {data.activity.map((e) => (
                 <li key={e.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-2 text-sm">
-                  <code className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-700">{e.action}</code>
+                  <span className="font-medium text-slate-800">{t.audit.actions[e.action] ?? e.action}</span>
                   <span className="text-slate-600">{e.actor}</span>
-                  <span className="ml-auto text-xs text-slate-400">{fmtRelative(e.created_at)}</span>
+                  <span className="ml-auto text-xs text-slate-500">{fmtRelative(e.created_at)}</span>
                 </li>
               ))}
             </ul>

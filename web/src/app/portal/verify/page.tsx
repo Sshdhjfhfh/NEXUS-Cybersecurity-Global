@@ -5,10 +5,12 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
+import { usePortalI18n } from "../_lib/i18n";
 import { portalApi } from "../_lib/portal";
-import { PortalAuthShell } from "../_lib/ui";
+import { authLink, PortalAuthShell, PortalLoading } from "../_lib/ui";
 
 function VerifyInner() {
+  const { t } = usePortalI18n();
   const token = useSearchParams().get("token") ?? "";
   const [state, setState] = useState<"checking" | "ok" | "error">("checking");
 
@@ -23,31 +25,26 @@ function VerifyInner() {
       .catch(() => setState("error"));
   }, [token]);
 
-  const subtitle =
-    state === "checking"
-      ? "Verificando…"
-      : state === "ok"
-        ? "Tu email ha sido verificado."
-        : "El enlace no es válido o ya fue utilizado.";
+  const subtitle = state === "checking" ? t.auth.verifyChecking : state === "ok" ? t.auth.verifyOk : t.auth.verifyBad;
 
   return (
     <PortalAuthShell
-      title="Verificación de email"
+      title={t.auth.verifyTitle}
       subtitle={subtitle}
       footer={
-        <Link href="/portal/login" className="text-cyan-600 hover:text-cyan-700">
-          Ir a iniciar sesión
+        <Link href="/portal/login" className={authLink}>
+          {t.auth.goSignIn}
         </Link>
       }
     >
       {state === "ok" ? (
-        <p className="text-sm text-emerald-600">✓ Gracias, tu dirección de email está confirmada.</p>
-      ) : state === "error" ? (
-        <p className="text-sm text-slate-500">
-          Inicia sesión y vuelve a enviar el correo de verificación desde la pestaña Seguridad.
+        <p role="status" className="text-sm text-emerald-700">
+          ✓ {t.auth.verifyThanks}
         </p>
+      ) : state === "error" ? (
+        <p className="text-sm text-slate-500">{t.auth.verifyResendHint}</p>
       ) : (
-        <p className="text-sm text-slate-500">Un momento…</p>
+        <p className="text-sm text-slate-500">{t.auth.oneMoment}</p>
       )}
     </PortalAuthShell>
   );
@@ -55,13 +52,7 @@ function VerifyInner() {
 
 export default function PortalVerify() {
   return (
-    <Suspense
-      fallback={
-        <div className="grid min-h-screen place-items-center bg-gradient-to-br from-slate-50 via-[#eef4fb] to-[#e6eefb] text-sm text-slate-500">
-          Cargando…
-        </div>
-      }
-    >
+    <Suspense fallback={<PortalLoading />}>
       <VerifyInner />
     </Suspense>
   );

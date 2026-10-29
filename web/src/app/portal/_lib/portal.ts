@@ -1,6 +1,8 @@
 // Client-side helper for the multi-tenant client portal. The portal token is
 // separate from the console token and kept per-browser; every call hits
 // /api/portal/* which scopes data to the caller's organization server-side.
+import { localizeServerError } from "./i18n";
+
 const KEY = "nexus_portal_token";
 
 export function getPortalToken(): string | null {
@@ -41,7 +43,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   }
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error || `error ${res.status}`);
+    throw new Error(data.error ? localizeServerError(data.error) : `error ${res.status}`);
   }
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
 }
@@ -225,7 +227,7 @@ export async function downloadExport(): Promise<void> {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) {
-    throw new Error("No se pudo exportar");
+    throw new Error(localizeServerError("no se pudo exportar"));
   }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);

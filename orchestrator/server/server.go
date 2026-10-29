@@ -697,6 +697,7 @@ func (s *Server) Handler() http.Handler {
 	// Client-facing assessment results (org-isolated, released by the operator).
 	mux.HandleFunc("GET /api/portal/requests/{id}/results", s.portalRequestResults)
 	mux.HandleFunc("GET /api/portal/requests/{id}/findings/{fid}", s.portalRequestFinding)
+	mux.HandleFunc("GET /api/portal/requests/{id}/report", s.portalRequestReport)
 	// Remediation workspace (owners, target dates, retest requests, risk acceptance).
 	mux.HandleFunc("GET /api/portal/remediation", s.portalListRemediation)
 	mux.HandleFunc("GET /api/portal/remediation/{fid}", s.portalGetRemediation)
@@ -739,6 +740,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/admin/portal/requests/{id}/release", s.adminReleaseResults)
 	mux.HandleFunc("PATCH /api/admin/portal/requests/{id}", s.adminUpdateRequestStatus)
 	mux.HandleFunc("GET /api/admin/portal/retest-requests", s.adminListRetestRequests)
+	mux.HandleFunc("GET /api/admin/portal/requests/{id}/report", s.adminRequestReport)
 	// Platform-admin: manage every organization (list with counts, suspend/reactivate).
 	mux.HandleFunc("GET /api/admin/portal/orgs", s.adminListOrgs)
 	mux.HandleFunc("GET /api/admin/portal/orgs/{id}/members", s.adminListOrgMembers)

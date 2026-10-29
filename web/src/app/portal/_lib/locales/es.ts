@@ -133,6 +133,11 @@ const es = {
     summary: "Resumen:",
     none: "Sin hallazgos. 🎉",
     loadingDetail: "Cargando detalle…",
+    reports: "Informes:",
+    reportExecutive: "Informe ejecutivo (PDF)",
+    reportTechnical: "Informe técnico (PDF)",
+    reportBusy: "Generando…",
+    reportError: "No se pudo generar el informe",
   },
 
   team: {
@@ -206,6 +211,7 @@ const es = {
       "remediation.retest_request": "Verificación solicitada",
       "remediation.risk_accept": "Riesgo aceptado",
       "remediation.risk_revoke": "Aceptación de riesgo revocada",
+      "report.download": "Informe descargado",
     } as Record<string, string>,
   },
 

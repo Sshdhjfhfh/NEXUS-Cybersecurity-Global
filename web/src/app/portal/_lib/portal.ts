@@ -298,11 +298,35 @@ export async function downloadExport(): Promise<void> {
   if (!res.ok) {
     throw new Error(localizeServerError("no se pudo exportar"));
   }
-  const blob = await res.blob();
+  saveBlob(await res.blob(), "nexus-export.json");
+}
+
+export type ReportKind = "executive" | "technical";
+
+// downloadReport fetches a branded PDF report of a released evaluation, in the
+// UI language, and saves it under the file name the server chose.
+export async function downloadReport(requestId: number, kind: ReportKind, lang: string): Promise<void> {
+  const token = getPortalToken();
+  const res = await fetch(`/api/portal/requests/${requestId}/report?kind=${kind}&lang=${encodeURIComponent(lang)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (res.status === 401) {
+    clearPortalToken();
+    throw new Error("unauthorized");
+  }
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(localizeServerError(data.error ?? "no se pudo generar el informe"));
+  }
+  const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1];
+  saveBlob(await res.blob(), name ?? `NEXUS-${kind}-report.pdf`);
+}
+
+function saveBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "nexus-export.json";
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();

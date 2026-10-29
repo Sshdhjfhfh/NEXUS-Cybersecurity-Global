@@ -135,6 +135,11 @@ const en: PortalDict = {
     summary: "Summary:",
     none: "No findings. 🎉",
     loadingDetail: "Loading details…",
+    reports: "Reports:",
+    reportExecutive: "Executive report (PDF)",
+    reportTechnical: "Technical report (PDF)",
+    reportBusy: "Generating…",
+    reportError: "The report could not be generated",
   },
 
   team: {
@@ -207,6 +212,7 @@ const en: PortalDict = {
       "remediation.retest_request": "Verification requested",
       "remediation.risk_accept": "Risk accepted",
       "remediation.risk_revoke": "Risk acceptance revoked",
+      "report.download": "Report downloaded",
     },
   },
 

@@ -100,6 +100,9 @@ export const SERVER_ERRORS_EN: Record<string, string> = {
     "The acceptance must expire between tomorrow and 365 days from now",
   "no se pudo aceptar el riesgo": "The risk could not be accepted",
   "no hay una aceptación de riesgo que revocar": "There is no risk acceptance to revoke",
+  // PDF reports
+  "tipo de informe inválido": "Invalid report type",
+  "no se pudo generar el informe": "The report could not be generated",
 };
 
 // Internal infrastructure messages that must never be shown verbatim to a client

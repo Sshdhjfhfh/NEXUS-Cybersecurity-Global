@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { usePortalI18n } from "./i18n";
-import { type ClientFindingDetail, portalApi, type ResultsResponse, type Severity } from "./portal";
+import {
+  type ClientFindingDetail,
+  downloadReport,
+  portalApi,
+  type ReportKind,
+  type ResultsResponse,
+  type Severity,
+} from "./portal";
 
 const SEV_TONE: Record<Severity, string> = {
   critical: "border-rose-200 bg-rose-50 text-rose-700",
@@ -21,6 +28,58 @@ function SevBadge({ sev }: { sev: string }) {
     <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${tone}`}>
       {label}
     </span>
+  );
+}
+
+// ReportButtons downloads the branded PDF reports of a released evaluation. The
+// server re-checks org, role and release state on every download.
+function ReportButtons({ requestId }: { requestId: number }) {
+  const { t, lang } = usePortalI18n();
+  const [busy, setBusy] = useState<ReportKind | null>(null);
+  const [err, setErr] = useState("");
+
+  async function get(kind: ReportKind) {
+    setBusy(kind);
+    setErr("");
+    try {
+      await downloadReport(requestId, kind, lang);
+    } catch (ex) {
+      setErr(ex instanceof Error && ex.message && ex.message !== "unauthorized" ? ex.message : t.results.reportError);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const btn =
+    "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:border-cyan-300 hover:text-cyan-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 disabled:opacity-60";
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-[11px] text-slate-500">{t.results.reports}</span>
+      {(["executive", "technical"] as ReportKind[]).map((kind) => (
+        <button key={kind} type="button" disabled={busy !== null} onClick={() => void get(kind)} className={btn}>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 16 16"
+            className="size-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          >
+            <path d="M8 2.5v7.5m0 0L5 7m3 3 3-3M3 12.5h10" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {busy === kind
+            ? t.results.reportBusy
+            : kind === "executive"
+              ? t.results.reportExecutive
+              : t.results.reportTechnical}
+        </button>
+      ))}
+      {err ? (
+        <p role="alert" className="w-full text-xs text-rose-600">
+          {err}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -105,6 +164,7 @@ export function ResultsPanel({ requestId }: { requestId: number }) {
         {data.total === 0 ? <span className="font-medium text-emerald-700">{t.results.none}</span> : null}
       </div>
 
+      <ReportButtons requestId={requestId} />
       <ul className="space-y-2">
         {data.findings.map((f) => (
           <li key={f.id} className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50/60">

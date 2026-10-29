@@ -4,7 +4,7 @@ import * as React from "react";
 
 import Link from "next/link";
 
-import { Building2Icon, RefreshCwIcon, RocketIcon } from "lucide-react";
+import { Building2Icon, FileTextIcon, RefreshCwIcon, RocketIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -89,6 +89,34 @@ export default function PortalRequestsPage() {
       await http(`/admin/portal/requests/${id}/release`, { method: "POST", body: JSON.stringify({ released }) });
     } catch (e) {
       setRequests(prev);
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // previewReport opens the branded PDF the client would get. Before release the
+  // server stamps it as a draft ("BORRADOR"). The tab is opened synchronously so
+  // the browser does not treat it as an unsolicited popup.
+  async function previewReport(id: number, kind: "executive" | "technical") {
+    setError(null);
+    const win = window.open("", "_blank");
+    try {
+      const token = localStorage.getItem("nexus_ia_token");
+      const res = await fetch(`/api/admin/portal/requests/${id}/report?kind=${kind}&lang=es`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? `error ${res.status}`);
+      }
+      const url = URL.createObjectURL(await res.blob());
+      if (win) {
+        win.location.href = url;
+      } else {
+        window.location.assign(url);
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      win?.close();
       setError(e instanceof Error ? e.message : String(e));
     }
   }
@@ -185,6 +213,15 @@ export default function PortalRequestsPage() {
                       {r.results_released ? "Retirar resultados" : "Liberar resultados al cliente"}
                     </Button>
                     {r.results_released ? <Badge variant="secondary">Resultados visibles para el cliente</Badge> : null}
+                    <Button size="sm" variant="ghost" onClick={() => void previewReport(r.id, "executive")}>
+                      <FileTextIcon className="size-4" /> Informe ejecutivo
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => void previewReport(r.id, "technical")}>
+                      <FileTextIcon className="size-4" /> Informe técnico
+                    </Button>
+                    {r.results_released ? null : (
+                      <span className="text-xs text-muted-foreground">Vista previa como borrador</span>
+                    )}
                   </>
                 ) : (
                   <Button size="sm" onClick={() => void promote(r.id)} disabled={promoting === r.id}>

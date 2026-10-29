@@ -140,7 +140,17 @@ func effectiveState(it *RemediationItem, riskExpires *time.Time, now time.Time) 
 	}
 }
 
-const remediationSelect = releasedTasksCTE + `
+const remediationSelect = releasedTasksCTE + remediationBody
+
+// requestTaskCTE scopes to ONE request of the org whether or not its results are
+// released — only for the operator's draft report preview ($1 org, $2 request).
+const requestTaskCTE = `WITH rel AS (
+    SELECT engine_task_id AS task_id, id AS request_id, title
+    FROM portal_requests
+    WHERE org_id = $1 AND id = $2 AND engine_task_id IS NOT NULL
+) `
+
+const remediationBody = `
 SELECT f.id, rel.request_id, rel.title, f.name, f.vulnclass, f.severity, f.status, f.summary, f.created_at,
        COALESCE(pr.client_state, 'open'), pr.assignee_id, COALESCE(u.email, ''), pr.due_date,
        COALESCE(pr.risk_reason, ''), pr.risk_expires_at, COALESCE(ru.email, ''),
@@ -221,6 +231,51 @@ func (d *DB) ListRemediation(orgID int64, now time.Time) ([]*RemediationItem, er
 		out = append(out, it)
 	}
 	return out, rows.Err()
+}
+
+// ListRequestReportItems returns the client-visible findings of one request (of
+// orgID) with their remediation state, plus each finding's Markdown report, for
+// the PDF reports. It does not check the release flag: callers decide (clients
+// only get released requests; the operator may preview a draft).
+func (d *DB) ListRequestReportItems(orgID, requestID int64, now time.Time) ([]*RemediationItem, map[int64]string, error) {
+	rows, err := d.Query(requestTaskCTE+remediationBody+` ORDER BY `+severityOrder+`, f.created_at ASC LIMIT 2000`,
+		orgID, requestID)
+	if err != nil {
+		return nil, nil, err
+	}
+	items := []*RemediationItem{}
+	ids := []int64{}
+	for rows.Next() {
+		it, err := scanRemediation(rows, now)
+		if err != nil {
+			rows.Close()
+			return nil, nil, err
+		}
+		items = append(items, it)
+		ids = append(ids, it.FindingID)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	reports := map[int64]string{}
+	if len(ids) == 0 {
+		return items, reports, nil
+	}
+	rrows, err := d.Query(`SELECT id, report FROM findings WHERE id = ANY($1)`, ids)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rrows.Close()
+	for rrows.Next() {
+		var id int64
+		var rep string
+		if err := rrows.Scan(&id, &rep); err != nil {
+			return nil, nil, err
+		}
+		reports[id] = rep
+	}
+	return items, reports, rrows.Err()
 }
 
 // GetRemediation returns one finding's remediation item, or nil when the finding

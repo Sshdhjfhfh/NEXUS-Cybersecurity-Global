@@ -108,7 +108,9 @@ export default function PortalAccept() {
   return (
     <Suspense
       fallback={
-        <div className="grid min-h-screen place-items-center bg-[#060b18] text-sm text-slate-500">Cargando…</div>
+        <div className="grid min-h-screen place-items-center bg-gradient-to-br from-slate-50 via-[#eef4fb] to-[#e6eefb] text-sm text-slate-500">
+          Cargando…
+        </div>
       }
     >
       <AcceptInner />

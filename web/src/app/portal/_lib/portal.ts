@@ -56,6 +56,60 @@ export type PortalRequest = {
   scope: string;
   status: string;
   created_at: string;
+  authorization?: RequestAuthorization;
+};
+
+// Targets the org has registered; only verified ones can be tested. "expired"
+// is derived server-side once a verification is older than its validity.
+export type TargetStatus = "pending" | "verified" | "rejected" | "expired";
+export type PortalTarget = {
+  id: number;
+  kind: "domain" | "ip";
+  value: string;
+  token?: string; // proof token, only in the targets listing
+  status: TargetStatus;
+  method?: "dns" | "http" | "manual";
+  verified_at?: string;
+  expires_at?: string;
+  note?: string;
+  last_check_at?: string;
+  last_error?: string;
+  created_at: string;
+};
+export type TargetsResponse = {
+  targets: PortalTarget[];
+  validity_days: number;
+  dns_prefix: string;
+  http_path: string;
+};
+export type RoE = {
+  request_id: number;
+  accepted_email: string;
+  signer_name: string;
+  signer_title: string;
+  window_start: string;
+  window_end: string;
+  emergency_contact: string;
+  exclusions: string;
+  roe_version: string;
+  roe_hash: string;
+  accepted_at: string;
+};
+export type RequestAuthorization = { targets: PortalTarget[]; roe?: RoE; ready: boolean };
+export type RoETerms = { version: string; lang: "es" | "en"; text: string[]; hash: string };
+export type AuthorizationResponse = {
+  authorization: RequestAuthorization;
+  promoted: boolean;
+  terms: RoETerms;
+  max_window_days: number;
+};
+export type RoEAcceptance = {
+  signer_name: string;
+  signer_title: string;
+  window_start: string;
+  window_end: string;
+  emergency_contact: string;
+  exclusions: string;
 };
 export type Member = {
   id: number;
@@ -210,8 +264,29 @@ export const portalApi = {
     req<{ ok: boolean }>("/me/preferences", { method: "PATCH", body: JSON.stringify(prefs) }),
   overview: () => req<OverviewResponse>("/overview"),
   listRequests: () => req<{ requests: PortalRequest[] }>("/requests"),
-  createRequest: (title: string, scope: string) =>
-    req<{ ok: boolean; id: number }>("/requests", { method: "POST", body: JSON.stringify({ title, scope }) }),
+  createRequest: (title: string, scope: string, target_ids: number[]) =>
+    req<{ ok: boolean; id: number }>("/requests", {
+      method: "POST",
+      body: JSON.stringify({ title, scope, target_ids }),
+    }),
+  requestAuthorization: (id: number, lang: "es" | "en") =>
+    req<AuthorizationResponse>(`/requests/${id}/authorization?lang=${lang}`),
+  acceptRoE: (id: number, terms: RoETerms, a: RoEAcceptance) =>
+    req<{ ok: boolean; authorization: RequestAuthorization }>(`/requests/${id}/roe`, {
+      method: "POST",
+      body: JSON.stringify({ accept: true, lang: terms.lang, version: terms.version, hash: terms.hash, ...a }),
+    }),
+
+  // --- targets: ownership verification ---
+  listTargets: () => req<TargetsResponse>("/targets"),
+  addTarget: (value: string) =>
+    req<{ ok: boolean; target: PortalTarget }>("/targets", { method: "POST", body: JSON.stringify({ value }) }),
+  verifyTarget: (id: number, method: "dns" | "http") =>
+    req<{ ok: boolean; target: PortalTarget; error: string }>(`/targets/${id}/verify`, {
+      method: "POST",
+      body: JSON.stringify({ method }),
+    }),
+  deleteTarget: (id: number) => req<{ ok: boolean }>(`/targets/${id}`, { method: "DELETE" }),
   requestResults: (id: number) => req<ResultsResponse>(`/requests/${id}/results`),
   requestFinding: (id: number, fid: number) => req<{ finding: ClientFindingDetail }>(`/requests/${id}/findings/${fid}`),
 

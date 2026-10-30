@@ -193,6 +193,53 @@ CREATE TABLE IF NOT EXISTS portal_mail_outbox (
 );
 CREATE INDEX IF NOT EXISTS idx_portal_mail_outbox_pending ON portal_mail_outbox(next_at) WHERE status = 'pending';
 CREATE INDEX IF NOT EXISTS idx_portal_mail_outbox_id_desc ON portal_mail_outbox(id DESC);
+-- Targets an org wants tested. Nothing is tested until the org proves control of
+-- it (DNS TXT or a file on the web server) or a NEXUS operator approves it on
+-- documentary evidence (e.g. a signed authorization letter). Verification lasts
+-- a limited time and must then be renewed.
+CREATE TABLE IF NOT EXISTS portal_targets (
+    id            BIGSERIAL PRIMARY KEY,
+    org_id        BIGINT NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+    kind          TEXT NOT NULL CHECK (kind IN ('domain','ip')),
+    value         TEXT NOT NULL,
+    token         TEXT NOT NULL,
+    status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','verified','rejected')),
+    method        TEXT NOT NULL DEFAULT '' CHECK (method IN ('','dns','http','manual')),
+    verified_at   TIMESTAMPTZ,
+    verified_by   TEXT NOT NULL DEFAULT '',
+    note          TEXT NOT NULL DEFAULT '',
+    last_check_at TIMESTAMPTZ,
+    last_error    TEXT NOT NULL DEFAULT '',
+    created_by    BIGINT REFERENCES portal_users(id) ON DELETE SET NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (org_id, value)
+);
+CREATE INDEX IF NOT EXISTS idx_portal_targets_status ON portal_targets(status);
+-- Which targets an evaluation request covers.
+CREATE TABLE IF NOT EXISTS portal_request_targets (
+    request_id BIGINT NOT NULL REFERENCES portal_requests(id) ON DELETE CASCADE,
+    target_id  BIGINT NOT NULL REFERENCES portal_targets(id) ON DELETE CASCADE,
+    PRIMARY KEY (request_id, target_id)
+);
+-- Rules of Engagement accepted for a request by an org admin: who signed, when,
+-- from where, the testing window, emergency contact, exclusions, and the exact
+-- version + SHA-256 of the terms shown to them.
+CREATE TABLE IF NOT EXISTS portal_roe (
+    request_id        BIGINT PRIMARY KEY REFERENCES portal_requests(id) ON DELETE CASCADE,
+    org_id            BIGINT NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+    accepted_by       BIGINT REFERENCES portal_users(id) ON DELETE SET NULL,
+    accepted_email    TEXT NOT NULL,
+    signer_name       TEXT NOT NULL,
+    signer_title      TEXT NOT NULL,
+    window_start      DATE NOT NULL,
+    window_end        DATE NOT NULL,
+    emergency_contact TEXT NOT NULL,
+    exclusions        TEXT NOT NULL DEFAULT '',
+    roe_version       TEXT NOT NULL,
+    roe_hash          TEXT NOT NULL,
+    ip                TEXT NOT NULL DEFAULT '',
+    accepted_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 `
 
 // EnsurePortalTables crea las tablas del portal si no existen (aditivo, reversible).

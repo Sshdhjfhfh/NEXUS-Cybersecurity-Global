@@ -65,7 +65,29 @@ func (s *Server) adminListPortalRequests(w http.ResponseWriter, r *http.Request)
 		writeErr(w, 500, "no se pudieron listar las solicitudes")
 		return
 	}
-	writeJSON(w, 200, map[string]any{"requests": list})
+	ids := make([]int64, len(list))
+	for i, rq := range list {
+		ids[i] = rq.ID
+	}
+	auths, err := pg.RequestAuthorizations(ids)
+	if err != nil {
+		writeErr(w, 500, "no se pudieron listar las solicitudes")
+		return
+	}
+	type withAuth struct {
+		db.AdminPortalRequest
+		Authorization *db.RequestAuth `json:"authorization"`
+		Blockers      []string        `json:"blockers"`
+	}
+	out := make([]withAuth, len(list))
+	for i, rq := range list {
+		a := auths[rq.ID]
+		out[i] = withAuth{rq, a, authorizationProblems(a)}
+		if out[i].Blockers == nil {
+			out[i].Blockers = []string{}
+		}
+	}
+	writeJSON(w, 200, map[string]any{"requests": out})
 }
 
 // POST /api/admin/portal/requests/{id}/promote — create an engine task from an
@@ -94,12 +116,43 @@ func (s *Server) adminPromoteRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Authorization gate: verified targets + accepted RoE. An operator may only
+	// bypass it with a written justification (e.g. a signed contract handled
+	// outside the portal), which is audited.
+	var body struct {
+		OverrideReason string `json:"override_reason"`
+	}
+	_ = decode(r, &body) // empty body is fine
+	body.OverrideReason = strings.TrimSpace(body.OverrideReason)
+	auths, err := pg.RequestAuthorizations([]int64{reqID})
+	if err != nil {
+		writeErr(w, 503, "almacenamiento no disponible")
+		return
+	}
+	auth := auths[reqID]
+	blockers := authorizationProblems(auth)
+	override := len(blockers) > 0
+	if override && len([]rune(body.OverrideReason)) < 20 {
+		writeJSON(w, 409, map[string]any{
+			"error":    "la solicitud no está autorizada: " + strings.Join(blockers, "; "),
+			"blockers": blockers,
+		})
+		return
+	}
+
 	// Build a descriptive task. Scope text is preserved in the goal so the
 	// operator sees exactly what the client authorized before starting the run.
 	desc := pr.Title + " — " + pr.OrgName
 	goal := pr.Title
+	if auth != nil && auth.RoE != nil {
+		goal += "\n\nVentana autorizada (RoE " + auth.RoE.Version + "): " + auth.RoE.WindowStart + " a " + auth.RoE.WindowEnd +
+			"\nContacto de emergencia: " + auth.RoE.EmergencyContact
+		if auth.RoE.Exclusions != "" {
+			goal += "\nExclusiones: " + auth.RoE.Exclusions
+		}
+	}
 	if strings.TrimSpace(pr.Scope) != "" {
-		goal += "\n\nAlcance declarado por el cliente:\n" + pr.Scope
+		goal += "\n\nNotas del cliente (no amplían el alcance):\n" + pr.Scope
 	}
 	t, err := s.m.CreateTaskWithOptions(desc, goal, taskCreateOptionsForPortal(pr.OrgName))
 	if err != nil {
@@ -108,18 +161,34 @@ func (s *Server) adminPromoteRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	taskID, _ := strconv.ParseInt(t.ID, 10, 64)
 
-	// Best-effort: seed the engine scope with clearly-parseable targets so the
-	// operator starts from the client's declared scope. Failures are ignored —
-	// the operator confirms/edits scope before launching.
+	// Seed the engine scope with exactly the authorized targets (see
+	// engineScopeForTarget). Only an audited override falls back to parsing the
+	// client's free text, and then only as exact hosts — never whole root domains.
 	added := 0
 	if as := s.m.Assets(); as != nil {
 		// source "manual" (the operator seeded it); the reason records that it came
 		// from this portal request. source is CHECK-constrained, so stay in the set.
 		reason := "portal request #" + strconv.FormatInt(reqID, 10)
-		for _, tok := range strings.Fields(strings.ReplaceAll(pr.Scope, ",", " ")) {
-			if kind, value, ok := classifyScopeToken(tok); ok {
-				if _, err := as.AddAgentScope(taskID, kind, value, reason, "manual"); err == nil {
+		if auth != nil {
+			for _, tg := range auth.Targets {
+				if !tg.Usable() {
+					continue
+				}
+				kind, value := engineScopeForTarget(tg)
+				if _, err := as.AddAgentScope(taskID, kind, value, reason+" (verificado: "+tg.Method+")", "manual"); err == nil {
 					added++
+				}
+			}
+		}
+		if override {
+			for _, tok := range strings.Fields(strings.ReplaceAll(pr.Scope, ",", " ")) {
+				if kind, value, ok := classifyScopeToken(tok); ok {
+					if kind == "root_domain" {
+						kind = "subdomain"
+					}
+					if _, err := as.AddAgentScope(taskID, kind, value, reason+" (excepción del operador)", "manual"); err == nil {
+						added++
+					}
 				}
 			}
 		}
@@ -131,6 +200,10 @@ func (s *Server) adminPromoteRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, &pr.OrgID, "operator", "operator", "request.promote",
 		"request:"+strconv.FormatInt(reqID, 10), "task="+t.ID+" org="+pr.OrgName)
+	if override {
+		s.audit(r, &pr.OrgID, "operator", "operator", "request.promote_override",
+			"request:"+strconv.FormatInt(reqID, 10), strings.Join(blockers, "; ")+" — motivo: "+body.OverrideReason)
+	}
 	writeJSON(w, 201, map[string]any{
 		"ok":          true,
 		"task_id":     t.ID,

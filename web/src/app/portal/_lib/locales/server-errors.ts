@@ -103,7 +103,57 @@ export const SERVER_ERRORS_EN: Record<string, string> = {
   // PDF reports
   "tipo de informe inválido": "Invalid report type",
   "no se pudo generar el informe": "The report could not be generated",
+  // targets + rules of engagement
+  "objetivo inválido": "Invalid target",
+  "dirección IP no admitida": "IP address not allowed",
+  "indica un dominio o IP concreto, sin comodines ni puertos":
+    "Enter a specific domain or IP, without wildcards or ports",
+  "ese objetivo ya está registrado": "That target is already registered",
+  "has alcanzado el máximo de objetivos de tu organización":
+    "Your organization has reached its maximum number of targets",
+  "no se pudo registrar el objetivo": "The target could not be registered",
+  "no se pudieron listar los objetivos": "The targets could not be listed",
+  "no se pudo leer el objetivo": "The target could not be read",
+  "objetivo no encontrado": "Target not found",
+  "método de verificación inválido": "Invalid verification method",
+  "NEXUS rechazó este objetivo; contacta con tu gestor":
+    "NEXUS rejected this target; please contact your account manager",
+  "la verificación por DNS solo aplica a dominios": "DNS verification only applies to domains",
+  "espera unos segundos antes de volver a comprobar": "Please wait a few seconds before checking again",
+  "no se pudo guardar la verificación": "The verification could not be saved",
+  "el objetivo forma parte de una evaluación en curso": "The target is part of an assessment in progress",
+  "no se pudo eliminar el objetivo": "The target could not be deleted",
+  "la dirección no es pública; solicita la aprobación manual de NEXUS":
+    "The address is not public; ask NEXUS for manual approval",
+  "el dominio apunta a una dirección no pública; solicita la aprobación manual de NEXUS":
+    "The domain points to a non-public address; ask NEXUS for manual approval",
+  "no se pudo resolver el dominio": "The domain could not be resolved",
+  "el archivo existe pero no contiene el token esperado": "The file exists but does not contain the expected token",
+  "el registro TXT existe pero no contiene el token esperado":
+    "The TXT record exists but does not contain the expected token",
+  "demasiados objetivos en una solicitud": "Too many targets in one request",
+  "objetivo no válido para esta solicitud": "Target not valid for this request",
+  "no se pudo leer la solicitud": "The request could not be read",
+  "no se pudo leer la autorización": "The authorization could not be read",
+  "debes aceptar las reglas de enfrentamiento": "You must accept the rules of engagement",
+  "los términos han cambiado; revísalos de nuevo": "The terms have changed; please review them again",
+  "la evaluación ya está en marcha": "The assessment is already under way",
+  "indica el nombre y el cargo de quien autoriza": "Enter the name and job title of the person authorizing",
+  "indica un contacto de emergencia": "Enter an emergency contact",
+  "las exclusiones deben tener como máximo 2000 caracteres": "Exclusions must be at most 2000 characters",
+  "ventana de pruebas inválida (desde hoy, máximo 90 días)": "Invalid testing window (from today, at most 90 days)",
+  "la solicitud no tiene objetivos": "The request has no targets",
+  "no se pudo registrar la aceptación": "The acceptance could not be recorded",
+  "las reglas de enfrentamiento ya están aceptadas": "The rules of engagement are already accepted",
 };
+
+// Messages that embed a value (host, scheme, status code). Matched after the
+// exact table; the captured values are carried over untranslated.
+export const SERVER_ERROR_PATTERNS_EN: [RegExp, string][] = [
+  [/^no se encontró el registro TXT (\S+)$/, "TXT record $1 not found"],
+  [/^no se pudo conectar por (https?)$/, "Could not connect over $1"],
+  [/^(https?) respondió (\d+) en (\S+)$/, "$1 answered $2 for $3"],
+];
 
 // Internal infrastructure messages that must never be shown verbatim to a client
 // (they leak implementation details and are not in the client's language).

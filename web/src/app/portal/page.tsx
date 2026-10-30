@@ -21,6 +21,7 @@ import {
 import { RemediationPanel } from "./_lib/remediation";
 import { ResultsPanel } from "./_lib/results";
 import { SecurityPanel } from "./_lib/security";
+import { RequestAuthorizationBlock, TargetPicker, TargetsPanel } from "./_lib/targets";
 import { TeamPanel } from "./_lib/team";
 import { Field, PrimaryButton } from "./_lib/ui";
 
@@ -31,10 +32,10 @@ const STATUS_TONE: Record<string, string> = {
   done: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
 
-type Tab = "overview" | "remediation" | "requests" | "team" | "audit" | "security";
+type Tab = "overview" | "remediation" | "requests" | "targets" | "team" | "audit" | "security";
 type View = Exclude<ViewProfile, "">;
 
-const TABS: readonly Tab[] = ["overview", "remediation", "requests", "team", "audit", "security"];
+const TABS: readonly Tab[] = ["overview", "remediation", "requests", "targets", "team", "audit", "security"];
 const DEEP_LINK_KEY = "nexus_portal_deeplink";
 
 // Links in notification emails open a tab — and optionally one finding or one
@@ -99,6 +100,7 @@ export default function PortalDashboard() {
   const clearFocusFinding = useCallback(() => setFocusFinding(null), []);
   const [title, setTitle] = useState("");
   const [scope, setScope] = useState("");
+  const [targetIds, setTargetIds] = useState<number[]>([]);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -143,16 +145,25 @@ export default function PortalDashboard() {
       ?.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
   }, [tab, openResults]);
 
+  const reloadRequests = useCallback(async () => {
+    const { requests } = await portalApi.listRequests();
+    setReqs(requests ?? []);
+  }, []);
+
   async function create(e: FormEvent) {
     e.preventDefault();
+    if (targetIds.length === 0) {
+      setErr(t.req.pickTarget);
+      return;
+    }
     setCreating(true);
     setErr("");
     try {
-      await portalApi.createRequest(title.trim(), scope.trim());
+      await portalApi.createRequest(title.trim(), scope.trim(), targetIds);
       setTitle("");
       setScope("");
-      const { requests } = await portalApi.listRequests();
-      setReqs(requests ?? []);
+      setTargetIds([]);
+      await reloadRequests();
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : t.req.createError);
     } finally {
@@ -200,6 +211,7 @@ export default function PortalDashboard() {
     { id: "overview", label: t.tabs.overview, show: true },
     { id: "remediation", label: t.tabs.remediation, show: true },
     { id: "requests", label: t.tabs.requests, show: true },
+    { id: "targets", label: t.tabs.targets, show: true },
     { id: "team", label: t.tabs.team, show: canManageTeam },
     { id: "audit", label: t.tabs.audit, show: canManageTeam },
     { id: "security", label: t.tabs.security, show: true },
@@ -291,6 +303,7 @@ export default function PortalDashboard() {
         {tab === "team" && canManageTeam ? <TeamPanel me={me} /> : null}
         {tab === "audit" && canManageTeam ? <AuditPanel /> : null}
         {tab === "security" ? <SecurityPanel me={me} /> : null}
+        {tab === "targets" ? <TargetsPanel me={me} /> : null}
 
         {tab === "requests" ? (
           <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_1.4fr]">
@@ -303,6 +316,7 @@ export default function PortalDashboard() {
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder={t.req.titlePlaceholder}
                 />
+                <TargetPicker selected={targetIds} onChange={setTargetIds} onGoTargets={() => setTab("targets")} />
                 <label className="block text-xs font-medium text-slate-600">
                   {t.req.scopeLabel}
                   <textarea
@@ -318,7 +332,7 @@ export default function PortalDashboard() {
                     {err}
                   </p>
                 ) : null}
-                <PrimaryButton type="submit" disabled={creating || !title.trim()}>
+                <PrimaryButton type="submit" disabled={creating || !title.trim() || targetIds.length === 0}>
                   {creating ? t.req.sending : t.req.create}
                 </PrimaryButton>
               </form>
@@ -350,7 +364,13 @@ export default function PortalDashboard() {
                           {t.requestStatus[r.status] ?? r.status}
                         </span>
                       </div>
+                      {r.authorization && r.authorization.targets.length > 0 ? (
+                        <p className="mt-1 truncate font-mono text-[11px] text-slate-600">
+                          {r.authorization.targets.map((x) => x.value).join(" · ")}
+                        </p>
+                      ) : null}
                       {r.scope ? <p className="mt-1 text-xs text-slate-500">{r.scope}</p> : null}
+                      <RequestAuthorizationBlock request={r} me={me} onChanged={() => void reloadRequests()} />
                       <div className="mt-1 flex items-center justify-between gap-2">
                         <p className="text-[11px] text-slate-500">
                           #{r.id} · {fmtDateTime(r.created_at)}

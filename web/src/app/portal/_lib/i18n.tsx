@@ -4,7 +4,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 
 import en from "./locales/en";
 import es, { type PortalDict } from "./locales/es";
-import { SERVER_ERRORS_EN, SERVER_ERRORS_INTERNAL } from "./locales/server-errors";
+import { SERVER_ERROR_PATTERNS_EN, SERVER_ERRORS_EN, SERVER_ERRORS_INTERNAL } from "./locales/server-errors";
 
 // Client-portal i18n (ES/EN). Dictionaries live in ./locales; the English one is
 // typed against the Spanish one, so a missing or mismatched translation is a
@@ -31,9 +31,18 @@ const SERVICE_UNAVAILABLE: Record<PortalLang, string> = {
 // the active language. Sentinels the UI branches on pass through untouched.
 export function localizeServerError(msg: string): string {
   if (SERVER_ERRORS_INTERNAL.has(msg)) return SERVICE_UNAVAILABLE[activeLang];
-  const text = activeLang === "en" ? (SERVER_ERRORS_EN[msg] ?? msg) : msg;
-  // Server messages are lowercase fragments; present them as sentences.
-  return text && !text.includes("_") ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+  const text = activeLang === "en" ? (SERVER_ERRORS_EN[msg] ?? translatePattern(msg)) : msg;
+  // Server messages are lowercase fragments; present them as sentences. Single-
+  // token sentinels (mfa_required) are left alone; real sentences may contain "_"
+  // in a value they quote (a DNS name).
+  return text && (text.includes(" ") || !text.includes("_")) ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+}
+
+function translatePattern(msg: string): string {
+  for (const [re, en] of SERVER_ERROR_PATTERNS_EN) {
+    if (re.test(msg)) return msg.replace(re, en);
+  }
+  return msg;
 }
 
 export function isPortalLang(v: unknown): v is PortalLang {

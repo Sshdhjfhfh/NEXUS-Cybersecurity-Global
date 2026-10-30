@@ -703,6 +703,13 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/portal/requests/{id}/results", s.portalRequestResults)
 	mux.HandleFunc("GET /api/portal/requests/{id}/findings/{fid}", s.portalRequestFinding)
 	mux.HandleFunc("GET /api/portal/requests/{id}/report", s.portalRequestReport)
+	// Target ownership verification + Rules of Engagement (the engine gate).
+	mux.HandleFunc("GET /api/portal/targets", s.portalListTargets)
+	mux.HandleFunc("POST /api/portal/targets", s.portalCreateTarget)
+	mux.HandleFunc("POST /api/portal/targets/{id}/verify", s.portalVerifyTarget)
+	mux.HandleFunc("DELETE /api/portal/targets/{id}", s.portalDeleteTarget)
+	mux.HandleFunc("GET /api/portal/requests/{id}/authorization", s.portalRequestAuthorization)
+	mux.HandleFunc("POST /api/portal/requests/{id}/roe", s.portalAcceptRoE)
 	// Remediation workspace (owners, target dates, retest requests, risk acceptance).
 	mux.HandleFunc("GET /api/portal/remediation", s.portalListRemediation)
 	mux.HandleFunc("GET /api/portal/remediation/{fid}", s.portalGetRemediation)
@@ -746,6 +753,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PATCH /api/admin/portal/requests/{id}", s.adminUpdateRequestStatus)
 	mux.HandleFunc("GET /api/admin/portal/retest-requests", s.adminListRetestRequests)
 	mux.HandleFunc("GET /api/admin/portal/requests/{id}/report", s.adminRequestReport)
+	mux.HandleFunc("GET /api/admin/portal/targets", s.adminListTargets)
+	mux.HandleFunc("POST /api/admin/portal/targets/{id}/decision", s.adminDecideTarget)
 	// Client email notifications (operator): run a sweep now, inspect the outbox.
 	mux.HandleFunc("POST /api/admin/portal/notifications/run", s.adminRunNotifications)
 	mux.HandleFunc("GET /api/admin/portal/mail-outbox", s.adminListMailOutbox)

@@ -286,8 +286,9 @@ func (s *Server) portalCreateRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Title string `json:"title"`
-		Scope string `json:"scope"`
+		Title     string  `json:"title"`
+		Scope     string  `json:"scope"` // free-text notes for NEXUS; never put into engine scope
+		TargetIDs []int64 `json:"target_ids"`
 	}
 	if err := decode(r, &req); err != nil {
 		writeErr(w, 400, "cuerpo inválido")
@@ -299,7 +300,24 @@ func (s *Server) portalCreateRequest(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, "título inválido")
 		return
 	}
-	id, err := pg.CreatePortalRequest(orgID, userID, req.Title, req.Scope)
+	if len(req.TargetIDs) > 100 {
+		writeErr(w, 400, "demasiados objetivos en una solicitud")
+		return
+	}
+	// Every target must be this org's own and not rejected (verification may
+	// still be pending: the request cannot start until it is verified).
+	for _, tid := range req.TargetIDs {
+		t, err := pg.GetPortalTarget(orgID, tid)
+		if err != nil {
+			writeErr(w, 500, "no se pudo crear la solicitud")
+			return
+		}
+		if t == nil || t.Status == "rejected" {
+			writeErr(w, 400, "objetivo no válido para esta solicitud")
+			return
+		}
+	}
+	id, err := pg.CreatePortalRequestWithTargets(orgID, userID, req.Title, req.Scope, req.TargetIDs)
 	if err != nil {
 		writeErr(w, 500, "no se pudo crear la solicitud")
 		return
@@ -322,5 +340,22 @@ func (s *Server) portalListRequests(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudieron listar las solicitudes")
 		return
 	}
-	writeJSON(w, 200, map[string]any{"requests": list})
+	ids := make([]int64, len(list))
+	for i, rq := range list {
+		ids[i] = rq.ID
+	}
+	auths, err := pg.RequestAuthorizations(ids)
+	if err != nil {
+		writeErr(w, 500, "no se pudieron listar las solicitudes")
+		return
+	}
+	type withAuth struct {
+		db.PortalRequest
+		Authorization *db.RequestAuth `json:"authorization"`
+	}
+	out := make([]withAuth, len(list))
+	for i, rq := range list {
+		out[i] = withAuth{rq, auths[rq.ID]}
+	}
+	writeJSON(w, 200, map[string]any{"requests": out})
 }

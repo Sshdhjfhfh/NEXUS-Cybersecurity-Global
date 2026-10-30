@@ -731,6 +731,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/portal/invites/lookup", s.portalLookupInvite)
 	mux.HandleFunc("POST /api/portal/invites/accept", s.portalAcceptInvite)
 	mux.HandleFunc("GET /api/portal/audit", s.portalListAudit)
+	mux.HandleFunc("GET /api/portal/audit/export", s.portalExportAudit)
 	// GDPR data rights: export (admin+) and account erasure (owner, password).
 	mux.HandleFunc("GET /api/portal/export", s.portalExport)
 	mux.HandleFunc("POST /api/portal/account/delete", s.portalDeleteAccount)

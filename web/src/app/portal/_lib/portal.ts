@@ -235,6 +235,20 @@ export type AuditEntry = {
   created_at: string;
 };
 
+// Filters for the audit trail; dates are YYYY-MM-DD (UTC), both inclusive.
+export type AuditCategory = "" | "access" | "team" | "config" | "work";
+export type AuditFilter = { category?: AuditCategory; q?: string; from?: string; to?: string };
+
+function auditQuery(f: AuditFilter, before?: number): string {
+  const p = new URLSearchParams();
+  if (f.category) p.set("category", f.category);
+  if (f.q?.trim()) p.set("q", f.q.trim());
+  if (f.from) p.set("from", f.from);
+  if (f.to) p.set("to", f.to);
+  if (before) p.set("before", String(before));
+  return p.toString();
+}
+
 export type Severity = "critical" | "high" | "medium" | "low";
 export type ClientFinding = {
   id: number;
@@ -378,7 +392,8 @@ export const portalApi = {
       body: JSON.stringify({ email, role }),
     }),
   revokeInvite: (id: number) => req<{ ok: boolean }>(`/invites/${id}`, { method: "DELETE" }),
-  listAudit: () => req<{ entries: AuditEntry[] }>("/audit"),
+  listAudit: (f: AuditFilter = {}, before?: number) =>
+    req<{ entries: AuditEntry[]; has_more: boolean }>(`/audit?${auditQuery(f, before)}`),
 
   // --- per-user 2FA (TOTP) ---
   mfaStatus: () => req<{ enabled: boolean }>("/mfa/status"),
@@ -446,6 +461,26 @@ export async function downloadExport(): Promise<void> {
     throw new Error(localizeServerError("no se pudo exportar"));
   }
   saveBlob(await res.blob(), "nexus-export.json");
+}
+
+// downloadAuditCSV saves the filtered audit trail as CSV (the export is itself
+// recorded in the trail).
+export async function downloadAuditCSV(f: AuditFilter): Promise<{ truncated: boolean }> {
+  const token = getPortalToken();
+  const res = await fetch(`/api/portal/audit/export?${auditQuery(f)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (res.status === 401) {
+    clearPortalToken();
+    throw new Error("unauthorized");
+  }
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(localizeServerError(data.error ?? "no se pudo leer la auditoría"));
+  }
+  const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1];
+  saveBlob(await res.blob(), name ?? "nexus-audit.csv");
+  return { truncated: res.headers.get("X-Nexus-Truncated") === "true" };
 }
 
 export type ReportKind = "executive" | "technical";

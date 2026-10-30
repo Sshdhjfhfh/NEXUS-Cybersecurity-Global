@@ -29,13 +29,32 @@ var portalBrute = &bruteGuard{
 // --- portal JWT (HS256, with org + typ claims) ---
 
 func signPortalJWT(key []byte, userID, orgID int64) (string, error) {
+	return signPortalJWTWith(key, userID, orgID, "pwd")
+}
+
+// signPortalJWTWith issues a portal session recording how the user signed in
+// ("pwd" or "sso"): an SSO session's second factor is the identity provider's.
+func signPortalJWTWith(key []byte, userID, orgID int64, amr string) (string, error) {
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": strconv.FormatInt(userID, 10),
 		"org": orgID,
 		"typ": "portal",
+		"amr": amr,
 		"iat": time.Now().Unix(),
 		"exp": time.Now().Add(jwtTTL).Unix(),
 	}).SignedString(key)
+}
+
+// portalSessionIsSSO reports whether the request's portal session came from SSO.
+func portalSessionIsSSO(r *http.Request, key []byte) bool {
+	t, err := jwt.Parse(extractToken(r), func(t *jwt.Token) (any, error) { return key, nil },
+		jwt.WithValidMethods([]string{"HS256"}))
+	if err != nil || !t.Valid {
+		return false
+	}
+	c, _ := t.Claims.(jwt.MapClaims)
+	amr, _ := c["amr"].(string)
+	return amr == "sso"
 }
 
 func parsePortalJWT(tokenStr string, key []byte) (orgID, userID, iat int64, ok bool) {
@@ -230,6 +249,15 @@ func (s *Server) portalLogin(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 403, "organización suspendida; contacta con soporte")
 		return
 	}
+	// SSO enforced: members sign in through the identity provider only. Owners
+	// keep their password (and 2FA) as break-glass access if the IdP is down.
+	if u.Role != "owner" {
+		if on, err := pg.PortalSSOEnforced(u.OrgID); err == nil && on {
+			s.audit(r, &u.OrgID, u.Email, "portal_user", "auth.login_blocked", "", "sso enforced")
+			writeErr(w, 403, "sso_required")
+			return
+		}
+	}
 	// Network allowlist, checked before the second factor so codes cannot be
 	// tried from a network the org does not allow.
 	if p, perr := pg.GetOrgSecurityPolicy(u.OrgID); perr == nil && p != nil {
@@ -289,6 +317,7 @@ func (s *Server) portalMe(w http.ResponseWriter, r *http.Request) {
 	if p, err := pg.GetOrgSecurityPolicy(orgID); err == nil && p != nil {
 		requireMFA = p.RequireMFA
 	}
+	sso := portalSessionIsSSO(r, s.jwtKey)
 	viewProfile, lang, _ := pg.GetPortalUserPrefs(userID)
 	notifyEmail, err := pg.GetPortalUserNotifyEmail(userID)
 	if err != nil {
@@ -298,8 +327,8 @@ func (s *Server) portalMe(w http.ResponseWriter, r *http.Request) {
 		"user": map[string]any{
 			"id": userID, "role": role, "email": email, "email_verified": verified,
 			"view_profile": viewProfile, "lang": lang, "notify_email": notifyEmail,
-			"mfa_enabled": mfaEnabled, "mfa_enrollment_required": requireMFA && !mfaEnabled,
-			"org_requires_mfa": requireMFA,
+			"mfa_enabled": mfaEnabled, "mfa_enrollment_required": requireMFA && !mfaEnabled && !sso,
+			"org_requires_mfa": requireMFA, "signed_in_with_sso": sso,
 		},
 		"org": org,
 	})

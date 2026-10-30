@@ -158,7 +158,8 @@ func (s *Server) enforceOrgPolicy(w http.ResponseWriter, r *http.Request, a *db.
 		writeErr(w, 403, "acceso no permitido desde esta red por la política de la organización")
 		return false
 	}
-	if a.RequireMFA && !a.MFAEnabled && !mfaEnrollmentPaths[r.URL.Path] {
+	// An SSO session's second factor is enforced by the org's identity provider.
+	if a.RequireMFA && !a.MFAEnabled && !mfaEnrollmentPaths[r.URL.Path] && !portalSessionIsSSO(r, s.jwtKey) {
 		writeErr(w, 403, "mfa_enrollment_required")
 		return false
 	}

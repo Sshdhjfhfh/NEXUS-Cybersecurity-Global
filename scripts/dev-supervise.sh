@@ -15,6 +15,9 @@ PGDATA=/home/saul/.nexus-dev/pgdata
 PGPORT=55432
 export LD_LIBRARY_PATH=/home/saul/.nexus-dev/pg/lib:${LD_LIBRARY_PATH:-}
 export NEXUS_PG_DSN="postgres://nexus@127.0.0.1:${PGPORT}/nexus?sslmode=disable"
+# Dev only: lets the local test identity provider (plain http on 127.0.0.1)
+# be used for SSO. Production issuers must be https on a public address.
+export NEXUS_SSO_DEV_INSECURE=1
 NEXUS_BIN=/home/saul/.nexus-dev/nexus-server
 INTERVAL=${SUPERVISE_INTERVAL:-10}
 

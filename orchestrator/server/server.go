@@ -742,6 +742,12 @@ func (s *Server) Handler() http.Handler {
 	// Org security policy: required 2FA, network allowlist, session lifetime.
 	mux.HandleFunc("GET /api/portal/security-policy", s.portalGetSecurityPolicy)
 	mux.HandleFunc("PUT /api/portal/security-policy", s.portalSetSecurityPolicy)
+	// Single sign-on (OIDC + PKCE). start/callback are public (state-gated).
+	mux.HandleFunc("GET /api/portal/sso", s.portalGetSSO)
+	mux.HandleFunc("PUT /api/portal/sso", s.portalSetSSO)
+	mux.HandleFunc("DELETE /api/portal/sso", s.portalDeleteSSO)
+	mux.HandleFunc("POST /api/portal/sso/start", s.portalSSOStart)
+	mux.HandleFunc("POST /api/portal/sso/callback", s.portalSSOCallback)
 	// Account recovery + email verification (reset/verify are public, token-gated).
 	mux.HandleFunc("POST /api/portal/password/forgot", s.portalForgotPassword)
 	mux.HandleFunc("POST /api/portal/password/reset", s.portalResetPassword)

@@ -7,6 +7,7 @@ import { BellIcon, CheckCircle2Icon, DownloadIcon, MailCheckIcon, MailWarningIco
 import { usePortalI18n } from "./i18n";
 import { OrgPolicyPanel } from "./policy";
 import { clearPortalToken, downloadExport, type Me, portalApi } from "./portal";
+import { SSOPanel } from "./sso";
 import { Field, PrimaryButton } from "./ui";
 
 const errText = (ex: unknown, fallback: string) => (ex instanceof Error && ex.message ? ex.message : fallback);
@@ -288,6 +289,7 @@ export function SecurityPanel({ me, onEnrolled }: { me: Me; onEnrolled?: () => v
       </section>
 
       {seesPolicy && !enrolling ? <OrgPolicyPanel me={me} ownMfaEnabled={enabled} /> : null}
+      {seesPolicy && !enrolling ? <SSOPanel me={me} /> : null}
 
       {/* Email verification */}
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

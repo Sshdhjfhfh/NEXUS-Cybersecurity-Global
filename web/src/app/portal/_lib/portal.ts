@@ -140,6 +140,7 @@ export type Me = {
     // everything except enrollment until they do.
     mfa_enrollment_required?: boolean;
     org_requires_mfa?: boolean;
+    signed_in_with_sso?: boolean;
   };
   org: Org;
 };
@@ -152,6 +153,23 @@ export type SecurityPolicy = {
   updated_at?: string | null;
   updated_by?: string;
 };
+// Single sign-on (OIDC). The client secret is write-only: the API only says
+// whether one is stored.
+export type SSOConfig = {
+  issuer: string;
+  client_id: string;
+  has_secret: boolean;
+  email_domains: string[];
+  enabled: boolean;
+  enforce: boolean;
+  auto_provision: boolean;
+  default_role: "member" | "auditor";
+  updated_at?: string | null;
+  updated_by?: string;
+};
+export type SSOResponse = { sso: SSOConfig | null; redirect_uri: string; verified_domains: string[] };
+export type SSOInput = Omit<SSOConfig, "has_secret" | "updated_at" | "updated_by"> & { client_secret: string };
+
 export type SecurityPolicyResponse = {
   policy: SecurityPolicy;
   your_ip: string;
@@ -355,6 +373,14 @@ export const portalApi = {
   mfaEnable: (code: string) => req<{ ok: boolean }>("/mfa/enable", { method: "POST", body: JSON.stringify({ code }) }),
   mfaDisable: (code: string) =>
     req<{ ok: boolean }>("/mfa/disable", { method: "POST", body: JSON.stringify({ code }) }),
+
+  // --- single sign-on ---
+  ssoStart: (email: string) => req<{ url: string }>("/sso/start", { method: "POST", body: JSON.stringify({ email }) }),
+  ssoCallback: (code: string, state: string) =>
+    req<{ token: string }>("/sso/callback", { method: "POST", body: JSON.stringify({ code, state }) }),
+  getSSO: () => req<SSOResponse>("/sso"),
+  setSSO: (c: SSOInput) => req<SSOResponse>("/sso", { method: "PUT", body: JSON.stringify(c) }),
+  deleteSSO: () => req<{ ok: boolean }>("/sso", { method: "DELETE" }),
 
   // --- org security policy ---
   getSecurityPolicy: () => req<SecurityPolicyResponse>("/security-policy"),

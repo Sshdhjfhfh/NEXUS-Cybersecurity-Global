@@ -157,6 +157,28 @@ export const SERVER_ERRORS_EN: Record<string, string> = {
     "Turn on your own two-step verification before requiring it for the organization",
   "no se pudo leer la política": "The policy could not be read",
   "no se pudo guardar la política": "The policy could not be saved",
+  // single sign-on
+  "no hay inicio de sesión único configurado para ese dominio": "No single sign-on is configured for that domain",
+  "el proveedor de identidad no responde": "The identity provider is not responding",
+  "inicio de sesión caducado o no válido; vuelve a intentarlo": "Sign-in expired or invalid; please try again",
+  "el inicio de sesión único no está activo para esta organización":
+    "Single sign-on is not active for this organization",
+  "no se pudo validar tu identidad con el proveedor": "Your identity could not be validated with the provider",
+  "no tienes cuenta en esta organización; pide una invitación a un administrador":
+    "You have no account in this organization; ask an administrator for an invitation",
+  "esta cuenta pertenece a otra organización": "This account belongs to another organization",
+  "la identidad del proveedor no coincide con la vinculada a esta cuenta":
+    "The provider identity does not match the one linked to this account",
+  "emisor (issuer) inválido: debe ser una URL https": "Invalid issuer: it must be an https URL",
+  "client_id o client_secret inválido": "Invalid client_id or client_secret",
+  "el rol por defecto debe ser member o auditor": "The default role must be member or auditor",
+  "activa el SSO antes de exigirlo": "Enable SSO before requiring it",
+  "ese dominio ya está configurado para SSO en otra organización":
+    "That domain is already configured for SSO in another organization",
+  "no se pudo leer la configuración SSO": "The SSO configuration could not be read",
+  "no se pudo guardar la configuración SSO": "The SSO configuration could not be saved",
+  "no se pudo eliminar la configuración SSO": "The SSO configuration could not be removed",
+  "no se pudo cifrar el secreto": "The secret could not be encrypted",
 };
 
 // Messages that embed a value (host, scheme, status code). Matched after the
@@ -168,6 +190,15 @@ export const SERVER_ERROR_PATTERNS_EN: [RegExp, string][] = [
   [/^la duración de sesión debe estar entre 1 y (\d+) horas$/, "The session length must be between 1 and $1 hours"],
   [/^red inválida: (.+)$/, "Invalid network: $1"],
   [/^máximo (\d+) redes$/, "At most $1 networks"],
+  [
+    /^el dominio (\S+) no tiene la propiedad verificada por DNS en Objetivos$/,
+    "The domain $1 has no DNS-verified ownership in Targets",
+  ],
+  [/^indica entre 1 y (\d+) dominios de email$/, "Enter between 1 and $1 email domains"],
+  [
+    /^no se pudo leer la configuración OIDC del proveedor: (.+)$/,
+    "Could not read the provider's OIDC configuration: $1",
+  ],
   [
     /^tu IP actual \((\S+)\) no está en la lista; añádela para no bloquear tu propio acceso$/,
     "Your current IP ($1) is not in the list; add it so you do not lock yourself out",

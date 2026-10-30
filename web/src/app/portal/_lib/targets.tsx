@@ -66,7 +66,7 @@ function todayUTC(offsetDays = 0) {
   return d.toISOString().slice(0, 10);
 }
 
-function CopyValue({ value }: { value: string }) {
+export function CopyValue({ value }: { value: string }) {
   const { t } = usePortalI18n();
   const [copied, setCopied] = useState(false);
   async function copy() {

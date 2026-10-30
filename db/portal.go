@@ -251,6 +251,37 @@ ALTER TABLE orgs ADD COLUMN IF NOT EXISTS ip_allowlist TEXT NOT NULL DEFAULT '';
 ALTER TABLE orgs ADD COLUMN IF NOT EXISTS session_max_hours INT NOT NULL DEFAULT 168;
 ALTER TABLE orgs ADD COLUMN IF NOT EXISTS policy_updated_at TIMESTAMPTZ;
 ALTER TABLE orgs ADD COLUMN IF NOT EXISTS policy_updated_by TEXT NOT NULL DEFAULT '';
+-- Single sign-on (OpenID Connect) per org. The client secret is encrypted at
+-- rest. Email domains are claimed exclusively (one org per domain) and must be
+-- domains the org proved it owns. sso_subject binds an account to one IdP
+-- identity ("issuer|sub") on first SSO sign-in.
+CREATE TABLE IF NOT EXISTS portal_sso (
+    org_id            BIGINT PRIMARY KEY REFERENCES orgs(id) ON DELETE CASCADE,
+    issuer            TEXT NOT NULL,
+    client_id         TEXT NOT NULL,
+    client_secret_enc TEXT NOT NULL DEFAULT '',
+    email_domains     TEXT NOT NULL DEFAULT '',
+    enabled           BOOLEAN NOT NULL DEFAULT false,
+    enforce           BOOLEAN NOT NULL DEFAULT false,
+    auto_provision    BOOLEAN NOT NULL DEFAULT false,
+    default_role      TEXT NOT NULL DEFAULT 'member',
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_by        TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS portal_sso_domains (
+    domain TEXT PRIMARY KEY,
+    org_id BIGINT NOT NULL REFERENCES portal_sso(org_id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS portal_sso_states (
+    state_hash    TEXT PRIMARY KEY,
+    org_id        BIGINT NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+    code_verifier TEXT NOT NULL,
+    nonce         TEXT NOT NULL,
+    redirect_uri  TEXT NOT NULL,
+    login_hint    TEXT NOT NULL DEFAULT '',
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS sso_subject TEXT NOT NULL DEFAULT '';
 `
 
 // portalSchemaDone records the connection pools whose portal schema is already

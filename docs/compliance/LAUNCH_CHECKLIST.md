@@ -33,6 +33,23 @@ Rastrea el avance hacia una revisión de lanzamiento (Directiva §20). Marca `[x
       `sudo npx playwright install-deps chromium` (requiere tu contraseña). Ver `docs/validation/E2E_PLAYWRIGHT.md`.
 - [x] Nitidez: imágenes clave re-generadas a alta calidad (dashboard, industries, incident-response) + iconos de nodos.
 
+## Operación y despliegue (portal de clientes y plataforma)
+- [x] Compilación de producción (`next build`) sin errores (2026-10-30).
+- [x] La web nunca muestra un "error 500" en crudo: si el backend no responde, portal y
+      consola dicen "servicio no disponible" (y la consola ya no culpa a la contraseña).
+- [x] Sondas: `/api/health` (vivo) y `/api/ready` (base de datos accesible).
+- [x] Copias de seguridad diarias verificadas (servicio `backup`, `scripts/db-backup.sh`);
+      restauración probada. Ver `docs/engineering/BACKUP_RESTORE.md`.
+- [x] `docker-compose.yml`: contraseña de PostgreSQL obligatoria (sin `changeme`), API solo
+      en `127.0.0.1` (detrás de HTTPS), variables del portal y del correo.
+- [ ] **Proxy HTTPS** delante de la API (Caddy/Nginx/Traefik) con certificado válido y dominio.
+- [ ] **Correo real**: `NEXUS_SMTP_*` + `NEXUS_PORTAL_BASE_URL`, con SPF/DKIM/DMARC del dominio
+      (sin esto, invitaciones, verificación y recuperación de contraseña no llegan).
+- [ ] **Copia de las copias fuera del servidor** (almacenamiento externo cifrado) + alerta si falla.
+- [ ] Monitorización y alertas (caída del backend, errores 5xx, disco, copia fallida).
+- [ ] Aceptación de Términos y Privacidad en el registro del portal, con versión registrada
+      (depende de que los textos legales estén aprobados).
+
 ## 🙋 LO QUE NECESITO DE TI (para no inventar nada)
 ### Datos legales/corporativos → van en `web/src/config/company.ts`
 - [ ] Razón social registrada.

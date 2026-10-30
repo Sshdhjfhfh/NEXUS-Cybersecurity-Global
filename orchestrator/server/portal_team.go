@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -374,19 +375,22 @@ func (s *Server) portalCreateInvite(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudo generar la invitación")
 		return
 	}
-	id, err := pg.CreateInvite(orgID, userID, req.Email, req.Role, token)
+	id, err := pg.CreateInvite(orgID, userID, req.Email, req.Role, hashToken(token))
 	if err != nil {
 		writeErr(w, 500, "no se pudo crear la invitación")
 		return
 	}
 	s.audit(r, &orgID, "user:"+strconv.FormatInt(userID, 10), "portal_user", "invite.create",
 		"invite:"+strconv.FormatInt(id, 10), "email="+req.Email+" role="+req.Role)
+	// The raw token is returned once, here, for the admin to share; only its
+	// hash is stored.
 	writeJSON(w, 201, map[string]any{
-		"ok":    true,
-		"id":    id,
-		"token": token,
-		"email": req.Email,
-		"role":  req.Role,
+		"ok":         true,
+		"id":         id,
+		"token":      token,
+		"email":      req.Email,
+		"role":       req.Role,
+		"expires_at": time.Now().Add(db.InviteTTL),
 	})
 }
 
@@ -410,7 +414,7 @@ func (s *Server) portalListInvites(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /api/portal/invites/{id} — revoke a pending invitation (admin+).
 func (s *Server) portalDeleteInvite(w http.ResponseWriter, r *http.Request) {
-	orgID, _, _, ok := s.portalRequireRole(w, r, "admin")
+	orgID, actorID, _, ok := s.portalRequireRole(w, r, "admin")
 	if !ok {
 		return
 	}
@@ -427,6 +431,8 @@ func (s *Server) portalDeleteInvite(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudo revocar la invitación")
 		return
 	}
+	s.audit(r, &orgID, "user:"+strconv.FormatInt(actorID, 10), "portal_user", "invite.revoke",
+		"invite:"+strconv.FormatInt(id, 10), "")
 	writeJSON(w, 200, map[string]any{"ok": true})
 }
 
@@ -442,13 +448,17 @@ func (s *Server) portalLookupInvite(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, "token requerido")
 		return
 	}
-	inv, err := pg.GetInviteByToken(token)
+	inv, err := pg.GetInviteByToken(hashToken(token))
 	if err != nil {
 		writeErr(w, 503, "almacenamiento no disponible")
 		return
 	}
 	if inv == nil || inv.Accepted {
 		writeErr(w, 404, "invitación no válida o ya usada")
+		return
+	}
+	if inv.Expired {
+		writeErr(w, 410, "la invitación ha caducado; pide una nueva a tu administrador")
 		return
 	}
 	org, err := pg.GetOrg(inv.OrgID)
@@ -483,13 +493,17 @@ func (s *Server) portalAcceptInvite(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, p)
 		return
 	}
-	inv, err := pg.GetInviteByToken(req.Token)
+	inv, err := pg.GetInviteByToken(hashToken(req.Token))
 	if err != nil {
 		writeErr(w, 503, "almacenamiento no disponible")
 		return
 	}
 	if inv == nil || inv.Accepted {
 		writeErr(w, 404, "invitación no válida o ya usada")
+		return
+	}
+	if inv.Expired {
+		writeErr(w, 410, "la invitación ha caducado; pide una nueva a tu administrador")
 		return
 	}
 	if p := portalPasswordProblem(req.Password, inv.Email); p != "" {
@@ -509,6 +523,10 @@ func (s *Server) portalAcceptInvite(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, db.ErrEmailTaken) {
 			writeErr(w, 409, "ese email ya tiene una cuenta")
+			return
+		}
+		if errors.Is(err, db.ErrInviteUsed) {
+			writeErr(w, 404, "invitación no válida o ya usada")
 			return
 		}
 		writeErr(w, 500, "no se pudo aceptar la invitación")

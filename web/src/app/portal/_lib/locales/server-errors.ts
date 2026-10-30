@@ -21,6 +21,8 @@ export const SERVER_ERRORS_EN: Record<string, string> = {
   "id inválido": "Invalid id",
   "idioma no soportado": "Unsupported language",
   "invitación no válida o ya usada": "Invalid or already used invitation",
+  "la invitación ha caducado; pide una nueva a tu administrador":
+    "This invitation has expired; ask your administrator for a new one",
   "la contraseña actual es incorrecta": "The current password is incorrect",
   "la contraseña debe tener entre 8 y 72 caracteres": "The password must be between 8 and 72 characters",
   "esa contraseña es demasiado común o predecible; elige otra":

@@ -236,6 +236,11 @@ func (n *portalNotifier) sweep(now time.Time) int {
 	if purged, err := pg.PurgeOldMail(now.Add(-mailRetention)); err == nil && purged > 0 {
 		log.Printf("[portal-notify] purged %d old outbox rows", purged)
 	}
+	if tk, ss, inv, err := pg.PortalHousekeeping(); err != nil {
+		log.Printf("[portal-notify] housekeeping: %v", err)
+	} else if tk+ss+inv > 0 {
+		log.Printf("[portal-notify] housekeeping removed %d tokens, %d sessions, %d invitations", tk, ss, inv)
+	}
 	orgs, err := pg.NotifyOrgs()
 	if err != nil {
 		log.Printf("[portal-notify] orgs: %v", err)

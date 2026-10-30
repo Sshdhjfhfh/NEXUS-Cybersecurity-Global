@@ -84,3 +84,27 @@ func (d *DB) InvalidatePortalTokens(userID int64, kind string) error {
 	)
 	return err
 }
+
+// PortalHousekeeping removes identity records that can no longer be used:
+// spent or expired one-time tokens (after a week), sessions that expired more
+// than 90 days ago (kept until then to recognise known devices), and pending
+// invitations 30 days past their expiry. Returns rows removed per kind.
+func (d *DB) PortalHousekeeping() (tokens, sessions, invites int64, err error) {
+	n := func(q string, args ...any) int64 {
+		if err != nil {
+			return 0
+		}
+		res, e := d.Exec(q, args...)
+		if e != nil {
+			err = e
+			return 0
+		}
+		c, _ := res.RowsAffected()
+		return c
+	}
+	tokens = n(`DELETE FROM portal_tokens WHERE (used OR expires_at < now()) AND created_at < now() - interval '7 days'`)
+	sessions = n(`DELETE FROM portal_sessions WHERE expires_at < now() - interval '` + sessionMemory + `'`)
+	invites = n(`DELETE FROM portal_invites WHERE accepted = false AND created_at < $1`,
+		time.Now().Add(-InviteTTL-30*24*time.Hour))
+	return tokens, sessions, invites, err
+}

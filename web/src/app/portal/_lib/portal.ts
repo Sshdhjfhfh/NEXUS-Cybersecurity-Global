@@ -124,6 +124,8 @@ export type Invite = {
   email: string;
   role: PortalRole;
   created_at: string;
+  expires_at: string;
+  expired: boolean;
 };
 export type ViewProfile = "" | "executive" | "technical";
 export type Me = {

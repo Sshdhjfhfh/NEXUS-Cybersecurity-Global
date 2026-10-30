@@ -299,6 +299,11 @@ CREATE TABLE IF NOT EXISTS portal_sessions (
     revoked_at   TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS portal_sessions_user_idx ON portal_sessions (user_id, last_seen_at DESC);
+
+-- Invitation tokens are stored as SHA-256 hex (64 chars), like reset tokens.
+-- Raw tokens are 32-char base64url, so this hashes rows written before that
+-- change exactly once; their links keep working until they expire.
+UPDATE portal_invites SET token = encode(sha256(convert_to(token, 'UTF8')), 'hex') WHERE length(token) <> 64;
 `
 
 // portalSchemaDone records the connection pools whose portal schema is already
@@ -492,9 +497,10 @@ type PortalInvite struct {
 	OrgID     int64     `json:"org_id"`
 	Email     string    `json:"email"`
 	Role      string    `json:"role"`
-	Token     string    `json:"token,omitempty"`
 	Accepted  bool      `json:"accepted"`
 	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+	Expired   bool      `json:"expired"`
 }
 
 // GetPortalUserByID devuelve el usuario por id (o nil si no existe). Se usa para
@@ -671,28 +677,43 @@ func (d *DB) DeleteMember(orgID, userID int64) error {
 	return nil
 }
 
-// CreateInvite crea una invitación pendiente para la organización dada.
-func (d *DB) CreateInvite(orgID, createdBy int64, email, role, token string) (int64, error) {
+// InviteTTL is how long an invitation link can be used.
+const InviteTTL = 7 * 24 * time.Hour
+
+// ErrInviteUsed: the invitation was accepted (or revoked) concurrently.
+var ErrInviteUsed = errors.New("invite already used")
+
+func (inv *PortalInvite) fillExpiry() {
+	inv.ExpiresAt = inv.CreatedAt.Add(InviteTTL)
+	inv.Expired = time.Now().After(inv.ExpiresAt)
+}
+
+// CreateInvite crea una invitación pendiente para la organización dada. Solo se
+// guarda el hash del token (como los de restablecimiento): una lectura de la base
+// de datos no da enlaces utilizables.
+func (d *DB) CreateInvite(orgID, createdBy int64, email, role, tokenHash string) (int64, error) {
 	var id int64
 	err := d.QueryRow(
 		`INSERT INTO portal_invites(org_id, email, role, token, created_by) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-		orgID, email, role, token, createdBy,
+		orgID, email, role, tokenHash, createdBy,
 	).Scan(&id)
 	return id, err
 }
 
-// GetInviteByToken resuelve una invitación por su token (o nil si no existe).
-func (d *DB) GetInviteByToken(token string) (*PortalInvite, error) {
+// GetInviteByToken resuelve una invitación por el hash de su token (o nil si no
+// existe). Expired indica si ya caducó.
+func (d *DB) GetInviteByToken(tokenHash string) (*PortalInvite, error) {
 	var inv PortalInvite
 	err := d.QueryRow(
-		`SELECT id, org_id, email, role, token, accepted, created_at FROM portal_invites WHERE token = $1`, token,
-	).Scan(&inv.ID, &inv.OrgID, &inv.Email, &inv.Role, &inv.Token, &inv.Accepted, &inv.CreatedAt)
+		`SELECT id, org_id, email, role, accepted, created_at FROM portal_invites WHERE token = $1`, tokenHash,
+	).Scan(&inv.ID, &inv.OrgID, &inv.Email, &inv.Role, &inv.Accepted, &inv.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
+	inv.fillExpiry()
 	return &inv, nil
 }
 
@@ -712,6 +733,7 @@ func (d *DB) ListInvites(orgID int64) ([]PortalInvite, error) {
 		if err := rows.Scan(&inv.ID, &inv.OrgID, &inv.Email, &inv.Role, &inv.Accepted, &inv.CreatedAt); err != nil {
 			return nil, err
 		}
+		inv.fillExpiry()
 		out = append(out, inv)
 	}
 	return out, rows.Err()
@@ -883,8 +905,12 @@ func (d *DB) AcceptInvite(inviteID, orgID int64, email, role, passwordHash strin
 		}
 		return 0, err
 	}
-	if _, err = tx.Exec(`UPDATE portal_invites SET accepted = true WHERE id = $1`, inviteID); err != nil {
+	res, err := tx.Exec(`UPDATE portal_invites SET accepted = true WHERE id = $1 AND accepted = false`, inviteID)
+	if err != nil {
 		return 0, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return 0, ErrInviteUsed
 	}
 	return userID, tx.Commit()
 }

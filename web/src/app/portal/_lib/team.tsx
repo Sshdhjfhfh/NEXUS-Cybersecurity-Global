@@ -309,9 +309,18 @@ export function TeamPanel({ me }: { me: Me }) {
                   key={inv.id}
                   className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 bg-white p-3.5"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm text-slate-700">{inv.email}</span>
                     <RoleBadge role={inv.role} />
+                    {inv.expired ? (
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                        {t.team.inviteExpired}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-slate-500">
+                        {t.team.inviteExpires(fmtDate(inv.expires_at))}
+                      </span>
+                    )}
                   </div>
                   {readOnly ? null : (
                     <button

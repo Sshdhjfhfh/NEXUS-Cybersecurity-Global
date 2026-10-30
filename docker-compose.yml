@@ -4,6 +4,10 @@
 # Levanta el stack completo:
 #   - postgres    (base de datos, red aislada)
 #   - orchestrator (backend Go + frontend Next.js embebido)
+#   - backup      (copia diaria verificada de la base de datos)
+#
+# Obligatorio antes de arrancar: POSTGRES_PASSWORD en .env (no hay valor por
+# defecto). La API escucha solo en 127.0.0.1: publícala con un proxy HTTPS.
 #
 # Uso:
 #   make up      → arranca el stack
@@ -23,7 +27,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER:     ${POSTGRES_USER:-nexus}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en .env}
       POSTGRES_DB:       ${POSTGRES_DB:-nexus}
       # Evitar warnings en logs
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
@@ -60,7 +64,7 @@ services:
         condition: service_healthy
     environment:
       # Base de datos
-      NEXUS_PG_DSN: "postgres://${POSTGRES_USER:-nexus}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-nexus}?sslmode=disable"
+      NEXUS_PG_DSN: "postgres://${POSTGRES_USER:-nexus}:${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en .env}@postgres:5432/${POSTGRES_DB:-nexus}?sslmode=disable"
       # Ollama en el host Windows
       OLLAMA_HOST: "http://host.docker.internal:11434"
       # Modelos por defecto (tier micro)
@@ -72,6 +76,16 @@ services:
       LOG_LEVEL:          "${LOG_LEVEL:-INFO}"
       NEXUS_SKILL_DIR:     "/app/data/skills"
       NEXUS_MEMORY_ENABLED: "${NEXUS_MEMORY_ENABLED:-true}"
+      # Portal de clientes: URL pública (enlaces de los emails) y correo saliente.
+      # Sin NEXUS_SMTP_HOST los emails solo se escriben en el log (no llegan).
+      NEXUS_PORTAL_BASE_URL:  "${NEXUS_PORTAL_BASE_URL:-}"
+      NEXUS_CONSOLE_BASE_URL: "${NEXUS_CONSOLE_BASE_URL:-}"
+      NEXUS_SMTP_HOST:        "${NEXUS_SMTP_HOST:-}"
+      NEXUS_SMTP_PORT:        "${NEXUS_SMTP_PORT:-587}"
+      NEXUS_SMTP_USER:        "${NEXUS_SMTP_USER:-}"
+      NEXUS_SMTP_PASS:        "${NEXUS_SMTP_PASS:-}"
+      NEXUS_SMTP_FROM:        "${NEXUS_SMTP_FROM:-}"
+      NEXUS_OPS_EMAIL:        "${NEXUS_OPS_EMAIL:-}"
     volumes:
       # Persistencia de datos runtime (SQLite, skills, etc.)
       - nexus_data:/app/data
@@ -80,8 +94,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      # API HTTP (127.0.0.1 = solo host local)
-      - "0.0.0.0:8787:8787"
+      # API HTTP solo en el host local: en producción va detrás de un proxy
+      # HTTPS (los tokens nunca deben viajar en claro). NEXUS_BIND=0.0.0.0 la
+      # expone en la red, solo para pruebas en una red de confianza.
+      - "${NEXUS_BIND:-127.0.0.1}:8787:8787"
       # MITM proxy (opcional, comentado por defecto)
       # - "127.0.0.1:8788:8788"
     networks:
@@ -96,6 +112,36 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # ─────────────────────────────────────────────────────────────
+  # BACKUP — copia diaria de la base de datos (scripts/db-backup.sh)
+  # Cada copia se verifica con pg_restore antes de guardarse; se conservan
+  # BACKUP_KEEP_DAYS días en el volumen nexus_backups. Cópialas también fuera
+  # del servidor. Restaurar: docs/engineering/BACKUP_RESTORE.md
+  # ─────────────────────────────────────────────────────────────
+  backup:
+    image: postgres:16-alpine
+    container_name: nexus-backup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST:     postgres
+      PGUSER:     ${POSTGRES_USER:-nexus}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en .env}
+      PGDATABASE: ${POSTGRES_DB:-nexus}
+      BACKUP_DIR: /backups
+      BACKUP_KEEP_DAYS:      ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+    volumes:
+      - nexus_backups:/backups
+      - ./scripts/db-backup.sh:/usr/local/bin/db-backup.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/db-backup.sh", "--loop"]
+    networks:
+      - nexus_internal
+    security_opt:
+      - no-new-privileges:true
+
 # ───────────────────────────────────────────────────────────────
 # VOLUMES — Persistencia
 # ───────────────────────────────────────────────────────────────
@@ -104,6 +150,8 @@ volumes:
     name: nexus_pgdata
   nexus_data:
     name: nexus_data
+  nexus_backups:
+    name: nexus_backups
 
 # ───────────────────────────────────────────────────────────────
 # NETWORKS — Segmentación

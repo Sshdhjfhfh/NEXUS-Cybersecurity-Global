@@ -74,7 +74,7 @@ func (s *Server) portalAuth(w http.ResponseWriter, r *http.Request) (orgID, user
 	// being suspended, the user being deactivated, or their sessions being revoked
 	// (token issued before sessions_revoked_at). Fails open only on a DB error
 	// (any write then fails on the same DB anyway).
-	if s.m != nil && s.m.pg != nil {
+	if s.m != nil && s.m.pg != nil && s.m.pg.EnsurePortalTables() == nil {
 		a, err := s.m.pg.PortalAuthState(userID)
 		if err == nil {
 			if a == nil {
@@ -98,6 +98,9 @@ func (s *Server) portalAuth(w http.ResponseWriter, r *http.Request) (orgID, user
 			// account security.
 			if a.Role == roleAuditor && !isReadMethod(r.Method) && !auditorSelfService[r.URL.Path] {
 				writeErr(w, 403, "el rol auditor es de solo lectura")
+				return 0, 0, false
+			}
+			if !s.enforceOrgPolicy(w, r, a, userID, iat) {
 				return 0, 0, false
 			}
 		}
@@ -227,6 +230,15 @@ func (s *Server) portalLogin(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 403, "organización suspendida; contacta con soporte")
 		return
 	}
+	// Network allowlist, checked before the second factor so codes cannot be
+	// tried from a network the org does not allow.
+	if p, perr := pg.GetOrgSecurityPolicy(u.OrgID); perr == nil && p != nil {
+		if ip := policyClientIP(r); !ipAllowed(ip, p.IPAllowlist) {
+			s.audit(r, &u.OrgID, u.Email, "portal_user", "auth.ip_blocked", "user:"+strconv.FormatInt(u.ID, 10), "ip="+ip)
+			writeErr(w, 403, "acceso no permitido desde esta red por la política de la organización")
+			return
+		}
+	}
 	// Second factor: if the user has 2FA on, a valid TOTP code is required. The
 	// "mfa_required" error is the frontend's signal to prompt for the code.
 	if u.MFAEnabled {
@@ -264,10 +276,18 @@ func (s *Server) portalMe(w http.ResponseWriter, r *http.Request) {
 	role := ""
 	email := ""
 	verified := false
+	mfaEnabled := false
 	if u, err := pg.GetPortalUserByID(userID); err == nil && u != nil {
 		role = u.Role
 		email = u.Email
 		verified = u.EmailVerified
+		mfaEnabled = u.MFAEnabled
+	}
+	// The org requires 2FA and this member has not enrolled: the portal shows
+	// only the enrollment screen (the server refuses everything else anyway).
+	requireMFA := false
+	if p, err := pg.GetOrgSecurityPolicy(orgID); err == nil && p != nil {
+		requireMFA = p.RequireMFA
 	}
 	viewProfile, lang, _ := pg.GetPortalUserPrefs(userID)
 	notifyEmail, err := pg.GetPortalUserNotifyEmail(userID)
@@ -278,6 +298,8 @@ func (s *Server) portalMe(w http.ResponseWriter, r *http.Request) {
 		"user": map[string]any{
 			"id": userID, "role": role, "email": email, "email_verified": verified,
 			"view_profile": viewProfile, "lang": lang, "notify_email": notifyEmail,
+			"mfa_enabled": mfaEnabled, "mfa_enrollment_required": requireMFA && !mfaEnabled,
+			"org_requires_mfa": requireMFA,
 		},
 		"org": org,
 	})

@@ -121,6 +121,10 @@ func (s *Server) portalMFADisable(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 404, "usuario no encontrado")
 		return
 	}
+	if p, err := pg.GetOrgSecurityPolicy(orgID); err == nil && p != nil && p.RequireMFA {
+		writeErr(w, 403, "la política de la organización exige la verificación en dos pasos")
+		return
+	}
 	if u.MFAEnabled {
 		secret, err := s.decryptSecret(u.MFASecret)
 		if err != nil || !verifyTOTP(secret, strings.TrimSpace(req.Code)) {

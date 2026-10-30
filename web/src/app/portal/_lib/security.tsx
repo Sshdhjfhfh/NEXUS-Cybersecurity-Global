@@ -5,6 +5,7 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { BellIcon, CheckCircle2Icon, DownloadIcon, MailCheckIcon, MailWarningIcon, ShieldIcon } from "lucide-react";
 
 import { usePortalI18n } from "./i18n";
+import { OrgPolicyPanel } from "./policy";
 import { clearPortalToken, downloadExport, type Me, portalApi } from "./portal";
 import { Field, PrimaryButton } from "./ui";
 
@@ -13,8 +14,12 @@ const errText = (ex: unknown, fallback: string) => (ex instanceof Error && ex.me
 // Per-user 2FA (TOTP) management. Every user manages their own second factor. The
 // secret is shown for manual entry plus an otpauth:// link to open in the app —
 // never sent to a third-party QR service, so the seed never leaves this origin.
-export function SecurityPanel({ me }: { me: Me }) {
+// While the org requires 2FA and the user has not enrolled (`enrolling`), only
+// the account sections are shown; `onEnrolled` reloads the portal once they do.
+export function SecurityPanel({ me, onEnrolled }: { me: Me; onEnrolled?: () => void }) {
   const { t } = usePortalI18n();
+  const enrolling = me.user.mfa_enrollment_required === true;
+  const seesPolicy = me.user.role === "owner" || me.user.role === "admin" || me.user.role === "auditor";
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [setup, setSetup] = useState<{ secret: string; otpauth: string } | null>(null);
   const [code, setCode] = useState("");
@@ -160,6 +165,7 @@ export function SecurityPanel({ me }: { me: Me }) {
       setCode("");
       setNote(t.sec.enabledNote);
       await loadStatus();
+      if (enrolling) onEnrolled?.();
     } catch (ex) {
       setErr(errText(ex, t.sec.invalidCode));
     } finally {
@@ -225,23 +231,29 @@ export function SecurityPanel({ me }: { me: Me }) {
             <p className="flex items-center gap-2 text-sm text-emerald-700">
               <CheckCircle2Icon className="size-4" aria-hidden /> {t.sec.mfaOn}
             </p>
-            <p className="text-xs text-slate-500">{t.sec.mfaDisableHint}</p>
-            <Field
-              label={t.sec.currentCode}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder="123456"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => void disable()}
-              disabled={busy || code.trim().length < 6}
-              className="w-full rounded-xl border border-rose-300 px-4 py-2.5 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-60"
-            >
-              {busy ? t.sec.disabling : t.sec.disable}
-            </button>
+            {me.user.org_requires_mfa ? (
+              <p className="text-xs text-slate-500">{t.policy.mfaRequiredByOrg}</p>
+            ) : (
+              <>
+                <p className="text-xs text-slate-500">{t.sec.mfaDisableHint}</p>
+                <Field
+                  label={t.sec.currentCode}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="123456"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => void disable()}
+                  disabled={busy || code.trim().length < 6}
+                  className="w-full rounded-xl border border-rose-300 px-4 py-2.5 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-60"
+                >
+                  {busy ? t.sec.disabling : t.sec.disable}
+                </button>
+              </>
+            )}
           </div>
         ) : setup ? (
           <div className="mt-4 space-y-4">
@@ -274,6 +286,8 @@ export function SecurityPanel({ me }: { me: Me }) {
           </div>
         )}
       </section>
+
+      {seesPolicy && !enrolling ? <OrgPolicyPanel me={me} ownMfaEnabled={enabled} /> : null}
 
       {/* Email verification */}
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -381,7 +395,9 @@ export function SecurityPanel({ me }: { me: Me }) {
       </section>
 
       {/* Data & privacy */}
-      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section
+        className={`mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ${enrolling ? "hidden" : ""}`}
+      >
         <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-700">{t.sec.privacy}</h2>
         <div className="mt-4 space-y-3">
           <p className="text-sm text-slate-500">{t.sec.exportHint}</p>

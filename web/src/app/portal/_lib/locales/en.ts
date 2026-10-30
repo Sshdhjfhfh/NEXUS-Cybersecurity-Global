@@ -304,7 +304,41 @@ const en: PortalDict = {
       "target.reject": "Target rejected by NEXUS",
       "roe.accept": "Rules of engagement accepted",
       "request.promote_override": "Assessment started by operator exception",
+      "policy.update": "Security policy updated",
+      "policy.reset": "Security policy reset by NEXUS",
+      "auth.ip_blocked": "Access blocked: network not allowed",
     },
+  },
+
+  policy: {
+    title: "Organization security policy",
+    intro: "Applies to every member on every request, not only at sign-in.",
+    readOnly: "Only the organization owner can change this policy.",
+    loading: "Loading policy…",
+    loadError: "Could not load the policy",
+    requireMfa: "Require two-step verification for all members",
+    requireMfaHint: "Members without it can only set it up: they see no organization data until they do.",
+    requireMfaNeedsOwn: "Turn on your own 2FA first (above) to require it.",
+    withoutMfa: (n: number) =>
+      n === 0 ? "Every active member has 2FA." : `${n} active ${n === 1 ? "member" : "members"} without 2FA:`,
+    allowlist: "Allowed networks",
+    allowlistHint:
+      "One IP or CIDR network per line (e.g. 203.0.113.0/24). Empty = any network. Checked at sign-in and on every request.",
+    yourIp: (ip: string) => `Your current IP: ${ip}`,
+    addMyIp: "Add my IP",
+    sessionMax: "Maximum session length",
+    sessionMaxHint: "After this long since sign-in, members must sign in again. Also applies to sessions already open.",
+    hours: (n: number) => (n === 1 ? "1 hour" : n % 24 === 0 ? `${n / 24} ${n === 24 ? "day" : "days"}` : `${n} hours`),
+    save: "Save policy",
+    saving: "Saving…",
+    saved: "Policy saved. It is already in effect.",
+    saveError: "Could not save the policy",
+    updated: (who: string, when: string) => `Last change: ${who}, ${when}.`,
+    lockoutNote:
+      "For safety, a list that excludes your current IP cannot be saved. If your organization gets locked out, contact NEXUS support.",
+    mfaRequiredByOrg: "Your organization requires two-step verification, so it cannot be turned off.",
+    enrollTitle: "Your organization requires two-step verification",
+    enrollBody: "Turn it on below to continue. Until then you cannot view or change organization data.",
   },
 
   sec: {

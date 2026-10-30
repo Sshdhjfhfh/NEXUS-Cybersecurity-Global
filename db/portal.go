@@ -241,6 +241,14 @@ CREATE TABLE IF NOT EXISTS portal_roe (
     ip                TEXT NOT NULL DEFAULT '',
     accepted_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Org security policy, set by the owner: require 2FA for every member, restrict
+-- portal access to a list of networks (comma-separated CIDRs; '' = any), and cap
+-- how long a session lasts (hours since sign-in; applies to existing sessions).
+ALTER TABLE orgs ADD COLUMN IF NOT EXISTS require_mfa BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE orgs ADD COLUMN IF NOT EXISTS ip_allowlist TEXT NOT NULL DEFAULT '';
+ALTER TABLE orgs ADD COLUMN IF NOT EXISTS session_max_hours INT NOT NULL DEFAULT 168;
+ALTER TABLE orgs ADD COLUMN IF NOT EXISTS policy_updated_at TIMESTAMPTZ;
+ALTER TABLE orgs ADD COLUMN IF NOT EXISTS policy_updated_by TEXT NOT NULL DEFAULT '';
 `
 
 // portalSchemaDone records the connection pools whose portal schema is already
@@ -499,24 +507,33 @@ func (d *DB) CountActiveOwners(orgID int64) (int, error) {
 
 // PortalAuthInfo es el estado que autoriza cada petición del portal.
 type PortalAuthInfo struct {
-	OrgID     int64
-	Role      string
-	Disabled  bool
-	RevokedAt *time.Time
-	Suspended bool
+	OrgID      int64
+	Role       string
+	Disabled   bool
+	RevokedAt  *time.Time
+	Suspended  bool
+	MFAEnabled bool
+	// Org security policy.
+	RequireMFA      bool
+	IPAllowlist     []string
+	SessionMaxHours int
 }
 
 // PortalAuthState resuelve, en una sola consulta, el estado necesario para
 // autorizar cada petición del portal: si el usuario existe (nil si no), su rol
-// actual, si está desactivado, cuándo se revocaron sus sesiones, y si su
-// organización está suspendida.
+// actual, si está desactivado, cuándo se revocaron sus sesiones, si tiene 2FA,
+// si su organización está suspendida y la política de seguridad de la org.
 func (d *DB) PortalAuthState(userID int64) (*PortalAuthInfo, error) {
 	var a PortalAuthInfo
 	var rev sql.NullTime
+	var allow string
 	err := d.QueryRow(
-		`SELECT u.org_id, u.role, u.disabled, u.sessions_revoked_at, o.suspended
+		`SELECT u.org_id, u.role, u.disabled, u.sessions_revoked_at, o.suspended,
+                u.mfa_enabled, o.require_mfa, o.ip_allowlist, o.session_max_hours
          FROM portal_users u JOIN orgs o ON o.id = u.org_id WHERE u.id = $1`, userID,
-	).Scan(&a.OrgID, &a.Role, &a.Disabled, &rev, &a.Suspended)
+	).Scan(&a.OrgID, &a.Role, &a.Disabled, &rev, &a.Suspended,
+		&a.MFAEnabled, &a.RequireMFA, &allow, &a.SessionMaxHours)
+	a.IPAllowlist = splitAllowlist(allow)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}

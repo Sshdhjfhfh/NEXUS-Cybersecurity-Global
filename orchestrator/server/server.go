@@ -739,6 +739,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/portal/mfa/setup", s.portalMFASetup)
 	mux.HandleFunc("POST /api/portal/mfa/enable", s.portalMFAEnable)
 	mux.HandleFunc("POST /api/portal/mfa/disable", s.portalMFADisable)
+	// Org security policy: required 2FA, network allowlist, session lifetime.
+	mux.HandleFunc("GET /api/portal/security-policy", s.portalGetSecurityPolicy)
+	mux.HandleFunc("PUT /api/portal/security-policy", s.portalSetSecurityPolicy)
 	// Account recovery + email verification (reset/verify are public, token-gated).
 	mux.HandleFunc("POST /api/portal/password/forgot", s.portalForgotPassword)
 	mux.HandleFunc("POST /api/portal/password/reset", s.portalResetPassword)
@@ -764,6 +767,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/admin/portal/orgs/{id}/members", s.adminListOrgMembers)
 	mux.HandleFunc("PATCH /api/admin/portal/orgs/{id}", s.adminSuspendOrg)
 	mux.HandleFunc("DELETE /api/admin/portal/orgs/{id}", s.adminDeleteOrg)
+	mux.HandleFunc("DELETE /api/admin/portal/orgs/{id}/security-policy", s.adminResetSecurityPolicy)
 	// Tamper-evident audit trail (operator): full log + chain integrity check.
 	mux.HandleFunc("GET /api/admin/portal/audit", s.adminListAudit)
 	mux.HandleFunc("GET /api/admin/portal/audit/verify", s.adminVerifyAudit)

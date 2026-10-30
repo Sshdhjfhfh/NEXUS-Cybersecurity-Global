@@ -146,6 +146,17 @@ export const SERVER_ERRORS_EN: Record<string, string> = {
   "la solicitud no tiene objetivos": "The request has no targets",
   "no se pudo registrar la aceptación": "The acceptance could not be recorded",
   "las reglas de enfrentamiento ya están aceptadas": "The rules of engagement are already accepted",
+  // org security policy
+  "sesión expirada por la política de la organización; inicia sesión de nuevo":
+    "Session expired under your organization's policy; please sign in again",
+  "acceso no permitido desde esta red por la política de la organización":
+    "Access from this network is not allowed by your organization's policy",
+  "la política de la organización exige la verificación en dos pasos":
+    "Your organization's policy requires two-step verification",
+  "activa tu propia verificación en dos pasos antes de exigirla a la organización":
+    "Turn on your own two-step verification before requiring it for the organization",
+  "no se pudo leer la política": "The policy could not be read",
+  "no se pudo guardar la política": "The policy could not be saved",
 };
 
 // Messages that embed a value (host, scheme, status code). Matched after the
@@ -154,6 +165,13 @@ export const SERVER_ERROR_PATTERNS_EN: [RegExp, string][] = [
   [/^no se encontró el registro TXT (\S+)$/, "TXT record $1 not found"],
   [/^no se pudo conectar por (https?)$/, "Could not connect over $1"],
   [/^(https?) respondió (\d+) en (\S+)$/, "$1 answered $2 for $3"],
+  [/^la duración de sesión debe estar entre 1 y (\d+) horas$/, "The session length must be between 1 and $1 hours"],
+  [/^red inválida: (.+)$/, "Invalid network: $1"],
+  [/^máximo (\d+) redes$/, "At most $1 networks"],
+  [
+    /^tu IP actual \((\S+)\) no está en la lista; añádela para no bloquear tu propio acceso$/,
+    "Your current IP ($1) is not in the list; add it so you do not lock yourself out",
+  ],
 ];
 
 // Internal infrastructure messages that must never be shown verbatim to a client

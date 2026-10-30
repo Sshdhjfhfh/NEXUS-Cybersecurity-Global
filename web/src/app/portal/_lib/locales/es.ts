@@ -307,7 +307,44 @@ const es = {
       "target.reject": "Objetivo rechazado por NEXUS",
       "roe.accept": "Reglas de enfrentamiento aceptadas",
       "request.promote_override": "Evaluación iniciada por excepción del operador",
+      "policy.update": "Política de seguridad actualizada",
+      "policy.reset": "Política de seguridad restablecida por NEXUS",
+      "auth.ip_blocked": "Acceso bloqueado por red no permitida",
     } as Record<string, string>,
+  },
+
+  policy: {
+    title: "Política de seguridad de la organización",
+    intro: "Se aplica a todos los miembros en cada petición, no solo al iniciar sesión.",
+    readOnly: "Solo el propietario de la organización puede cambiar esta política.",
+    loading: "Cargando política…",
+    loadError: "No se pudo cargar la política",
+    requireMfa: "Exigir verificación en dos pasos a todos los miembros",
+    requireMfaHint: "Quien no la tenga activa solo podrá configurarla: no verá datos de la organización hasta hacerlo.",
+    requireMfaNeedsOwn: "Activa primero tu propia 2FA (arriba) para poder exigirla.",
+    withoutMfa: (n: number) =>
+      n === 0
+        ? "Todos los miembros activos tienen 2FA."
+        : `${n} ${n === 1 ? "miembro activo" : "miembros activos"} sin 2FA:`,
+    allowlist: "Redes permitidas",
+    allowlistHint:
+      "Una IP o red CIDR por línea (p. ej. 203.0.113.0/24). Vacío = cualquier red. Se comprueba al iniciar sesión y en cada petición.",
+    yourIp: (ip: string) => `Tu IP actual: ${ip}`,
+    addMyIp: "Añadir mi IP",
+    sessionMax: "Duración máxima de la sesión",
+    sessionMaxHint:
+      "Tras este tiempo desde el inicio de sesión hay que volver a entrar. Se aplica también a las sesiones ya abiertas.",
+    hours: (n: number) => (n === 1 ? "1 hora" : n % 24 === 0 ? `${n / 24} ${n === 24 ? "día" : "días"}` : `${n} horas`),
+    save: "Guardar política",
+    saving: "Guardando…",
+    saved: "Política guardada. Ya se está aplicando.",
+    saveError: "No se pudo guardar la política",
+    updated: (who: string, when: string) => `Último cambio: ${who}, ${when}.`,
+    lockoutNote:
+      "Por seguridad, no se puede guardar una lista que excluya tu IP actual. Si la organización queda sin acceso, contacta con soporte de NEXUS.",
+    mfaRequiredByOrg: "Tu organización exige la verificación en dos pasos, así que no se puede desactivar.",
+    enrollTitle: "Tu organización exige la verificación en dos pasos",
+    enrollBody: "Actívala abajo para continuar. Hasta entonces no puedes ver ni modificar datos de la organización.",
   },
 
   sec: {

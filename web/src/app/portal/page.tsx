@@ -112,6 +112,12 @@ export default function PortalDashboard() {
       setView(defaultView(meData));
       // A language saved on the account wins over this browser's default.
       if (isPortalLang(meData.user.lang)) setLang(meData.user.lang);
+      // The org requires 2FA and this user has not enrolled: the server refuses
+      // everything else until they do, so only the enrollment screen is shown.
+      if (meData.user.mfa_enrollment_required) {
+        setTab("security");
+        return;
+      }
       const { requests } = await portalApi.listRequests();
       setReqs(requests ?? []);
       const link = takeDeepLink();
@@ -205,15 +211,16 @@ export default function PortalDashboard() {
   }
 
   const isAuditor = me.user.role === "auditor";
+  const enrolling = me.user.mfa_enrollment_required === true;
   // Team + audit log: managed by admins, reviewed (read-only) by auditors.
-  const canManageTeam = me.user.role === "owner" || me.user.role === "admin" || isAuditor;
+  const canManageTeam = (me.user.role === "owner" || me.user.role === "admin" || isAuditor) && !enrolling;
   const initial = (me.org.name || "?").trim().charAt(0).toUpperCase();
 
   const tabs: { id: Tab; label: string; show: boolean }[] = [
-    { id: "overview", label: t.tabs.overview, show: true },
-    { id: "remediation", label: t.tabs.remediation, show: true },
-    { id: "requests", label: t.tabs.requests, show: true },
-    { id: "targets", label: t.tabs.targets, show: true },
+    { id: "overview", label: t.tabs.overview, show: !enrolling },
+    { id: "remediation", label: t.tabs.remediation, show: !enrolling },
+    { id: "requests", label: t.tabs.requests, show: !enrolling },
+    { id: "targets", label: t.tabs.targets, show: !enrolling },
     { id: "team", label: t.tabs.team, show: canManageTeam },
     { id: "audit", label: t.tabs.audit, show: canManageTeam },
     { id: "security", label: t.tabs.security, show: true },
@@ -264,6 +271,15 @@ export default function PortalDashboard() {
             </button>
           </div>
         ) : null}
+        {enrolling ? (
+          <div
+            role="alert"
+            className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          >
+            <p className="font-semibold">{t.policy.enrollTitle}</p>
+            <p className="mt-1">{t.policy.enrollBody}</p>
+          </div>
+        ) : null}
         {isAuditor ? (
           <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm text-violet-800">
             {t.readOnlyBanner}
@@ -309,7 +325,7 @@ export default function PortalDashboard() {
         ) : null}
         {tab === "team" && canManageTeam ? <TeamPanel me={me} /> : null}
         {tab === "audit" && canManageTeam ? <AuditPanel /> : null}
-        {tab === "security" ? <SecurityPanel me={me} /> : null}
+        {tab === "security" ? <SecurityPanel me={me} onEnrolled={() => void load()} /> : null}
         {tab === "targets" ? <TargetsPanel me={me} /> : null}
 
         {tab === "requests" ? (

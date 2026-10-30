@@ -135,8 +135,28 @@ export type Me = {
     view_profile: ViewProfile;
     lang: "" | "es" | "en";
     notify_email?: boolean;
+    mfa_enabled?: boolean;
+    // The org requires 2FA and this user has not enrolled: the server refuses
+    // everything except enrollment until they do.
+    mfa_enrollment_required?: boolean;
+    org_requires_mfa?: boolean;
   };
   org: Org;
+};
+
+// Org security policy (owner edits; admins and auditors read).
+export type SecurityPolicy = {
+  require_mfa: boolean;
+  ip_allowlist: string[];
+  session_max_hours: number;
+  updated_at?: string | null;
+  updated_by?: string;
+};
+export type SecurityPolicyResponse = {
+  policy: SecurityPolicy;
+  your_ip: string;
+  max_session_hours: number;
+  members_without_mfa: string[];
 };
 
 export type SeverityBucket = { open: number; in_progress: number; remediated: number; risk_accepted: number };
@@ -335,6 +355,11 @@ export const portalApi = {
   mfaEnable: (code: string) => req<{ ok: boolean }>("/mfa/enable", { method: "POST", body: JSON.stringify({ code }) }),
   mfaDisable: (code: string) =>
     req<{ ok: boolean }>("/mfa/disable", { method: "POST", body: JSON.stringify({ code }) }),
+
+  // --- org security policy ---
+  getSecurityPolicy: () => req<SecurityPolicyResponse>("/security-policy"),
+  setSecurityPolicy: (p: { require_mfa: boolean; ip_allowlist: string[]; session_max_hours: number }) =>
+    req<SecurityPolicyResponse>("/security-policy", { method: "PUT", body: JSON.stringify(p) }),
 
   // --- account recovery + email verification ---
   forgotPassword: (email: string) =>

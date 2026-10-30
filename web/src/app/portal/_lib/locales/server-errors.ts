@@ -23,6 +23,10 @@ export const SERVER_ERRORS_EN: Record<string, string> = {
   "invitación no válida o ya usada": "Invalid or already used invitation",
   "la contraseña actual es incorrecta": "The current password is incorrect",
   "la contraseña debe tener entre 8 y 72 caracteres": "The password must be between 8 and 72 characters",
+  "esa contraseña es demasiado común o predecible; elige otra":
+    "That password is too common or predictable; choose another",
+  "la contraseña no puede contener tu email": "The password cannot contain your email",
+  "la nueva contraseña debe ser distinta de la actual": "The new password must be different from the current one",
   "la organización debe conservar al menos un propietario": "The organization must keep at least one owner",
   "la organización debe conservar al menos un propietario activo":
     "The organization must keep at least one active owner",

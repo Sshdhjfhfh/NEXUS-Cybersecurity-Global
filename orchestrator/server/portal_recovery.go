@@ -107,11 +107,22 @@ func (s *Server) portalResetPassword(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, "cuerpo inválido")
 		return
 	}
-	if len(req.Password) < 8 || len(req.Password) > 72 {
-		writeErr(w, 400, "la contraseña debe tener entre 8 y 72 caracteres")
+	if p := portalPasswordProblem(req.Password, ""); p != "" {
+		writeErr(w, 400, p)
 		return
 	}
-	userID, ok, err := pg.ConsumePortalToken("reset", hashToken(strings.TrimSpace(req.Token)))
+	// Check the password against the account's email before spending the link,
+	// so a refused password does not force the user to request a new one.
+	tokHash := hashToken(strings.TrimSpace(req.Token))
+	if uid, ok, err := pg.PeekPortalToken("reset", tokHash); err == nil && ok {
+		if u, err := pg.GetPortalUserByID(uid); err == nil && u != nil {
+			if p := portalPasswordProblem(req.Password, u.Email); p != "" {
+				writeErr(w, 400, p)
+				return
+			}
+		}
+	}
+	userID, ok, err := pg.ConsumePortalToken("reset", tokHash)
 	if err != nil {
 		writeErr(w, 503, "almacenamiento no disponible")
 		return
@@ -155,17 +166,21 @@ func (s *Server) portalChangePassword(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, "cuerpo inválido")
 		return
 	}
-	if len(req.NewPassword) < 8 || len(req.NewPassword) > 72 {
-		writeErr(w, 400, "la contraseña debe tener entre 8 y 72 caracteres")
-		return
-	}
 	u, err := pg.GetPortalUserByID(userID)
 	if err != nil || u == nil {
 		writeErr(w, 404, "usuario no encontrado")
 		return
 	}
+	if p := portalPasswordProblem(req.NewPassword, u.Email); p != "" {
+		writeErr(w, 400, p)
+		return
+	}
 	if bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.OldPassword)) != nil {
 		writeErr(w, 400, "la contraseña actual es incorrecta")
+		return
+	}
+	if req.NewPassword == req.OldPassword {
+		writeErr(w, 400, "la nueva contraseña debe ser distinta de la actual")
 		return
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)

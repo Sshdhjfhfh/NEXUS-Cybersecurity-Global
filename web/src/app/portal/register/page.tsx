@@ -66,6 +66,7 @@ export default function PortalRegister() {
         />
         <Field
           label={t.auth.passwordNew}
+          hint={t.passwordRules}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}

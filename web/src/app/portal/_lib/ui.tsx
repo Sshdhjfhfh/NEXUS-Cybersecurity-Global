@@ -72,7 +72,11 @@ export function FormError({ children }: { children: ReactNode }) {
 
 export const authLink = "text-cyan-700 hover:text-cyan-800";
 
-export function Field({ label, ...props }: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
+export function Field({
+  label,
+  hint,
+  ...props
+}: { label: string; hint?: string } & InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="block text-xs font-medium text-slate-600">
       {label}
@@ -80,6 +84,7 @@ export function Field({ label, ...props }: { label: string } & InputHTMLAttribut
         {...props}
         className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-cyan-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-cyan-100 disabled:bg-slate-100 disabled:text-slate-500"
       />
+      {hint ? <span className="mt-1 block font-normal text-slate-500">{hint}</span> : null}
     </label>
   );
 }

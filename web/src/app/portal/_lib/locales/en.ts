@@ -21,6 +21,8 @@ const en: PortalDict = {
   contact: "Contact",
   languageLabel: "Language",
   passwordMin: "The password must be at least 8 characters long.",
+  passwordRules:
+    "At least 8 characters. A long phrase is best; common passwords and ones containing your email are refused.",
   genericError: "Something went wrong. Please try again.",
 
   tabs: {

@@ -382,6 +382,7 @@ export function SecurityPanel({ me, onEnrolled }: { me: Me; onEnrolled?: () => v
           />
           <Field
             label={t.sec.newPassword}
+            hint={t.passwordRules}
             type="password"
             value={newPw}
             onChange={(e) => setNewPw(e.target.value)}

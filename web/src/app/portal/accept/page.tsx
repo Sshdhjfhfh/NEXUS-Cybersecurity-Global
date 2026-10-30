@@ -92,6 +92,7 @@ function AcceptInner() {
         <Field label={t.email} type="email" value={info?.email ?? ""} readOnly disabled />
         <Field
           label={t.auth.createPassword}
+          hint={t.passwordRules}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}

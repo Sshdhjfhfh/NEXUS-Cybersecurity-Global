@@ -479,8 +479,8 @@ func (s *Server) portalAcceptInvite(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, "token requerido")
 		return
 	}
-	if len(req.Password) < 8 || len(req.Password) > 72 {
-		writeErr(w, 400, "la contraseña debe tener entre 8 y 72 caracteres")
+	if p := portalPasswordProblem(req.Password, ""); p != "" {
+		writeErr(w, 400, p)
 		return
 	}
 	inv, err := pg.GetInviteByToken(req.Token)
@@ -490,6 +490,10 @@ func (s *Server) portalAcceptInvite(w http.ResponseWriter, r *http.Request) {
 	}
 	if inv == nil || inv.Accepted {
 		writeErr(w, 404, "invitación no válida o ya usada")
+		return
+	}
+	if p := portalPasswordProblem(req.Password, inv.Email); p != "" {
+		writeErr(w, 400, p)
 		return
 	}
 	if !validInviteRole(inv.Role) {

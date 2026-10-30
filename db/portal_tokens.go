@@ -16,6 +16,19 @@ func (d *DB) CreatePortalToken(userID int64, kind, tokenHash string, ttl time.Du
 	return err
 }
 
+// PeekPortalToken returns the user a still-valid token belongs to without using
+// it up, so a request can be validated before the token is spent.
+func (d *DB) PeekPortalToken(kind, tokenHash string) (userID int64, ok bool, err error) {
+	err = d.QueryRow(
+		`SELECT user_id FROM portal_tokens
+         WHERE token_hash = $1 AND kind = $2 AND used = false AND expires_at > now()`, tokenHash, kind,
+	).Scan(&userID)
+	if err == sql.ErrNoRows {
+		return 0, false, nil
+	}
+	return userID, err == nil, err
+}
+
 // ConsumePortalToken validates a token of the given kind and marks it used in one
 // transaction (so it cannot be replayed). Returns the owning user id. ok is false
 // when the token is unknown, already used, or expired.

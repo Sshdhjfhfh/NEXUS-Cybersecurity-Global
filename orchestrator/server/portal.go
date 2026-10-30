@@ -183,8 +183,8 @@ func (s *Server) portalRegister(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, "email inválido")
 		return
 	}
-	if len(req.Password) < 8 || len(req.Password) > 72 {
-		writeErr(w, 400, "la contraseña debe tener entre 8 y 72 caracteres")
+	if p := portalPasswordProblem(req.Password, req.Email); p != "" {
+		writeErr(w, 400, p)
 		return
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)

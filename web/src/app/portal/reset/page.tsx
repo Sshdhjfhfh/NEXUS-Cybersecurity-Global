@@ -70,6 +70,7 @@ function ResetInner() {
         <form onSubmit={submit} className="space-y-4">
           <Field
             label={t.sec.newPassword}
+            hint={t.passwordRules}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

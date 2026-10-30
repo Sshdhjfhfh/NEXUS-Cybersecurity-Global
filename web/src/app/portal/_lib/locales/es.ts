@@ -19,6 +19,8 @@ const es = {
   contact: "Contacto",
   languageLabel: "Idioma",
   passwordMin: "La contraseña debe tener al menos 8 caracteres.",
+  passwordRules:
+    "Mínimo 8 caracteres. Mejor una frase larga; no se admiten contraseñas habituales ni que contengan tu email.",
   genericError: "Algo salió mal. Inténtalo de nuevo.",
 
   tabs: {

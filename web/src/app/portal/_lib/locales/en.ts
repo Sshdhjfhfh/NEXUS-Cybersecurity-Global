@@ -311,7 +311,34 @@ const en: PortalDict = {
       "sso.delete": "SSO configuration removed",
       "auth.sso_failed": "SSO sign-in refused",
       "member.sso_provision": "Account created by SSO",
+      "auth.logout": "Signed out",
+      "auth.session_revoked": "Session ended from another device",
+      "auth.sessions_revoked": "Other sessions ended",
     },
+  },
+
+  sessions: {
+    title: "Active sessions",
+    intro:
+      "Devices where your account is signed in. If you do not recognise one, end it and change your password: changing it ends every other session.",
+    loading: "Loading sessions…",
+    loadError: "Could not load sessions",
+    thisDevice: "This device",
+    device: (browser: string, os: string) =>
+      browser && os ? `${browser} on ${os}` : browser || os || "Unknown browser",
+    lastActive: (when: string) => `Last active ${when}`,
+    signedIn: (when: string) => `signed in ${when}`,
+    end: "Sign out",
+    ending: "Signing out…",
+    ended: "That device has been signed out.",
+    endOthers: "Sign out all other sessions",
+    othersEnded: (n: number) => {
+      if (n === 0) return "There were no other open sessions.";
+      return n === 1 ? "1 session ended." : `${n} sessions ended.`;
+    },
+    othersEndedAfterPassword: (n: number) =>
+      n === 1 ? "Your session on another device was ended." : `Your sessions on ${n} other devices were ended.`,
+    endError: "Could not end the session",
   },
 
   sso: {

@@ -20,6 +20,11 @@ type notifyText struct {
 	VerifySubject, VerifyTitle, VerifyIntro, VerifyCTA, VerifyNote string
 	ResetSubject, ResetTitle, ResetIntro, ResetCTA, ResetNote      string
 
+	SignInSubject, SignInTitle, SignInIntro, SignInCTA, SignInNote string
+	SignInWhen, SignInDevice, SignInIP, SignInMethod               string
+	SignInMethodPassword, SignInMethodSSO                          string
+	SignInDeviceText                                               func(browser, os string) string
+
 	FindingRef func(fid int64) string
 
 	ReleasedSubject func(title string) string
@@ -76,6 +81,20 @@ var notifyTexts = map[string]*notifyText{
 		ResetIntro:    "Hemos recibido una solicitud para restablecer la contraseña de tu cuenta de NEXUS.",
 		ResetCTA:      "Elegir una contraseña nueva",
 		ResetNote:     "El enlace caduca en 1 hora. Si no fuiste tú, ignora este mensaje: tu contraseña no cambiará.",
+
+		SignInSubject: "Nuevo inicio de sesión en tu cuenta · NEXUS",
+		SignInTitle:   "Se ha iniciado sesión desde un dispositivo nuevo",
+		SignInIntro:   "Tu cuenta del portal de NEXUS se acaba de abrir desde un navegador y una red que no habías usado recientemente.",
+		SignInCTA:     "Revisar mis sesiones",
+		SignInNote: "Si fuiste tú, no tienes que hacer nada. Si no, cierra esa sesión en Seguridad › Sesiones activas, " +
+			"cambia tu contraseña y activa la verificación en dos pasos.",
+		SignInWhen:           "Fecha",
+		SignInDevice:         "Dispositivo",
+		SignInIP:             "Dirección IP",
+		SignInMethod:         "Método",
+		SignInMethodPassword: "contraseña",
+		SignInMethodSSO:      "inicio de sesión único (SSO)",
+		SignInDeviceText:     func(b, o string) string { return deviceText(b, o, "en", "navegador desconocido") },
 
 		FindingRef: func(fid int64) string { return fmt.Sprintf("Hallazgo #%d", fid) },
 
@@ -161,6 +180,20 @@ var notifyTexts = map[string]*notifyText{
 		ResetCTA:      "Choose a new password",
 		ResetNote:     "The link expires in 1 hour. If this was not you, ignore this message: your password will not change.",
 
+		SignInSubject: "New sign-in to your account · NEXUS",
+		SignInTitle:   "Your account was opened on a new device",
+		SignInIntro:   "Your NEXUS portal account was just opened from a browser and network you had not used recently.",
+		SignInCTA:     "Review my sessions",
+		SignInNote: "If this was you, there is nothing to do. If not, end that session in Security › Active sessions, " +
+			"change your password and turn on two-step verification.",
+		SignInWhen:           "Date",
+		SignInDevice:         "Device",
+		SignInIP:             "IP address",
+		SignInMethod:         "Method",
+		SignInMethodPassword: "password",
+		SignInMethodSSO:      "single sign-on (SSO)",
+		SignInDeviceText:     func(b, o string) string { return deviceText(b, o, "on", "unknown browser") },
+
 		FindingRef: func(fid int64) string { return fmt.Sprintf("Finding #%d", fid) },
 
 		ReleasedSubject: func(title string) string { return "Results available: " + title + " · NEXUS" },
@@ -242,6 +275,19 @@ func userLang(pg *db.DB, userID int64) string {
 		return ""
 	}
 	return lang
+}
+
+// deviceText joins a browser and an operating system ("Chrome en Windows").
+func deviceText(browser, os, on, unknown string) string {
+	switch {
+	case browser == "" && os == "":
+		return unknown
+	case os == "":
+		return browser
+	case browser == "":
+		return os
+	}
+	return browser + " " + on + " " + os
 }
 
 // sevName is the lower-case severity name for running text.

@@ -5,7 +5,6 @@ package server
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 	"net/netip"
 	"strconv"
@@ -32,28 +31,6 @@ var mfaEnrollmentPaths = map[string]bool{
 	"/api/portal/mfa/enable":      true,
 	"/api/portal/password/change": true,
 	"/api/portal/email/resend":    true,
-}
-
-// policyClientIP is the caller's address for the network allowlist. Behind the
-// local proxy (loopback peer) it takes the right-most X-Forwarded-For entry —
-// the one the proxy itself appended — because entries to its left come from
-// the client and can be forged. Unlike clientIP (rate limiting), a spoofable
-// value here would bypass an access control.
-func policyClientIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		host = r.RemoteAddr
-	}
-	if ip := net.ParseIP(host); ip == nil || !ip.IsLoopback() {
-		return host
-	}
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		parts := strings.Split(xff, ",")
-		if last := strings.TrimSpace(parts[len(parts)-1]); last != "" {
-			return last
-		}
-	}
-	return host
 }
 
 // normalizeAllowlist validates CIDRs or single addresses and returns them in
@@ -147,7 +124,7 @@ func (s *Server) enforceOrgPolicy(w http.ResponseWriter, r *http.Request, a *db.
 		writeErr(w, 401, "sesión expirada por la política de la organización; inicia sesión de nuevo")
 		return false
 	}
-	if ip := policyClientIP(r); !ipAllowed(ip, a.IPAllowlist) {
+	if ip := clientIP(r); !ipAllowed(ip, a.IPAllowlist) {
 		if shouldAuditIPBlock(userID, ip) {
 			actor := "user:" + strconv.FormatInt(userID, 10)
 			if u, err := s.m.pg.GetPortalUserByID(userID); err == nil && u != nil {
@@ -191,7 +168,7 @@ func (s *Server) writeSecurityPolicy(w http.ResponseWriter, r *http.Request, pg 
 	}
 	writeJSON(w, 200, map[string]any{
 		"policy":              p,
-		"your_ip":             policyClientIP(r),
+		"your_ip":             clientIP(r),
 		"max_session_hours":   maxSessionHours,
 		"members_without_mfa": without,
 	})
@@ -235,7 +212,7 @@ func (s *Server) portalSetSecurityPolicy(w http.ResponseWriter, r *http.Request)
 		writeErr(w, 400, "activa tu propia verificación en dos pasos antes de exigirla a la organización")
 		return
 	}
-	if ip := policyClientIP(r); !ipAllowed(ip, allow) {
+	if ip := clientIP(r); !ipAllowed(ip, allow) {
 		writeErr(w, 400, fmt.Sprintf("tu IP actual (%s) no está en la lista; añádela para no bloquear tu propio acceso", ip))
 		return
 	}

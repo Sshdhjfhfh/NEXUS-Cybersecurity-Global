@@ -177,8 +177,15 @@ func (s *Server) portalChangePassword(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudo actualizar la contraseña")
 		return
 	}
-	s.audit(r, &orgID, u.Email, "portal_user", "password.change", "user:"+strconv.FormatInt(userID, 10), "")
-	writeJSON(w, 200, map[string]any{"ok": true})
+	// Whoever knew the old password may still hold a session: end every other
+	// one, keeping only the device that made the change.
+	ended, err := pg.RevokeOtherPortalSessions(userID, s.portalSessionID(r))
+	if err != nil {
+		log.Printf("[portal] password change: ending other sessions user=%d: %v", userID, err)
+	}
+	s.audit(r, &orgID, u.Email, "portal_user", "password.change", "user:"+strconv.FormatInt(userID, 10),
+		"other_sessions_ended="+strconv.FormatInt(ended, 10))
+	writeJSON(w, 200, map[string]any{"ok": true, "other_sessions_ended": ended})
 }
 
 // POST /api/portal/email/verify {token} — public.

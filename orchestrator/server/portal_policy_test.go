@@ -46,15 +46,15 @@ func TestIPAllowed(t *testing.T) {
 	}
 }
 
-func TestPolicyClientIP(t *testing.T) {
+func TestClientIPForAllowlist(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	r.RemoteAddr = "127.0.0.1:5000"
 	r.Header.Set("X-Forwarded-For", "10.0.0.5, 198.51.100.7")
-	if got := policyClientIP(r); got != "198.51.100.7" {
+	if got := clientIP(r); got != "198.51.100.7" {
 		t.Errorf("behind the proxy: got %q, want the proxy-appended (right-most) entry", got)
 	}
 	r.RemoteAddr = "203.0.113.4:5000" // not the local proxy: header is ignored
-	if got := policyClientIP(r); got != "203.0.113.4" {
+	if got := clientIP(r); got != "203.0.113.4" {
 		t.Errorf("direct peer: got %q", got)
 	}
 }

@@ -197,7 +197,14 @@ export default function PortalDashboard() {
     setTab("remediation");
   }
 
-  function logout() {
+  async function logout() {
+    // End the session on the server too, so the token stops working everywhere
+    // it may have been copied. Signing out locally must not depend on it.
+    try {
+      await portalApi.logout();
+    } catch {
+      /* already expired or offline: the local sign-out below still happens */
+    }
     clearPortalToken();
     router.replace("/portal/login");
   }
@@ -246,7 +253,7 @@ export default function PortalDashboard() {
             </span>
             <button
               type="button"
-              onClick={logout}
+              onClick={() => void logout()}
               className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
             >
               <LogOutIcon className="size-4" aria-hidden /> <span className="hidden sm:inline">{t.logout}</span>

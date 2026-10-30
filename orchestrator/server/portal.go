@@ -28,36 +28,37 @@ var portalBrute = &bruteGuard{
 
 // --- portal JWT (HS256, with org + typ claims) ---
 
-func signPortalJWT(key []byte, userID, orgID int64) (string, error) {
-	return signPortalJWTWith(key, userID, orgID, "pwd")
+// portalClaims is what a portal token says about its session.
+type portalClaims struct {
+	OrgID, UserID, IAT int64
+	SID                string // server-side session (portal_sessions.id)
+	AMR                string // "pwd" or "sso"
 }
 
-// signPortalJWTWith issues a portal session recording how the user signed in
-// ("pwd" or "sso"): an SSO session's second factor is the identity provider's.
-func signPortalJWTWith(key []byte, userID, orgID int64, amr string) (string, error) {
+// signPortalJWT issues the token for server-side session sid, recording how the
+// user signed in ("pwd" or "sso"): an SSO session's second factor is the
+// identity provider's.
+func signPortalJWT(key []byte, userID, orgID int64, amr, sid string, exp time.Time) (string, error) {
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": strconv.FormatInt(userID, 10),
 		"org": orgID,
 		"typ": "portal",
 		"amr": amr,
+		"sid": sid,
 		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(jwtTTL).Unix(),
+		"exp": exp.Unix(),
 	}).SignedString(key)
 }
 
 // portalSessionIsSSO reports whether the request's portal session came from SSO.
 func portalSessionIsSSO(r *http.Request, key []byte) bool {
-	t, err := jwt.Parse(extractToken(r), func(t *jwt.Token) (any, error) { return key, nil },
-		jwt.WithValidMethods([]string{"HS256"}))
-	if err != nil || !t.Valid {
-		return false
-	}
-	c, _ := t.Claims.(jwt.MapClaims)
-	amr, _ := c["amr"].(string)
-	return amr == "sso"
+	c, ok := parsePortalJWT(extractToken(r), key)
+	return ok && c.AMR == "sso"
 }
 
-func parsePortalJWT(tokenStr string, key []byte) (orgID, userID, iat int64, ok bool) {
+// parsePortalJWT validates a portal token. A token without a session id (issued
+// before server-side sessions existed) is refused: it could not be signed out.
+func parsePortalJWT(tokenStr string, key []byte) (portalClaims, bool) {
 	t, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")
@@ -65,36 +66,39 @@ func parsePortalJWT(tokenStr string, key []byte) (orgID, userID, iat int64, ok b
 		return key, nil
 	})
 	if err != nil || !t.Valid {
-		return 0, 0, 0, false
+		return portalClaims{}, false
 	}
 	claims, ok := t.Claims.(jwt.MapClaims)
 	if !ok {
-		return 0, 0, 0, false
+		return portalClaims{}, false
 	}
 	if typ, _ := claims["typ"].(string); typ != "portal" {
-		return 0, 0, 0, false // a console token must not be accepted as a portal token
+		return portalClaims{}, false // a console token must not be accepted as a portal token
 	}
 	orgF, _ := claims["org"].(float64)
 	uid, _ := strconv.ParseInt(fmt.Sprint(claims["sub"]), 10, 64)
 	iatF, _ := claims["iat"].(float64)
-	if orgF <= 0 || uid <= 0 {
-		return 0, 0, 0, false
+	sid, _ := claims["sid"].(string)
+	amr, _ := claims["amr"].(string)
+	if orgF <= 0 || uid <= 0 || sid == "" {
+		return portalClaims{}, false
 	}
-	return int64(orgF), uid, int64(iatF), true
+	return portalClaims{OrgID: int64(orgF), UserID: uid, IAT: int64(iatF), SID: sid, AMR: amr}, true
 }
 
 func (s *Server) portalAuth(w http.ResponseWriter, r *http.Request) (orgID, userID int64, ok bool) {
-	orgID, userID, iat, ok := parsePortalJWT(extractToken(r), s.jwtKey)
+	c, ok := parsePortalJWT(extractToken(r), s.jwtKey)
 	if !ok {
 		writeErr(w, 401, "no autorizado")
 		return 0, 0, false
 	}
+	orgID, userID, iat := c.OrgID, c.UserID, c.IAT
 	// One query resolves everything that can revoke access mid-session: the org
-	// being suspended, the user being deactivated, or their sessions being revoked
-	// (token issued before sessions_revoked_at). Fails open only on a DB error
-	// (any write then fails on the same DB anyway).
+	// being suspended, the user being deactivated, their sessions being revoked
+	// (token issued before sessions_revoked_at) or this session being signed out.
+	// Fails open only on a DB error (any write then fails on the same DB anyway).
 	if s.m != nil && s.m.pg != nil && s.m.pg.EnsurePortalTables() == nil {
-		a, err := s.m.pg.PortalAuthState(userID)
+		a, err := s.m.pg.PortalAuthState(userID, c.SID)
 		if err == nil {
 			if a == nil {
 				writeErr(w, 401, "no autorizado")
@@ -108,19 +112,22 @@ func (s *Server) portalAuth(w http.ResponseWriter, r *http.Request) (orgID, user
 				writeErr(w, 403, "cuenta desactivada")
 				return 0, 0, false
 			}
-			if a.RevokedAt != nil && iat < a.RevokedAt.Unix() {
+			if !a.SessionActive || (a.RevokedAt != nil && iat < a.RevokedAt.Unix()) {
 				writeErr(w, 401, "sesión revocada; inicia sesión de nuevo")
 				return 0, 0, false
 			}
 			// The auditor role is read-only everywhere — enforced here, once, so
 			// a write endpoint can never forget it — except for the auditor's own
 			// account security.
-			if a.Role == roleAuditor && !isReadMethod(r.Method) && !auditorSelfService[r.URL.Path] {
+			if a.Role == roleAuditor && !isReadMethod(r.Method) && !isAuditorSelfService(r.URL.Path) {
 				writeErr(w, 403, "el rol auditor es de solo lectura")
 				return 0, 0, false
 			}
 			if !s.enforceOrgPolicy(w, r, a, userID, iat) {
 				return 0, 0, false
+			}
+			if time.Since(a.SessionLastSeen) > time.Minute {
+				_ = s.m.pg.TouchPortalSession(c.SID, clientIP(r))
 			}
 		}
 	}
@@ -194,7 +201,7 @@ func (s *Server) portalRegister(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudo crear la cuenta")
 		return
 	}
-	tok, err := signPortalJWT(s.jwtKey, userID, orgID)
+	tok, err := s.issuePortalSession(r, pg, userID, orgID, req.Email, "pwd")
 	if err != nil {
 		writeErr(w, 500, "no se pudo emitir el token")
 		return
@@ -261,7 +268,7 @@ func (s *Server) portalLogin(w http.ResponseWriter, r *http.Request) {
 	// Network allowlist, checked before the second factor so codes cannot be
 	// tried from a network the org does not allow.
 	if p, perr := pg.GetOrgSecurityPolicy(u.OrgID); perr == nil && p != nil {
-		if ip := policyClientIP(r); !ipAllowed(ip, p.IPAllowlist) {
+		if ip := clientIP(r); !ipAllowed(ip, p.IPAllowlist) {
 			s.audit(r, &u.OrgID, u.Email, "portal_user", "auth.ip_blocked", "user:"+strconv.FormatInt(u.ID, 10), "ip="+ip)
 			writeErr(w, 403, "acceso no permitido desde esta red por la política de la organización")
 			return
@@ -278,7 +285,7 @@ func (s *Server) portalLogin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.audit(r, &u.OrgID, u.Email, "portal_user", "auth.login", "user:"+strconv.FormatInt(u.ID, 10), "")
-	tok, err := signPortalJWT(s.jwtKey, u.ID, u.OrgID)
+	tok, err := s.issuePortalSession(r, pg, u.ID, u.OrgID, u.Email, "pwd")
 	if err != nil {
 		writeErr(w, 500, "no se pudo emitir el token")
 		return

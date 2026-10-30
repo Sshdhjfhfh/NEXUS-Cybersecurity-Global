@@ -752,6 +752,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/portal/password/forgot", s.portalForgotPassword)
 	mux.HandleFunc("POST /api/portal/password/reset", s.portalResetPassword)
 	mux.HandleFunc("POST /api/portal/password/change", s.portalChangePassword)
+	// Server-side sessions: sign out, list and end the caller's own sessions.
+	mux.HandleFunc("POST /api/portal/logout", s.portalLogout)
+	mux.HandleFunc("GET /api/portal/sessions", s.portalListSessions)
+	mux.HandleFunc("DELETE /api/portal/sessions/{id}", s.portalRevokeSession)
+	mux.HandleFunc("POST /api/portal/sessions/revoke-others", s.portalRevokeOtherSessions)
 	mux.HandleFunc("POST /api/portal/email/verify", s.portalVerifyEmail)
 	mux.HandleFunc("POST /api/portal/email/resend", s.portalResendVerification)
 	// Operator bridge (console-authenticated via requireAuth; NOT /api/portal/):

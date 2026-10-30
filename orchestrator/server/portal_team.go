@@ -62,6 +62,12 @@ var auditorSelfService = map[string]bool{
 	"/api/portal/email/resend":    true,
 }
 
+// isAuditorSelfService reports whether an auditor may make this write: the
+// fixed paths above, or signing out their own sessions (owner-scoped in SQL).
+func isAuditorSelfService(path string) bool {
+	return auditorSelfService[path] || strings.HasPrefix(path, "/api/portal/sessions/")
+}
+
 // portalRequireRole authenticates the portal caller and resolves their current
 // role from the DB, enforcing a minimum. Returns the org, user id and live role.
 // An auditor passes read requests gated at admin or below and nothing else.
@@ -504,7 +510,7 @@ func (s *Server) portalAcceptInvite(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudo aceptar la invitación")
 		return
 	}
-	tok, err := signPortalJWT(s.jwtKey, userID, inv.OrgID)
+	tok, err := s.issuePortalSession(r, pg, userID, inv.OrgID, inv.Email, "pwd")
 	if err != nil {
 		writeErr(w, 500, "no se pudo emitir el token")
 		return

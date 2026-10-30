@@ -74,6 +74,10 @@ export const SERVER_ERRORS_EN: Record<string, string> = {
   "el rol auditor es de solo lectura": "The auditor role is read-only",
   "secreto inválido": "Invalid secret",
   "sesión revocada; inicia sesión de nuevo": "Session revoked; please sign in again",
+  "sesión no encontrada": "Session not found",
+  "no se pudo cerrar la sesión": "Could not end the session",
+  "no se pudieron cerrar las sesiones": "Could not end the sessions",
+  "no se pudieron cargar las sesiones": "Could not load the sessions",
   "solicitud no encontrada": "Request not found",
   "token requerido": "Token required",
   "tu cuenta ha sido desactivada; contacta con un administrador":

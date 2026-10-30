@@ -677,14 +677,14 @@ func (s *Server) portalSSOCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if p, perr := pg.GetOrgSecurityPolicy(u.OrgID); perr == nil && p != nil {
-		if ip := policyClientIP(r); !ipAllowed(ip, p.IPAllowlist) {
+		if ip := clientIP(r); !ipAllowed(ip, p.IPAllowlist) {
 			s.audit(r, &u.OrgID, u.Email, "portal_user", "auth.ip_blocked", "user:"+strconv.FormatInt(u.ID, 10), "ip="+ip)
 			writeErr(w, 403, "acceso no permitido desde esta red por la política de la organización")
 			return
 		}
 	}
 	s.audit(r, &u.OrgID, u.Email, "portal_user", "auth.login", "user:"+strconv.FormatInt(u.ID, 10), "method=sso")
-	jwtTok, err := signPortalJWTWith(s.jwtKey, u.ID, u.OrgID, "sso")
+	jwtTok, err := s.issuePortalSession(r, pg, u.ID, u.OrgID, u.Email, "sso")
 	if err != nil {
 		writeErr(w, 500, "no se pudo emitir el token")
 		return

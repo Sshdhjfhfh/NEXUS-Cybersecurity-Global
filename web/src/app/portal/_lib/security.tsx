@@ -7,6 +7,7 @@ import { BellIcon, CheckCircle2Icon, DownloadIcon, MailCheckIcon, MailWarningIco
 import { usePortalI18n } from "./i18n";
 import { OrgPolicyPanel } from "./policy";
 import { clearPortalToken, downloadExport, type Me, portalApi } from "./portal";
+import { SessionsPanel } from "./sessions";
 import { SSOPanel } from "./sso";
 import { Field, PrimaryButton } from "./ui";
 
@@ -40,6 +41,8 @@ export function SecurityPanel({ me, onEnrolled }: { me: Me; onEnrolled?: () => v
   const [notifyBusy, setNotifyBusy] = useState(false);
   const [notifyMsg, setNotifyMsg] = useState("");
   const [notifyErr, setNotifyErr] = useState("");
+  // Bumped to reload the sessions list after a password change ends the others.
+  const [sessionsKey, setSessionsKey] = useState(0);
 
   // Opt in/out of notification mail. Server-side preference: the sender checks it
   // on every email, so it applies on every device at once.
@@ -117,10 +120,14 @@ export function SecurityPanel({ me, onEnrolled }: { me: Me; onEnrolled?: () => v
     setPwErr("");
     setPwMsg("");
     try {
-      await portalApi.changePassword(oldPw, newPw);
+      const res = await portalApi.changePassword(oldPw, newPw);
       setOldPw("");
       setNewPw("");
-      setPwMsg(t.sec.passwordUpdated);
+      const ended = res.other_sessions_ended ?? 0;
+      setPwMsg(
+        ended > 0 ? `${t.sec.passwordUpdated} ${t.sessions.othersEndedAfterPassword(ended)}` : t.sec.passwordUpdated,
+      );
+      if (ended > 0) setSessionsKey((k) => k + 1);
     } catch (ex) {
       setPwErr(errText(ex, t.sec.passwordError));
     } finally {
@@ -395,6 +402,9 @@ export function SecurityPanel({ me, onEnrolled }: { me: Me; onEnrolled?: () => v
           </PrimaryButton>
         </form>
       </section>
+
+      {/* Where this account is signed in */}
+      {!enrolling ? <SessionsPanel key={sessionsKey} /> : null}
 
       {/* Data & privacy */}
       <section

@@ -170,6 +170,19 @@ export type SSOConfig = {
 export type SSOResponse = { sso: SSOConfig | null; redirect_uri: string; verified_domains: string[] };
 export type SSOInput = Omit<SSOConfig, "has_secret" | "updated_at" | "updated_by"> & { client_secret: string };
 
+// One signed-in device of the current user. browser/os are "" when unknown.
+export type PortalSession = {
+  id: string;
+  amr: "pwd" | "sso";
+  ip: string;
+  browser: string;
+  os: string;
+  created_at: string;
+  last_seen_at: string;
+  expires_at: string;
+  current: boolean;
+};
+
 export type SecurityPolicyResponse = {
   policy: SecurityPolicy;
   your_ip: string;
@@ -382,6 +395,12 @@ export const portalApi = {
   setSSO: (c: SSOInput) => req<SSOResponse>("/sso", { method: "PUT", body: JSON.stringify(c) }),
   deleteSSO: () => req<{ ok: boolean }>("/sso", { method: "DELETE" }),
 
+  // --- the caller's own sessions ---
+  logout: () => req<{ ok: boolean }>("/logout", { method: "POST", body: "{}" }),
+  listSessions: () => req<{ sessions: PortalSession[] }>("/sessions"),
+  revokeSession: (id: string) => req<{ ok: boolean }>(`/sessions/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  revokeOtherSessions: () => req<{ revoked: number }>("/sessions/revoke-others", { method: "POST", body: "{}" }),
+
   // --- org security policy ---
   getSecurityPolicy: () => req<SecurityPolicyResponse>("/security-policy"),
   setSecurityPolicy: (p: { require_mfa: boolean; ip_allowlist: string[]; session_max_hours: number }) =>
@@ -393,7 +412,7 @@ export const portalApi = {
   resetPassword: (token: string, password: string) =>
     req<{ ok: boolean }>("/password/reset", { method: "POST", body: JSON.stringify({ token, password }) }),
   changePassword: (old_password: string, new_password: string) =>
-    req<{ ok: boolean }>("/password/change", {
+    req<{ ok: boolean; other_sessions_ended?: number }>("/password/change", {
       method: "POST",
       body: JSON.stringify({ old_password, new_password }),
     }),

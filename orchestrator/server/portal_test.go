@@ -3,30 +3,43 @@ package server
 import (
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func TestPortalJWTRoundTripAndTypeGuard(t *testing.T) {
 	key := []byte("0123456789abcdef0123456789abcdef")
-	tok, err := signPortalJWT(key, 7, 42)
+	tok, err := signPortalJWT(key, 7, 42, "sso", "sess-1", time.Now().Add(time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
-	org, uid, iat, ok := parsePortalJWT(tok, key)
-	if !ok || org != 42 || uid != 7 {
-		t.Fatalf("roundtrip failed: org=%d uid=%d ok=%v", org, uid, ok)
+	c, ok := parsePortalJWT(tok, key)
+	if !ok || c.OrgID != 42 || c.UserID != 7 || c.SID != "sess-1" || c.AMR != "sso" {
+		t.Fatalf("roundtrip failed: %+v ok=%v", c, ok)
 	}
-	if iat <= 0 {
+	if c.IAT <= 0 {
 		t.Fatal("iat must be present for session-revocation checks")
 	}
-	if _, _, _, ok := parsePortalJWT(tok, []byte("ffffffffffffffffffffffffffffffff")); ok {
+	if _, ok := parsePortalJWT(tok, []byte("ffffffffffffffffffffffffffffffff")); ok {
 		t.Fatal("a token signed with another key must not validate")
+	}
+	// A token without a server-side session id cannot be signed out: refused.
+	legacy, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": "7", "org": 42, "typ": "portal", "iat": time.Now().Unix(), "exp": time.Now().Add(time.Hour).Unix(),
+	}).SignedString(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := parsePortalJWT(legacy, key); ok {
+		t.Fatal("a portal token without sid must be refused")
 	}
 	// A console token (no typ=portal) must NOT be accepted as a portal token.
 	consoleTok, err := signJWT(key)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, ok := parsePortalJWT(consoleTok, key); ok {
+	if _, ok := parsePortalJWT(consoleTok, key); ok {
 		t.Fatal("a console token must not be accepted as a portal token")
 	}
 	// And the reverse: a portal token (same signing key) must NOT authenticate
@@ -96,6 +109,39 @@ func TestAuditorRole(t *testing.T) {
 			path != "/api/portal/password/change" && path != "/api/portal/email/resend" {
 			t.Fatalf("auditor write exception %q is not the auditor's own account", path)
 		}
+	}
+	if !isAuditorSelfService("/api/portal/sessions/abc") || !isAuditorSelfService("/api/portal/sessions/revoke-others") {
+		t.Fatal("an auditor may sign out their own sessions")
+	}
+	for _, p := range []string{"/api/portal/sessions", "/api/portal/requests", "/api/portal/members/3/revoke-sessions"} {
+		if isAuditorSelfService(p) {
+			t.Fatalf("%q must not be an auditor write exception", p)
+		}
+	}
+}
+
+func TestDescribeUserAgent(t *testing.T) {
+	cases := []struct{ ua, browser, os string }{
+		{"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0", "Edge", "Windows"},
+		{"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36", "Chrome", "Windows"},
+		{"Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15", "Safari", "macOS"},
+		{"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", "Safari", "iOS"},
+		{"Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36", "Chrome", "Android"},
+		{"Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0", "Firefox", "Linux"},
+		{"curl/8.5.0", "curl", ""},
+		{"", "", ""},
+	}
+	for _, c := range cases {
+		b, o := describeUserAgent(c.ua)
+		if b != c.browser || o != c.os {
+			t.Errorf("%q -> %q/%q, want %q/%q", c.ua, b, o, c.browser, c.os)
+		}
+	}
+	if got := deviceText("Chrome", "Windows", "en", "?"); got != "Chrome en Windows" {
+		t.Errorf("deviceText = %q", got)
+	}
+	if got := deviceText("", "", "on", "unknown browser"); got != "unknown browser" {
+		t.Errorf("deviceText unknown = %q", got)
 	}
 }
 

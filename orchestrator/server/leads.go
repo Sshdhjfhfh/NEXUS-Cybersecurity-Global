@@ -45,9 +45,12 @@ type leadRequest struct {
 	Website      string `json:"website"` // honeypot — must stay empty
 }
 
-// clientIP returns the submitter's IP for rate limiting. X-Forwarded-For is only
-// honored when the direct peer is loopback (the local Next.js proxy); otherwise a
-// client could spoof the header to dodge the per-IP limit.
+// clientIP is the caller's address for rate limiting, brute-force lockout, the
+// audit trail and the org network allowlist. X-Forwarded-For is only honored
+// when the direct peer is loopback (the local Next.js proxy), and then read from
+// the right: each proxy appends the address it received the request from, so
+// everything left of the last non-loopback hop was written by the client and
+// could be forged to dodge a per-IP limit, an allowlist or the audit trail.
 func clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -56,11 +59,20 @@ func clientIP(r *http.Request) string {
 	if ip := net.ParseIP(host); ip == nil || !ip.IsLoopback() {
 		return host
 	}
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if i := strings.IndexByte(xff, ','); i >= 0 {
-			return strings.TrimSpace(xff[:i])
+	xff := r.Header.Get("X-Forwarded-For")
+	if xff == "" {
+		return host
+	}
+	parts := strings.Split(xff, ",")
+	for i := len(parts) - 1; i >= 0; i-- {
+		hop := strings.TrimSpace(parts[i])
+		ip := net.ParseIP(hop)
+		if ip == nil {
+			return hop // never skip past a hop we cannot read into client-written ones
 		}
-		return strings.TrimSpace(xff)
+		if !ip.IsLoopback() {
+			return ip.String()
+		}
 	}
 	return host
 }

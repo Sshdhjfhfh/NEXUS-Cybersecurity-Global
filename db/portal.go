@@ -282,6 +282,23 @@ CREATE TABLE IF NOT EXISTS portal_sso_states (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS sso_subject TEXT NOT NULL DEFAULT '';
+
+-- Server-side sessions: every portal token names one (sid claim), so a single
+-- device can be signed out, and the user sees where their account is open.
+-- Ended sessions are kept 90 days to recognise known devices for sign-in alerts.
+CREATE TABLE IF NOT EXISTS portal_sessions (
+    id           TEXT PRIMARY KEY,
+    user_id      BIGINT NOT NULL REFERENCES portal_users(id) ON DELETE CASCADE,
+    org_id       BIGINT NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
+    amr          TEXT NOT NULL DEFAULT 'pwd',
+    ip           TEXT NOT NULL DEFAULT '',
+    user_agent   TEXT NOT NULL DEFAULT '',
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at   TIMESTAMPTZ NOT NULL,
+    revoked_at   TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS portal_sessions_user_idx ON portal_sessions (user_id, last_seen_at DESC);
 `
 
 // portalSchemaDone records the connection pools whose portal schema is already
@@ -550,22 +567,32 @@ type PortalAuthInfo struct {
 	RequireMFA      bool
 	IPAllowlist     []string
 	SessionMaxHours int
+	// Server-side session named by the token: still open (not signed out, not
+	// revoked, not expired), and when it was last used.
+	SessionActive   bool
+	SessionLastSeen time.Time
 }
 
 // PortalAuthState resuelve, en una sola consulta, el estado necesario para
 // autorizar cada petición del portal: si el usuario existe (nil si no), su rol
 // actual, si está desactivado, cuándo se revocaron sus sesiones, si tiene 2FA,
-// si su organización está suspendida y la política de seguridad de la org.
-func (d *DB) PortalAuthState(userID int64) (*PortalAuthInfo, error) {
+// si su organización está suspendida, la política de seguridad de la org y si
+// la sesión sid del token sigue abierta.
+func (d *DB) PortalAuthState(userID int64, sid string) (*PortalAuthInfo, error) {
 	var a PortalAuthInfo
 	var rev sql.NullTime
 	var allow string
 	err := d.QueryRow(
 		`SELECT u.org_id, u.role, u.disabled, u.sessions_revoked_at, o.suspended,
-                u.mfa_enabled, o.require_mfa, o.ip_allowlist, o.session_max_hours
-         FROM portal_users u JOIN orgs o ON o.id = u.org_id WHERE u.id = $1`, userID,
+                u.mfa_enabled, o.require_mfa, o.ip_allowlist, o.session_max_hours,
+                (s.id IS NOT NULL AND s.revoked_at IS NULL AND s.expires_at > now()),
+                COALESCE(s.last_seen_at, 'epoch'::timestamptz)
+         FROM portal_users u JOIN orgs o ON o.id = u.org_id
+         LEFT JOIN portal_sessions s ON s.id = $2 AND s.user_id = u.id
+         WHERE u.id = $1`, userID, sid,
 	).Scan(&a.OrgID, &a.Role, &a.Disabled, &rev, &a.Suspended,
-		&a.MFAEnabled, &a.RequireMFA, &allow, &a.SessionMaxHours)
+		&a.MFAEnabled, &a.RequireMFA, &allow, &a.SessionMaxHours,
+		&a.SessionActive, &a.SessionLastSeen)
 	a.IPAllowlist = splitAllowlist(allow)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -606,14 +633,16 @@ func (d *DB) RevokePortalUserSessions(orgID, userID int64) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return sql.ErrNoRows
 	}
-	return nil
+	return d.endAllPortalSessions(userID)
 }
 
 // RevokePortalUserSessionsByID invalida las sesiones de un usuario sin acotar a
 // una org (se usa tras un restablecimiento de contraseña).
 func (d *DB) RevokePortalUserSessionsByID(userID int64) error {
-	_, err := d.Exec(`UPDATE portal_users SET sessions_revoked_at = now() WHERE id = $1`, userID)
-	return err
+	if _, err := d.Exec(`UPDATE portal_users SET sessions_revoked_at = now() WHERE id = $1`, userID); err != nil {
+		return err
+	}
+	return d.endAllPortalSessions(userID)
 }
 
 // UpdateMemberRole cambia el rol de un miembro, siempre acotado a su organización.

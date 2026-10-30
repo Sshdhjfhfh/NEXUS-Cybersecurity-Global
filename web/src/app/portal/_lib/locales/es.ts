@@ -314,7 +314,34 @@ const es = {
       "sso.delete": "Configuración SSO eliminada",
       "auth.sso_failed": "Inicio de sesión SSO rechazado",
       "member.sso_provision": "Cuenta creada por SSO",
+      "auth.logout": "Cierre de sesión",
+      "auth.session_revoked": "Sesión cerrada desde otro dispositivo",
+      "auth.sessions_revoked": "Cierre de las demás sesiones",
     } as Record<string, string>,
+  },
+
+  sessions: {
+    title: "Sesiones activas",
+    intro:
+      "Dispositivos donde tu cuenta está abierta. Si no reconoces alguno, ciérralo y cambia tu contraseña: al cambiarla se cierran todas las demás sesiones.",
+    loading: "Cargando sesiones…",
+    loadError: "No se pudieron cargar las sesiones",
+    thisDevice: "Este dispositivo",
+    device: (browser: string, os: string) =>
+      browser && os ? `${browser} en ${os}` : browser || os || "Navegador desconocido",
+    lastActive: (when: string) => `Última actividad ${when}`,
+    signedIn: (when: string) => `inició sesión el ${when}`,
+    end: "Cerrar sesión",
+    ending: "Cerrando…",
+    ended: "Sesión cerrada en ese dispositivo.",
+    endOthers: "Cerrar todas las demás sesiones",
+    othersEnded: (n: number) => {
+      if (n === 0) return "No había otras sesiones abiertas.";
+      return n === 1 ? "Se cerró 1 sesión." : `Se cerraron ${n} sesiones.`;
+    },
+    othersEndedAfterPassword: (n: number) =>
+      n === 1 ? "Se cerró la sesión en otro dispositivo." : `Se cerraron las sesiones en otros ${n} dispositivos.`,
+    endError: "No se pudo cerrar la sesión",
   },
 
   sso: {

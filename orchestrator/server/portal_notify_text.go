@@ -16,6 +16,15 @@ type notifyText struct {
 	Lang string
 
 	FooterAuto, FooterSecurity, FooterStaff, FooterMinimal, FooterOptOut string
+	FooterInvite                                                         string
+
+	InviteSubject func(org string) string
+	InviteTitle   string
+	InviteIntro   func(inviter, org, role string) string
+	InviteExpires func(when string) string
+	InviteCTA     string
+	InviteNote    string
+	RoleName      map[string]string
 
 	VerifySubject, VerifyTitle, VerifyIntro, VerifyCTA, VerifyNote string
 	ResetSubject, ResetTitle, ResetIntro, ResetCTA, ResetNote      string
@@ -70,6 +79,21 @@ var notifyTexts = map[string]*notifyText{
 		FooterStaff:    "Aviso interno para el equipo de NEXUS.",
 		FooterMinimal:  "Por seguridad, nuestros avisos no incluyen detalles técnicos de los hallazgos: consúltalos en el portal.",
 		FooterOptOut:   "Puedes desactivar estos avisos en el portal, en Seguridad › Avisos por email.",
+		FooterInvite:   "Lo recibes porque un administrador de esa organización te invitó. No volveremos a escribirte salvo que te reenvíen la invitación.",
+
+		InviteSubject: func(org string) string { return "Invitación a " + org + " en NEXUS" },
+		InviteTitle:   "Te han invitado al portal de clientes",
+		InviteIntro: func(inviter, org, role string) string {
+			who := "Te invitan"
+			if inviter != "" {
+				who = inviter + " te invita"
+			}
+			return who + " a unirte a " + org + " en el portal de clientes de NEXUS Cybersecurity Global con el rol " + role + "."
+		},
+		InviteExpires: func(when string) string { return "La invitación es de un solo uso y caduca el " + when + "." },
+		InviteCTA:     "Aceptar invitación",
+		InviteNote:    "Si no esperabas esta invitación, ignora este mensaje: sin aceptarla no se crea ninguna cuenta.",
+		RoleName:      map[string]string{"owner": "Propietario", "admin": "Administrador", "member": "Miembro", "auditor": "Auditor"},
 
 		VerifySubject: "Verifica tu email · NEXUS",
 		VerifyTitle:   "Confirma tu dirección de email",
@@ -168,6 +192,21 @@ var notifyTexts = map[string]*notifyText{
 		FooterStaff:    "Internal notice for the NEXUS team.",
 		FooterMinimal:  "For security, our notices never include technical details of findings: see them in the portal.",
 		FooterOptOut:   "You can turn these notices off in the portal under Security › Email notifications.",
+		FooterInvite:   "You are receiving this because an administrator of that organization invited you. We will not write again unless the invitation is resent.",
+
+		InviteSubject: func(org string) string { return "Invitation to " + org + " on NEXUS" },
+		InviteTitle:   "You have been invited to the client portal",
+		InviteIntro: func(inviter, org, role string) string {
+			who := "You are invited"
+			if inviter != "" {
+				who = inviter + " invites you"
+			}
+			return who + " to join " + org + " on the NEXUS Cybersecurity Global client portal as " + role + "."
+		},
+		InviteExpires: func(when string) string { return "The invitation can be used once and expires on " + when + "." },
+		InviteCTA:     "Accept invitation",
+		InviteNote:    "If you were not expecting this invitation, ignore this message: no account is created unless you accept it.",
+		RoleName:      map[string]string{"owner": "Owner", "admin": "Administrator", "member": "Member", "auditor": "Auditor"},
 
 		VerifySubject: "Verify your email · NEXUS",
 		VerifyTitle:   "Confirm your email address",

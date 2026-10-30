@@ -2,10 +2,10 @@
 
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
-import { CopyIcon, LogOutIcon, Trash2Icon, UserPlusIcon } from "lucide-react";
+import { CopyIcon, LogOutIcon, SendIcon, Trash2Icon, UserPlusIcon } from "lucide-react";
 
 import { usePortalI18n } from "./i18n";
-import { type Invite, type Me, type Member, type PortalRole, portalApi } from "./portal";
+import { type Invite, type IssuedInvite, type Me, type Member, type PortalRole, portalApi } from "./portal";
 import { Field, PrimaryButton } from "./ui";
 
 function RoleBadge({ role }: { role: PortalRole }) {
@@ -34,6 +34,8 @@ export function TeamPanel({ me }: { me: Me }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<PortalRole>("member");
   const [newLink, setNewLink] = useState("");
+  const [sentNote, setSentNote] = useState("");
+  const [resending, setResending] = useState(0);
   const [copied, setCopied] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -65,8 +67,7 @@ export function TeamPanel({ me }: { me: Me }) {
     setNewLink("");
     try {
       const res = await portalApi.createInvite(email.trim().toLowerCase(), role);
-      const link = `${window.location.origin}/portal/accept?token=${encodeURIComponent(res.token)}`;
-      setNewLink(link);
+      showIssued(res, t.team.sentTo(res.email));
       setEmail("");
       setRole("member");
       await load();
@@ -97,6 +98,28 @@ export function TeamPanel({ me }: { me: Me }) {
       await load();
     } catch (ex) {
       setErr(errText(ex, t.team.removeError));
+    }
+  }
+
+  function showIssued(res: IssuedInvite, note: string) {
+    setNewLink(`${window.location.origin}/portal/accept?token=${encodeURIComponent(res.token)}`);
+    setSentNote(res.emailed ? note : "");
+    setCopied(false);
+  }
+
+  // Resending issues a new link (the previous one stops working) and restarts
+  // the validity period, so it also renews an expired invitation.
+  async function resend(id: number) {
+    setErr("");
+    setResending(id);
+    try {
+      const res = await portalApi.resendInvite(id);
+      showIssued(res, t.team.resent(res.email));
+      await load();
+    } catch (ex) {
+      setErr(errText(ex, t.team.resendError));
+    } finally {
+      setResending(0);
     }
   }
 
@@ -188,7 +211,12 @@ export function TeamPanel({ me }: { me: Me }) {
             </PrimaryButton>
           </form>
           {newLink ? (
-            <div className="mt-5 rounded-xl border border-cyan-200 bg-cyan-50 p-4">
+            <div className="mt-5 rounded-xl border border-cyan-200 bg-cyan-50 p-4" aria-live="polite">
+              {sentNote ? (
+                <p className="mb-2 flex items-center gap-1.5 font-medium text-cyan-800 text-sm">
+                  <SendIcon className="size-3.5" aria-hidden /> {sentNote}
+                </p>
+              ) : null}
               <p className="text-xs text-slate-600">{t.team.shareLink}</p>
               <div className="mt-2 flex items-center gap-2">
                 <code className="min-w-0 flex-1 truncate rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-cyan-700">
@@ -323,13 +351,23 @@ export function TeamPanel({ me }: { me: Me }) {
                     )}
                   </div>
                   {readOnly ? null : (
-                    <button
-                      type="button"
-                      onClick={() => revoke(inv.id)}
-                      className="text-[11px] text-slate-500 hover:text-rose-600"
-                    >
-                      {t.team.revoke}
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => void resend(inv.id)}
+                        disabled={resending === inv.id}
+                        className="font-medium text-[11px] text-cyan-700 hover:text-cyan-900 disabled:opacity-50"
+                      >
+                        {resending === inv.id ? t.team.resending : t.team.resend}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => revoke(inv.id)}
+                        className="text-[11px] text-slate-500 hover:text-rose-600"
+                      >
+                        {t.team.revoke}
+                      </button>
+                    </div>
                   )}
                 </li>
               ))}

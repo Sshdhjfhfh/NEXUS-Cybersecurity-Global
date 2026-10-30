@@ -81,6 +81,7 @@ type mailContent struct {
 	CTALink   string
 	Note      string // small print under the button
 	Security  bool   // account-security mail: cannot be switched off
+	Invite    bool   // invitation to someone who has no account yet
 	Staff     bool   // internal mail to NEXUS staff
 }
 
@@ -155,6 +156,8 @@ func renderMail(c mailContent) (mailMessage, error) {
 	switch {
 	case c.Security:
 		footer = append(footer, t.FooterSecurity)
+	case c.Invite:
+		footer = append(footer, t.FooterInvite)
 	case c.Staff:
 		footer = append(footer, t.FooterStaff)
 	default:

@@ -119,6 +119,18 @@ export type Member = {
   disabled: boolean;
   created_at: string;
 };
+// IssuedInvite is a newly issued invitation link: mailed to the invitee and
+// shown once to the admin (only its hash is stored).
+export type IssuedInvite = {
+  ok: boolean;
+  id: number;
+  token: string;
+  email: string;
+  role: PortalRole;
+  expires_at: string;
+  emailed: boolean;
+};
+
 export type Invite = {
   id: number;
   email: string;
@@ -389,10 +401,11 @@ export const portalApi = {
     req<{ ok: boolean }>(`/members/${id}/revoke-sessions`, { method: "POST", body: "{}" }),
   listInvites: () => req<{ invites: Invite[] }>("/invites"),
   createInvite: (email: string, role: PortalRole) =>
-    req<{ ok: boolean; id: number; token: string; email: string; role: PortalRole }>("/invites", {
+    req<IssuedInvite>("/invites", {
       method: "POST",
       body: JSON.stringify({ email, role }),
     }),
+  resendInvite: (id: number) => req<IssuedInvite>(`/invites/${id}/resend`, { method: "POST", body: "{}" }),
   revokeInvite: (id: number) => req<{ ok: boolean }>(`/invites/${id}`, { method: "DELETE" }),
   listAudit: (f: AuditFilter = {}, before?: number) =>
     req<{ entries: AuditEntry[]; has_more: boolean }>(`/audit?${auditQuery(f, before)}`),

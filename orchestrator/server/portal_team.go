@@ -9,6 +9,7 @@ package server
 
 import (
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"errors"
 	"net/http"
@@ -370,6 +371,19 @@ func (s *Server) portalCreateInvite(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 409, "ese email ya tiene una cuenta")
 		return
 	}
+	pending, dup, err := pg.PendingInviteStats(orgID, req.Email)
+	if err != nil {
+		writeErr(w, 503, "almacenamiento no disponible")
+		return
+	}
+	if dup {
+		writeErr(w, 409, "ya hay una invitación pendiente para ese email; puedes reenviarla")
+		return
+	}
+	if pending >= db.MaxPendingInvites {
+		writeErr(w, 409, "demasiadas invitaciones pendientes; revoca alguna antes de invitar a más personas")
+		return
+	}
 	token, err := newInviteToken()
 	if err != nil {
 		writeErr(w, 500, "no se pudo generar la invitación")
@@ -380,17 +394,20 @@ func (s *Server) portalCreateInvite(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "no se pudo crear la invitación")
 		return
 	}
+	expires := time.Now().Add(db.InviteTTL)
+	s.sendInviteMail(orgID, userID, req.Email, req.Role, token, expires)
 	s.audit(r, &orgID, "user:"+strconv.FormatInt(userID, 10), "portal_user", "invite.create",
 		"invite:"+strconv.FormatInt(id, 10), "email="+req.Email+" role="+req.Role)
-	// The raw token is returned once, here, for the admin to share; only its
-	// hash is stored.
+	// The raw token is mailed to the invitee and returned once, here, for the
+	// admin to share another way; only its hash is stored.
 	writeJSON(w, 201, map[string]any{
 		"ok":         true,
 		"id":         id,
 		"token":      token,
 		"email":      req.Email,
 		"role":       req.Role,
-		"expires_at": time.Now().Add(db.InviteTTL),
+		"expires_at": expires,
+		"emailed":    true,
 	})
 }
 
@@ -428,6 +445,10 @@ func (s *Server) portalDeleteInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := pg.DeleteInvite(orgID, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeErr(w, 404, "invitación no encontrada")
+			return
+		}
 		writeErr(w, 500, "no se pudo revocar la invitación")
 		return
 	}

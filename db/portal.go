@@ -683,6 +683,16 @@ const InviteTTL = 7 * 24 * time.Hour
 // ErrInviteUsed: the invitation was accepted (or revoked) concurrently.
 var ErrInviteUsed = errors.New("invite already used")
 
+// MaxPendingInvites caps an organization's valid pending invitations, so the
+// invite form cannot be used to mail large numbers of addresses.
+const MaxPendingInvites = 50
+
+// InviteResendCooldown is the minimum time between two mails of one invitation.
+const InviteResendCooldown = time.Minute
+
+// ErrInviteTooSoon: the invitation was (re)sent less than InviteResendCooldown ago.
+var ErrInviteTooSoon = errors.New("invite sent too recently")
+
 func (inv *PortalInvite) fillExpiry() {
 	inv.ExpiresAt = inv.CreatedAt.Add(InviteTTL)
 	inv.Expired = time.Now().After(inv.ExpiresAt)
@@ -691,13 +701,59 @@ func (inv *PortalInvite) fillExpiry() {
 // CreateInvite crea una invitación pendiente para la organización dada. Solo se
 // guarda el hash del token (como los de restablecimiento): una lectura de la base
 // de datos no da enlaces utilizables.
+// Expired pending invitations for the same email are replaced.
 func (d *DB) CreateInvite(orgID, createdBy int64, email, role, tokenHash string) (int64, error) {
 	var id int64
 	err := d.QueryRow(
-		`INSERT INTO portal_invites(org_id, email, role, token, created_by) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+		`WITH gone AS (DELETE FROM portal_invites WHERE org_id = $1 AND email = $2 AND accepted = false)
+         INSERT INTO portal_invites(org_id, email, role, token, created_by) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
 		orgID, email, role, tokenHash, createdBy,
 	).Scan(&id)
 	return id, err
+}
+
+// PendingInviteStats counts the org's valid (unexpired) pending invitations and
+// says whether one of them is for email.
+func (d *DB) PendingInviteStats(orgID int64, email string) (count int, forEmail bool, err error) {
+	err = d.QueryRow(
+		`SELECT count(*), coalesce(bool_or(email = $2), false) FROM portal_invites
+         WHERE org_id = $1 AND accepted = false AND created_at > $3`,
+		orgID, email, time.Now().Add(-InviteTTL),
+	).Scan(&count, &forEmail)
+	return count, forEmail, err
+}
+
+// ReissueInvite gives a pending invitation a new token and a fresh validity
+// period; the previous link stops working. It returns nil when there is no
+// such pending invitation in the org, and ErrInviteTooSoon when it was (re)sent
+// less than InviteResendCooldown ago.
+func (d *DB) ReissueInvite(orgID, id int64, tokenHash string) (*PortalInvite, error) {
+	var inv PortalInvite
+	err := d.QueryRow(
+		`SELECT id, org_id, email, role, accepted, created_at FROM portal_invites
+         WHERE id = $1 AND org_id = $2 AND accepted = false`, id, orgID,
+	).Scan(&inv.ID, &inv.OrgID, &inv.Email, &inv.Role, &inv.Accepted, &inv.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if time.Since(inv.CreatedAt) < InviteResendCooldown {
+		return nil, ErrInviteTooSoon
+	}
+	err = d.QueryRow(
+		`UPDATE portal_invites SET token = $3, created_at = now()
+         WHERE id = $1 AND org_id = $2 AND accepted = false RETURNING created_at`, id, orgID, tokenHash,
+	).Scan(&inv.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	inv.fillExpiry()
+	return &inv, nil
 }
 
 // GetInviteByToken resuelve una invitación por el hash de su token (o nil si no

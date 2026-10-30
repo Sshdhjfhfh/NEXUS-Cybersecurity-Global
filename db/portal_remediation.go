@@ -397,10 +397,11 @@ func (d *DB) ListOrgRemediationEvents(orgID int64) ([]OrgRemediationEvent, error
 }
 
 // ActiveOrgMember reports whether userID is an active member of orgID (valid
-// assignee).
+// assignee). Auditors are read-only, so they can never own remediation work.
 func (d *DB) ActiveOrgMember(orgID, userID int64) (bool, error) {
 	var ok bool
-	err := d.QueryRow(`SELECT EXISTS(SELECT 1 FROM portal_users WHERE id = $1 AND org_id = $2 AND NOT disabled)`,
+	err := d.QueryRow(`SELECT EXISTS(SELECT 1 FROM portal_users
+	        WHERE id = $1 AND org_id = $2 AND NOT disabled AND role <> 'auditor')`,
 		userID, orgID).Scan(&ok)
 	return ok, err
 }

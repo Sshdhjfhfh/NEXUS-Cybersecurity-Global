@@ -29,7 +29,7 @@ func (s *Server) portalOverview(w http.ResponseWriter, r *http.Request) {
 		"overview":     ov,
 		"generated_at": time.Now().UTC(),
 	}
-	if roleRank(role) >= roleRank("admin") {
+	if canViewOrgAdmin(role) {
 		if acct, err := pg.GetAccountSecurity(orgID); err == nil {
 			resp["account_security"] = acct
 		}

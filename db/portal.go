@@ -7,6 +7,7 @@ package db
 import (
 	"database/sql"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -242,8 +243,23 @@ CREATE TABLE IF NOT EXISTS portal_roe (
 );
 `
 
+// portalSchemaDone records the connection pools whose portal schema is already
+// in place. The DDL used to run on every request; ALTER TABLE ... IF NOT EXISTS
+// takes an exclusive lock even when it changes nothing, so concurrent requests
+// could deadlock (sporadic 503s). Now it runs once per pool and process, and is
+// retried only until it succeeds.
+var (
+	portalSchemaMu   sync.Mutex
+	portalSchemaDone = map[*sql.DB]bool{}
+)
+
 // EnsurePortalTables crea las tablas del portal si no existen (aditivo, reversible).
 func (d *DB) EnsurePortalTables() error {
+	portalSchemaMu.Lock()
+	defer portalSchemaMu.Unlock()
+	if portalSchemaDone[d.DB] {
+		return nil
+	}
 	tx, err := d.Begin()
 	if err != nil {
 		return err
@@ -255,7 +271,11 @@ func (d *DB) EnsurePortalTables() error {
 	if _, err := tx.Exec(portalSchema); err != nil {
 		return err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	portalSchemaDone[d.DB] = true
+	return nil
 }
 
 // CreateOrgWithOwner crea una organización y su primer usuario (owner) en una
@@ -477,26 +497,37 @@ func (d *DB) CountActiveOwners(orgID int64) (int, error) {
 	return n, err
 }
 
+// PortalAuthInfo es el estado que autoriza cada petición del portal.
+type PortalAuthInfo struct {
+	OrgID     int64
+	Role      string
+	Disabled  bool
+	RevokedAt *time.Time
+	Suspended bool
+}
+
 // PortalAuthState resuelve, en una sola consulta, el estado necesario para
-// autorizar cada petición del portal: si el usuario existe, si está desactivado,
-// cuándo se revocaron sus sesiones, y si su organización está suspendida.
-func (d *DB) PortalAuthState(userID int64) (orgID int64, disabled bool, revokedAt *time.Time, suspended bool, found bool, err error) {
+// autorizar cada petición del portal: si el usuario existe (nil si no), su rol
+// actual, si está desactivado, cuándo se revocaron sus sesiones, y si su
+// organización está suspendida.
+func (d *DB) PortalAuthState(userID int64) (*PortalAuthInfo, error) {
+	var a PortalAuthInfo
 	var rev sql.NullTime
-	err = d.QueryRow(
-		`SELECT u.org_id, u.disabled, u.sessions_revoked_at, o.suspended
+	err := d.QueryRow(
+		`SELECT u.org_id, u.role, u.disabled, u.sessions_revoked_at, o.suspended
          FROM portal_users u JOIN orgs o ON o.id = u.org_id WHERE u.id = $1`, userID,
-	).Scan(&orgID, &disabled, &rev, &suspended)
+	).Scan(&a.OrgID, &a.Role, &a.Disabled, &rev, &a.Suspended)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, false, nil, false, false, nil
+		return nil, nil
 	}
 	if err != nil {
-		return 0, false, nil, false, false, err
+		return nil, err
 	}
 	if rev.Valid {
 		t := rev.Time
-		revokedAt = &t
+		a.RevokedAt = &t
 	}
-	return orgID, disabled, revokedAt, suspended, true, nil
+	return &a, nil
 }
 
 // SetPortalUserDisabled desactiva o reactiva un usuario (acotado a su org).

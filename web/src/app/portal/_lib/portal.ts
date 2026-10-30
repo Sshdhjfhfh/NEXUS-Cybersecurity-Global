@@ -49,7 +49,8 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export type Org = { id: number; name: string; created_at: string };
-export type PortalRole = "owner" | "admin" | "member";
+// "auditor" is read-only: it sees what an admin sees and changes nothing.
+export type PortalRole = "owner" | "admin" | "member" | "auditor";
 export type PortalRequest = {
   id: number;
   title: string;

@@ -141,7 +141,8 @@ export function OverviewPanel({ me, view, onViewChange, onOpenRequest, onOpenFin
     void load();
   }, [load]);
 
-  const canAdmin = me.user.role === "owner" || me.user.role === "admin";
+  // Admin-level org data (account security, activity) is also for auditors.
+  const canAdmin = me.user.role === "owner" || me.user.role === "admin" || me.user.role === "auditor";
 
   return (
     <div className="mt-6 space-y-5">

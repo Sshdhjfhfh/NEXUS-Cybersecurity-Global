@@ -39,7 +39,11 @@ const es = {
     technicalHint: "Detalle por severidad, estado y tendencia",
   },
 
-  role: { owner: "Propietario", admin: "Administrador", member: "Miembro" } as Record<string, string>,
+  role: { owner: "Propietario", admin: "Administrador", member: "Miembro", auditor: "Auditor" } as Record<
+    string,
+    string
+  >,
+  readOnlyBanner: "Acceso de auditor: puedes consultar todo, pero no hacer cambios.",
   sev: { critical: "Crítica", high: "Alta", medium: "Media", low: "Baja", unrated: "Sin clasificar" },
   findingStatus: {
     confirmed: "Abierta",
@@ -230,6 +234,8 @@ const es = {
     role: "Rol",
     roleMemberOption: "Miembro (crear y ver solicitudes)",
     roleAdminOption: "Administrador (gestiona el equipo)",
+    roleAuditorOption: "Auditor (solo lectura: resultados, equipo y auditoría)",
+    readOnly: "Vista de solo lectura.",
     generating: "Generando…",
     generate: "Generar invitación",
     inviteError: "No se pudo crear la invitación",

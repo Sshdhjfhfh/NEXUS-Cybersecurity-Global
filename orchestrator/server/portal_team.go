@@ -1,5 +1,7 @@
 // Portal team management: members, roles (RBAC) and invitations. Roles form a
-// strict hierarchy owner > admin > member. The caller's role is ALWAYS resolved
+// strict hierarchy owner > admin > member, plus "auditor": read access to what
+// an admin can see (team, audit log, export) and no write access at all beyond
+// their own account security. The caller's role is ALWAYS resolved
 // from the database per request (never trusted from the JWT, which could be
 // stale after a role change), and every read/write is scoped to the caller's org
 // so one tenant can never touch another tenant's team.
@@ -32,11 +34,37 @@ func roleRank(role string) int {
 	}
 }
 
-func validInviteRole(role string) bool { return role == "admin" || role == "member" }
-func validRole(role string) bool       { return roleRank(role) > 0 }
+// roleAuditor sits outside the rank ladder (rank 0): it may READ anything gated
+// at admin or below, and write nothing.
+const roleAuditor = "auditor"
+
+func validInviteRole(role string) bool {
+	return role == "admin" || role == "member" || role == roleAuditor
+}
+func validRole(role string) bool { return roleRank(role) > 0 || role == roleAuditor }
+
+// canViewOrgAdmin reports whether a role may see admin-level org data
+// (account security, activity, team, audit log).
+func canViewOrgAdmin(role string) bool {
+	return roleRank(role) >= roleRank("admin") || role == roleAuditor
+}
+
+func isReadMethod(m string) bool { return m == http.MethodGet || m == http.MethodHead }
+
+// auditorSelfService are the only writes an auditor may make: their own
+// preferences and account security.
+var auditorSelfService = map[string]bool{
+	"/api/portal/me/preferences":  true,
+	"/api/portal/mfa/setup":       true,
+	"/api/portal/mfa/enable":      true,
+	"/api/portal/mfa/disable":     true,
+	"/api/portal/password/change": true,
+	"/api/portal/email/resend":    true,
+}
 
 // portalRequireRole authenticates the portal caller and resolves their current
 // role from the DB, enforcing a minimum. Returns the org, user id and live role.
+// An auditor passes read requests gated at admin or below and nothing else.
 func (s *Server) portalRequireRole(w http.ResponseWriter, r *http.Request, minRole string) (orgID, userID int64, role string, ok bool) {
 	orgID, userID, ok = s.portalAuth(w, r)
 	if !ok {
@@ -54,6 +82,13 @@ func (s *Server) portalRequireRole(w http.ResponseWriter, r *http.Request, minRo
 	if u == nil || u.OrgID != orgID {
 		writeErr(w, 401, "no autorizado")
 		return 0, 0, "", false
+	}
+	if u.Role == roleAuditor {
+		if !isReadMethod(r.Method) || roleRank(minRole) > roleRank("admin") {
+			writeErr(w, 403, "no tienes permisos para esta acción")
+			return 0, 0, "", false
+		}
+		return orgID, userID, u.Role, true
 	}
 	if roleRank(u.Role) < roleRank(minRole) {
 		writeErr(w, 403, "no tienes permisos para esta acción")
@@ -315,7 +350,7 @@ func (s *Server) portalCreateInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !validInviteRole(req.Role) {
-		writeErr(w, 400, "rol inválido (admin o member)")
+		writeErr(w, 400, "rol inválido (admin, member o auditor)")
 		return
 	}
 	// Reject inviting someone who already has an account anywhere.

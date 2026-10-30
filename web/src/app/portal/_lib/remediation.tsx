@@ -461,6 +461,8 @@ function RemediationDrawer({ fid, me, members, sla, onClose, onChanged }: Drawer
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const canAdmin = me.user.role === "owner" || me.user.role === "admin";
+  // Auditors review; the server refuses any write they attempt.
+  const readOnly = me.user.role === "auditor";
 
   const load = useCallback(async () => {
     setLoadErr(false);
@@ -709,7 +711,7 @@ function RemediationDrawer({ fid, me, members, sla, onClose, onChanged }: Drawer
               </Section>
 
               {/* Team progress */}
-              {workable ? (
+              {workable && !readOnly ? (
                 <Section title={t.rem.progress}>
                   <div className="flex flex-wrap gap-2">
                     {item.state === "in_progress" ? (
@@ -758,7 +760,7 @@ function RemediationDrawer({ fid, me, members, sla, onClose, onChanged }: Drawer
                       </span>
                     </p>
                   ) : null}
-                  {workable ? (
+                  {workable && !readOnly ? (
                     <form onSubmit={submitRetest} className="mt-3 space-y-2">
                       <label className="block text-xs font-medium text-slate-600">
                         {t.rem.retestNote}
@@ -870,22 +872,24 @@ function RemediationDrawer({ fid, me, members, sla, onClose, onChanged }: Drawer
                     ))}
                   </ol>
                 )}
-                <form onSubmit={submitComment} className="mt-4 space-y-2">
-                  <label className="block text-xs font-medium text-slate-600">
-                    {t.rem.comment}
-                    <textarea
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                      maxLength={2000}
-                      rows={2}
-                      placeholder={t.rem.commentPlaceholder}
-                      className={`${input} mt-1.5`}
-                    />
-                  </label>
-                  <button type="submit" disabled={busy !== "" || !comment.trim()} className={primaryBtn}>
-                    {t.rem.send}
-                  </button>
-                </form>
+                {readOnly ? null : (
+                  <form onSubmit={submitComment} className="mt-4 space-y-2">
+                    <label className="block text-xs font-medium text-slate-600">
+                      {t.rem.comment}
+                      <textarea
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        maxLength={2000}
+                        rows={2}
+                        placeholder={t.rem.commentPlaceholder}
+                        className={`${input} mt-1.5`}
+                      />
+                    </label>
+                    <button type="submit" disabled={busy !== "" || !comment.trim()} className={primaryBtn}>
+                      {t.rem.send}
+                    </button>
+                  </form>
+                )}
               </Section>
             </>
           )}

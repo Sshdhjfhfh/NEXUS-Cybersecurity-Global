@@ -73,6 +73,32 @@ func TestInviteRoleValidation(t *testing.T) {
 	}
 }
 
+func TestAuditorRole(t *testing.T) {
+	// The auditor is a real, invitable role that sits outside the rank ladder:
+	// it never satisfies a rank gate, but may view admin-level org data.
+	if !validRole("auditor") || !validInviteRole("auditor") {
+		t.Fatal("auditor must be a valid, invitable role")
+	}
+	if roleRank("auditor") != 0 {
+		t.Fatal("auditor must not satisfy any rank (write) gate")
+	}
+	if !canViewOrgAdmin("auditor") || !canViewOrgAdmin("admin") || !canViewOrgAdmin("owner") {
+		t.Fatal("auditor, admin and owner see admin-level org data")
+	}
+	if canViewOrgAdmin("member") || canViewOrgAdmin("") {
+		t.Fatal("members and unknown roles must not see admin-level org data")
+	}
+	if !isReadMethod("GET") || !isReadMethod("HEAD") || isReadMethod("POST") || isReadMethod("DELETE") {
+		t.Fatal("only GET/HEAD are reads")
+	}
+	for path := range auditorSelfService {
+		if !strings.HasPrefix(path, "/api/portal/me/") && !strings.HasPrefix(path, "/api/portal/mfa/") &&
+			path != "/api/portal/password/change" && path != "/api/portal/email/resend" {
+			t.Fatalf("auditor write exception %q is not the auditor's own account", path)
+		}
+	}
+}
+
 func TestPortalPreferenceValidation(t *testing.T) {
 	// The view profile is presentational only; empty means "default by role".
 	for _, v := range []string{"", "executive", "technical"} {

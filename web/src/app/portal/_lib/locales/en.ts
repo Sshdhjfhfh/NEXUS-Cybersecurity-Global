@@ -41,7 +41,8 @@ const en: PortalDict = {
     technicalHint: "Breakdown by severity, status and trend",
   },
 
-  role: { owner: "Owner", admin: "Administrator", member: "Member" },
+  role: { owner: "Owner", admin: "Administrator", member: "Member", auditor: "Auditor" },
+  readOnlyBanner: "Auditor access: you can review everything but cannot make changes.",
   sev: { critical: "Critical", high: "High", medium: "Medium", low: "Low", unrated: "Unrated" },
   findingStatus: {
     confirmed: "Open",
@@ -231,6 +232,8 @@ const en: PortalDict = {
     role: "Role",
     roleMemberOption: "Member (create and view requests)",
     roleAdminOption: "Administrator (manages the team)",
+    roleAuditorOption: "Auditor (read-only: results, team and audit log)",
+    readOnly: "Read-only view.",
     generating: "Generating…",
     generate: "Generate invitation",
     inviteError: "The invitation could not be created",

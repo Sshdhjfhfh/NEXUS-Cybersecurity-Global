@@ -72,24 +72,32 @@ func (s *Server) portalAuth(w http.ResponseWriter, r *http.Request) (orgID, user
 	}
 	// One query resolves everything that can revoke access mid-session: the org
 	// being suspended, the user being deactivated, or their sessions being revoked
-	// (token issued before sessions_revoked_at). Fails open only on a DB error.
+	// (token issued before sessions_revoked_at). Fails open only on a DB error
+	// (any write then fails on the same DB anyway).
 	if s.m != nil && s.m.pg != nil {
-		_, disabled, revokedAt, suspended, found, err := s.m.pg.PortalAuthState(userID)
+		a, err := s.m.pg.PortalAuthState(userID)
 		if err == nil {
-			if !found {
+			if a == nil {
 				writeErr(w, 401, "no autorizado")
 				return 0, 0, false
 			}
-			if suspended {
+			if a.Suspended {
 				writeErr(w, 403, "organización suspendida")
 				return 0, 0, false
 			}
-			if disabled {
+			if a.Disabled {
 				writeErr(w, 403, "cuenta desactivada")
 				return 0, 0, false
 			}
-			if revokedAt != nil && iat < revokedAt.Unix() {
+			if a.RevokedAt != nil && iat < a.RevokedAt.Unix() {
 				writeErr(w, 401, "sesión revocada; inicia sesión de nuevo")
+				return 0, 0, false
+			}
+			// The auditor role is read-only everywhere — enforced here, once, so
+			// a write endpoint can never forget it — except for the auditor's own
+			// account security.
+			if a.Role == roleAuditor && !isReadMethod(r.Method) && !auditorSelfService[r.URL.Path] {
+				writeErr(w, 403, "el rol auditor es de solo lectura")
 				return 0, 0, false
 			}
 		}

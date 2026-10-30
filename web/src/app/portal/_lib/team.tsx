@@ -15,7 +15,9 @@ function RoleBadge({ role }: { role: PortalRole }) {
       ? "border-amber-200 bg-amber-50 text-amber-800"
       : role === "admin"
         ? "border-cyan-200 bg-cyan-50 text-cyan-700"
-        : "border-slate-200 bg-slate-100 text-slate-600";
+        : role === "auditor"
+          ? "border-violet-200 bg-violet-50 text-violet-700"
+          : "border-slate-200 bg-slate-100 text-slate-600";
   return (
     <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${tone}`}>
       {t.role[role] ?? role}
@@ -23,7 +25,8 @@ function RoleBadge({ role }: { role: PortalRole }) {
   );
 }
 
-// TeamPanel is only mounted for admin/owner (the server also enforces this).
+// TeamPanel is mounted for admin/owner, and read-only for an auditor (the
+// server enforces both: an auditor's writes are refused).
 export function TeamPanel({ me }: { me: Me }) {
   const { t, fmtDate } = usePortalI18n();
   const [members, setMembers] = useState<Member[]>([]);
@@ -140,65 +143,69 @@ export function TeamPanel({ me }: { me: Me }) {
   }
 
   const canManageOwners = me.user.role === "owner";
+  const readOnly = me.user.role === "auditor";
 
   if (loading) {
     return <p className="mt-4 text-sm text-slate-500">{t.team.loading}</p>;
   }
 
   return (
-    <div className="mt-4 grid gap-8 lg:grid-cols-[1fr_1.4fr]">
+    <div className={`mt-4 grid gap-8 ${readOnly ? "" : "lg:grid-cols-[1fr_1.4fr]"}`}>
       {/* Invite */}
-      <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-cyan-700">
-          <UserPlusIcon className="size-4" aria-hidden /> {t.team.invite}
-        </h2>
-        <form onSubmit={invite} className="mt-4 space-y-4">
-          <Field
-            label={t.email}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={t.team.emailPlaceholder}
-            required
-          />
-          <label className="block text-xs font-medium text-slate-600">
-            {t.team.role}
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as PortalRole)}
-              className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-cyan-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-cyan-100"
-            >
-              <option value="member">{t.team.roleMemberOption}</option>
-              <option value="admin">{t.team.roleAdminOption}</option>
-            </select>
-          </label>
-          {err ? (
-            <p role="alert" className="text-sm text-rose-600">
-              {err}
-            </p>
-          ) : null}
-          <PrimaryButton type="submit" disabled={busy || !email.trim()}>
-            {busy ? t.team.generating : t.team.generate}
-          </PrimaryButton>
-        </form>
-        {newLink ? (
-          <div className="mt-5 rounded-xl border border-cyan-200 bg-cyan-50 p-4">
-            <p className="text-xs text-slate-600">{t.team.shareLink}</p>
-            <div className="mt-2 flex items-center gap-2">
-              <code className="min-w-0 flex-1 truncate rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-cyan-700">
-                {newLink}
-              </code>
-              <button
-                type="button"
-                onClick={copyLink}
-                className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-600 hover:border-cyan-400 hover:text-cyan-700"
+      {readOnly ? null : (
+        <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-cyan-700">
+            <UserPlusIcon className="size-4" aria-hidden /> {t.team.invite}
+          </h2>
+          <form onSubmit={invite} className="mt-4 space-y-4">
+            <Field
+              label={t.email}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t.team.emailPlaceholder}
+              required
+            />
+            <label className="block text-xs font-medium text-slate-600">
+              {t.team.role}
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as PortalRole)}
+                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-cyan-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-cyan-100"
               >
-                <CopyIcon className="size-3.5" aria-hidden /> {copied ? t.copied : t.copy}
-              </button>
+                <option value="member">{t.team.roleMemberOption}</option>
+                <option value="admin">{t.team.roleAdminOption}</option>
+                <option value="auditor">{t.team.roleAuditorOption}</option>
+              </select>
+            </label>
+            {err ? (
+              <p role="alert" className="text-sm text-rose-600">
+                {err}
+              </p>
+            ) : null}
+            <PrimaryButton type="submit" disabled={busy || !email.trim()}>
+              {busy ? t.team.generating : t.team.generate}
+            </PrimaryButton>
+          </form>
+          {newLink ? (
+            <div className="mt-5 rounded-xl border border-cyan-200 bg-cyan-50 p-4">
+              <p className="text-xs text-slate-600">{t.team.shareLink}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-cyan-700">
+                  {newLink}
+                </code>
+                <button
+                  type="button"
+                  onClick={copyLink}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-600 hover:border-cyan-400 hover:text-cyan-700"
+                >
+                  <CopyIcon className="size-3.5" aria-hidden /> {copied ? t.copied : t.copy}
+                </button>
+              </div>
             </div>
-          </div>
-        ) : null}
-      </section>
+          ) : null}
+        </section>
+      )}
 
       {/* Members + pending invites */}
       <section className="space-y-6">
@@ -206,10 +213,17 @@ export function TeamPanel({ me }: { me: Me }) {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-700">
             {t.team.members(members.length)}
           </h2>
+          {readOnly ? <p className="mt-1 text-xs text-slate-500">{t.team.readOnly}</p> : null}
+          {readOnly && err ? (
+            <p role="alert" className="mt-2 text-sm text-rose-600">
+              {err}
+            </p>
+          ) : null}
           <ul className="mt-4 space-y-3">
             {members.map((m) => {
               const isSelf = m.id === me.user.id;
-              const lockedOwner = m.role === "owner" && !canManageOwners;
+              // Read-only for an auditor; an owner row is locked for non-owners.
+              const lockedOwner = readOnly || (m.role === "owner" && !canManageOwners);
               return (
                 <li key={m.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -238,6 +252,7 @@ export function TeamPanel({ me }: { me: Me }) {
                           {canManageOwners ? <option value="owner">{t.role.owner}</option> : null}
                           <option value="admin">{t.role.admin}</option>
                           <option value="member">{t.role.member}</option>
+                          <option value="auditor">{t.role.auditor}</option>
                         </select>
                       )}
                       {!isSelf && !lockedOwner ? (
@@ -298,13 +313,15 @@ export function TeamPanel({ me }: { me: Me }) {
                     <span className="text-sm text-slate-700">{inv.email}</span>
                     <RoleBadge role={inv.role} />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => revoke(inv.id)}
-                    className="text-[11px] text-slate-500 hover:text-rose-600"
-                  >
-                    {t.team.revoke}
-                  </button>
+                  {readOnly ? null : (
+                    <button
+                      type="button"
+                      onClick={() => revoke(inv.id)}
+                      className="text-[11px] text-slate-500 hover:text-rose-600"
+                    >
+                      {t.team.revoke}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

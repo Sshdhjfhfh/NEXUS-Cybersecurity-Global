@@ -204,7 +204,9 @@ export default function PortalDashboard() {
     );
   }
 
-  const canManageTeam = me.user.role === "owner" || me.user.role === "admin";
+  const isAuditor = me.user.role === "auditor";
+  // Team + audit log: managed by admins, reviewed (read-only) by auditors.
+  const canManageTeam = me.user.role === "owner" || me.user.role === "admin" || isAuditor;
   const initial = (me.org.name || "?").trim().charAt(0).toUpperCase();
 
   const tabs: { id: Tab; label: string; show: boolean }[] = [
@@ -262,6 +264,11 @@ export default function PortalDashboard() {
             </button>
           </div>
         ) : null}
+        {isAuditor ? (
+          <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm text-violet-800">
+            {t.readOnlyBanner}
+          </div>
+        ) : null}
 
         <div
           role="tablist"
@@ -306,37 +313,39 @@ export default function PortalDashboard() {
         {tab === "targets" ? <TargetsPanel me={me} /> : null}
 
         {tab === "requests" ? (
-          <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_1.4fr]">
-            <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-700">{t.req.newRequest}</h2>
-              <form onSubmit={create} className="mt-4 space-y-4">
-                <Field
-                  label={t.req.titleLabel}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={t.req.titlePlaceholder}
-                />
-                <TargetPicker selected={targetIds} onChange={setTargetIds} onGoTargets={() => setTab("targets")} />
-                <label className="block text-xs font-medium text-slate-600">
-                  {t.req.scopeLabel}
-                  <textarea
-                    value={scope}
-                    onChange={(e) => setScope(e.target.value)}
-                    rows={3}
-                    placeholder={t.req.scopePlaceholder}
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-cyan-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-cyan-100"
+          <div className={`mt-6 grid gap-8 ${isAuditor ? "" : "lg:grid-cols-[1fr_1.4fr]"}`}>
+            {isAuditor ? null : (
+              <section className="h-fit rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-700">{t.req.newRequest}</h2>
+                <form onSubmit={create} className="mt-4 space-y-4">
+                  <Field
+                    label={t.req.titleLabel}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder={t.req.titlePlaceholder}
                   />
-                </label>
-                {err ? (
-                  <p role="alert" className="text-sm text-rose-600">
-                    {err}
-                  </p>
-                ) : null}
-                <PrimaryButton type="submit" disabled={creating || !title.trim() || targetIds.length === 0}>
-                  {creating ? t.req.sending : t.req.create}
-                </PrimaryButton>
-              </form>
-            </section>
+                  <TargetPicker selected={targetIds} onChange={setTargetIds} onGoTargets={() => setTab("targets")} />
+                  <label className="block text-xs font-medium text-slate-600">
+                    {t.req.scopeLabel}
+                    <textarea
+                      value={scope}
+                      onChange={(e) => setScope(e.target.value)}
+                      rows={3}
+                      placeholder={t.req.scopePlaceholder}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition focus:border-cyan-400 focus:bg-white focus:outline-none focus:ring-4 focus:ring-cyan-100"
+                    />
+                  </label>
+                  {err ? (
+                    <p role="alert" className="text-sm text-rose-600">
+                      {err}
+                    </p>
+                  ) : null}
+                  <PrimaryButton type="submit" disabled={creating || !title.trim() || targetIds.length === 0}>
+                    {creating ? t.req.sending : t.req.create}
+                  </PrimaryButton>
+                </form>
+              </section>
+            )}
 
             <section>
               <h2 className="text-sm font-semibold uppercase tracking-wide text-cyan-700">{t.req.yours}</h2>

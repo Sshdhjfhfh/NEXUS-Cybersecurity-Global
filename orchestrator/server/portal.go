@@ -243,7 +243,7 @@ func (s *Server) portalLogin(w http.ResponseWriter, r *http.Request) {
 	// "mfa_required" error is the frontend's signal to prompt for the code.
 	if u.MFAEnabled {
 		secret, derr := s.decryptSecret(u.MFASecret)
-		if derr != nil || !verifyTOTP(secret, strings.TrimSpace(req.Code)) {
+		if derr != nil || !verifyPortalTOTPOnce(pg, u.ID, secret, req.Code) {
 			s.audit(r, &u.OrgID, u.Email, "portal_user", "auth.mfa_failed", "", "")
 			writeErr(w, 401, "mfa_required")
 			return

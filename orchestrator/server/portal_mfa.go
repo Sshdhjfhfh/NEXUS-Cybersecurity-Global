@@ -6,7 +6,6 @@ package server
 import (
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 // GET /api/portal/mfa/status — whether the caller has 2FA enabled.
@@ -87,7 +86,7 @@ func (s *Server) portalMFAEnable(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "secreto inválido")
 		return
 	}
-	if !verifyTOTP(secret, strings.TrimSpace(req.Code)) {
+	if !verifyPortalTOTPOnce(pg, userID, secret, req.Code) {
 		writeErr(w, 400, "código inválido")
 		return
 	}
@@ -127,7 +126,7 @@ func (s *Server) portalMFADisable(w http.ResponseWriter, r *http.Request) {
 	}
 	if u.MFAEnabled {
 		secret, err := s.decryptSecret(u.MFASecret)
-		if err != nil || !verifyTOTP(secret, strings.TrimSpace(req.Code)) {
+		if err != nil || !verifyPortalTOTPOnce(pg, userID, secret, req.Code) {
 			writeErr(w, 400, "código inválido")
 			return
 		}

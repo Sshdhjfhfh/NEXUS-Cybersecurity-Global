@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nexus-ia/nexus/db"
@@ -56,21 +57,63 @@ func totpAt(secret string, t time.Time) (string, error) {
 	return fmt.Sprintf("%06d", code), nil
 }
 
-// verifyTOTP checks the code against the current and adjacent 30s windows to
-// tolerate clock skew, in constant time.
-func verifyTOTP(secret, code string) bool {
+// totpMatchStep checks the code against the current and adjacent 30s windows to
+// tolerate clock skew, in constant time, and returns the time step it matched.
+// Callers that sign someone in pass that step to a one-time consumer so the same
+// code cannot be replayed while it is still valid.
+func totpMatchStep(secret, code string) (int64, bool) {
 	code = strings.TrimSpace(code)
 	if len(code) != totpDigits {
-		return false
+		return 0, false
 	}
 	now := time.Now()
 	for _, skew := range []time.Duration{0, -totpPeriod * time.Second, totpPeriod * time.Second} {
-		if c, err := totpAt(secret, now.Add(skew)); err == nil &&
+		t := now.Add(skew)
+		if c, err := totpAt(secret, t); err == nil &&
 			subtle.ConstantTimeCompare([]byte(c), []byte(code)) == 1 {
-			return true
+			return t.Unix() / totpPeriod, true
 		}
 	}
-	return false
+	return 0, false
+}
+
+func verifyTOTP(secret, code string) bool {
+	_, ok := totpMatchStep(secret, code)
+	return ok
+}
+
+// consoleTOTP remembers the last time step accepted for the (single) console
+// admin, so a code observed once cannot be reused. In memory: the console runs
+// as one process, and a restart only reopens at most one 90s window.
+var consoleTOTP struct {
+	sync.Mutex
+	last int64
+}
+
+func verifyConsoleTOTPOnce(secret, code string) bool {
+	step, ok := totpMatchStep(secret, code)
+	if !ok {
+		return false
+	}
+	consoleTOTP.Lock()
+	defer consoleTOTP.Unlock()
+	if step <= consoleTOTP.last {
+		return false
+	}
+	consoleTOTP.last = step
+	return true
+}
+
+// verifyPortalTOTPOnce verifies a portal user's code and consumes its time step
+// in the database (atomic, so it holds across concurrent requests and
+// instances): a code that was already used, or an older one, is refused.
+func verifyPortalTOTPOnce(pg *db.DB, userID int64, secret, code string) bool {
+	step, ok := totpMatchStep(secret, code)
+	if !ok {
+		return false
+	}
+	fresh, err := pg.ConsumePortalTOTPStep(userID, step)
+	return err == nil && fresh
 }
 
 func otpauthURI(secret string) string { return otpauthURIFor("ARTEX", secret) }
@@ -147,7 +190,7 @@ func (s *Server) mfaCheckPasses(pg *db.DB, code string) bool {
 	if err != nil {
 		return false
 	}
-	return verifyTOTP(secret, code)
+	return verifyConsoleTOTPOnce(secret, code)
 }
 
 // --- endpoints (JWT validated inline; these sit under /api/auth/*) -----------
@@ -220,7 +263,7 @@ func (s *Server) mfaEnable(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, "secreto inválido")
 		return
 	}
-	if !verifyTOTP(secret, req.Code) {
+	if !verifyConsoleTOTPOnce(secret, req.Code) {
 		writeErr(w, 400, "código inválido")
 		return
 	}

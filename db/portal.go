@@ -75,6 +75,8 @@ ALTER TABLE orgs ADD COLUMN IF NOT EXISTS suspended BOOLEAN NOT NULL DEFAULT fal
 -- Per-user TOTP 2FA. Secret stored encrypted at rest (AES-256-GCM); empty = none.
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS mfa_secret TEXT NOT NULL DEFAULT '';
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS mfa_enabled BOOLEAN NOT NULL DEFAULT false;
+-- Last TOTP time step accepted for the user: a code is single-use (no replay).
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS mfa_last_step BIGINT NOT NULL DEFAULT 0;
 -- Email verification state.
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
 -- Per-user deactivation + session revocation. A disabled user is blocked at login
@@ -686,6 +688,20 @@ func (d *DB) EnablePortalMFA(userID int64) error {
 		return sql.ErrNoRows
 	}
 	return nil
+}
+
+// ConsumePortalTOTPStep marca como usado el paso TOTP de un código válido.
+// Devuelve false si ese paso (o uno posterior) ya se usó: el código no se
+// puede reutilizar. Es atómico frente a peticiones concurrentes.
+func (d *DB) ConsumePortalTOTPStep(userID, step int64) (bool, error) {
+	res, err := d.Exec(
+		`UPDATE portal_users SET mfa_last_step = $1 WHERE id = $2 AND mfa_last_step < $1`, step, userID,
+	)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n == 1, nil
 }
 
 // DisablePortalMFA desactiva el 2FA y borra el secreto.

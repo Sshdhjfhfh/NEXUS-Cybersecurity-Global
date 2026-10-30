@@ -24,6 +24,24 @@ func TestTOTPRoundTrip(t *testing.T) {
 	}
 }
 
+func TestConsoleTOTPIsSingleUse(t *testing.T) {
+	consoleTOTP.Lock()
+	consoleTOTP.last = 0
+	consoleTOTP.Unlock()
+	secret := newTOTPSecret()
+	now, _ := totpAt(secret, time.Now())
+	prev, _ := totpAt(secret, time.Now().Add(-totpPeriod*time.Second))
+	if !verifyConsoleTOTPOnce(secret, now) {
+		t.Fatal("a fresh code must be accepted")
+	}
+	if verifyConsoleTOTPOnce(secret, now) {
+		t.Fatal("the same code must not be accepted twice")
+	}
+	if prev != now && verifyConsoleTOTPOnce(secret, prev) {
+		t.Fatal("an older code must not be accepted after a newer one")
+	}
+}
+
 func TestEncryptDecryptSecretRoundTrip(t *testing.T) {
 	s := &Server{jwtKey: []byte("0123456789abcdef0123456789abcdef")}
 	enc, err := s.encryptSecret("HELLO-SECRET")

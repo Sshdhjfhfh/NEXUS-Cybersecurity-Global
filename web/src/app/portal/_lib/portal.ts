@@ -27,24 +27,46 @@ export function clearPortalToken() {
   }
 }
 
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
+// SERVICE_DOWN stands for "the API could not be reached, or failed without an
+// error of its own" (backend down behind the proxy, a gateway 502/503/504). The
+// user then sees "service unavailable", never a bare status code.
+export const SERVICE_DOWN = "service_unavailable";
+
+// portalFetch calls /api/portal/* with the portal token and turns every failure
+// into a message fit for the user: the server's own error when it sent one,
+// "service unavailable" when the API is unreachable or answered a bare 5xx, and
+// fallback otherwise. A 401 ends the local session ("unauthorized" sentinel).
+async function portalFetch(path: string, init?: RequestInit, fallback = "no se pudo completar la operación") {
   const token = getPortalToken();
-  const res = await fetch(`/api/portal${path}`, {
-    ...init,
-    headers: {
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init?.headers as Record<string, string> | undefined),
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`/api/portal${path}`, {
+      ...init,
+      headers: {
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init?.headers as Record<string, string> | undefined),
+      },
+    });
+  } catch {
+    throw new Error(localizeServerError(SERVICE_DOWN));
+  }
   if (res.status === 401) {
     clearPortalToken();
     throw new Error("unauthorized");
   }
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error ? localizeServerError(data.error) : `error ${res.status}`);
+    if (data.error) {
+      throw new Error(localizeServerError(data.error));
+    }
+    throw new Error(localizeServerError(res.status >= 500 ? SERVICE_DOWN : fallback));
   }
+  return res;
+}
+
+async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await portalFetch(path, init);
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
 }
 
@@ -468,31 +490,14 @@ export const portalApi = {
 // downloadExport fetches the org's data export and triggers a file download. It
 // streams a blob (not JSON), so it bypasses the JSON `req` helper.
 export async function downloadExport(): Promise<void> {
-  const token = getPortalToken();
-  const res = await fetch("/api/portal/export", {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) {
-    throw new Error(localizeServerError("no se pudo exportar"));
-  }
+  const res = await portalFetch("/export", undefined, "no se pudo exportar");
   saveBlob(await res.blob(), "nexus-export.json");
 }
 
 // downloadAuditCSV saves the filtered audit trail as CSV (the export is itself
 // recorded in the trail).
 export async function downloadAuditCSV(f: AuditFilter): Promise<{ truncated: boolean }> {
-  const token = getPortalToken();
-  const res = await fetch(`/api/portal/audit/export?${auditQuery(f)}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (res.status === 401) {
-    clearPortalToken();
-    throw new Error("unauthorized");
-  }
-  if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(localizeServerError(data.error ?? "no se pudo leer la auditoría"));
-  }
+  const res = await portalFetch(`/audit/export?${auditQuery(f)}`, undefined, "no se pudo leer la auditoría");
   const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1];
   saveBlob(await res.blob(), name ?? "nexus-audit.csv");
   return { truncated: res.headers.get("X-Nexus-Truncated") === "true" };
@@ -503,18 +508,11 @@ export type ReportKind = "executive" | "technical";
 // downloadReport fetches a branded PDF report of a released evaluation, in the
 // UI language, and saves it under the file name the server chose.
 export async function downloadReport(requestId: number, kind: ReportKind, lang: string): Promise<void> {
-  const token = getPortalToken();
-  const res = await fetch(`/api/portal/requests/${requestId}/report?kind=${kind}&lang=${encodeURIComponent(lang)}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (res.status === 401) {
-    clearPortalToken();
-    throw new Error("unauthorized");
-  }
-  if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(localizeServerError(data.error ?? "no se pudo generar el informe"));
-  }
+  const res = await portalFetch(
+    `/requests/${requestId}/report?kind=${kind}&lang=${encodeURIComponent(lang)}`,
+    undefined,
+    "no se pudo generar el informe",
+  );
   const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1];
   saveBlob(await res.blob(), name ?? `NEXUS-${kind}-report.pdf`);
 }

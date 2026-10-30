@@ -24,6 +24,7 @@ export const SERVER_ERRORS_EN: Record<string, string> = {
   "la invitación ha caducado; pide una nueva a tu administrador":
     "This invitation has expired; ask your administrator for a new one",
   "invitación no encontrada": "Invitation not found",
+  "no se pudo completar la operación": "The operation could not be completed",
   "ya hay una invitación pendiente para ese email; puedes reenviarla":
     "There is already a pending invitation for that email; you can resend it",
   "demasiadas invitaciones pendientes; revoca alguna antes de invitar a más personas":
@@ -226,4 +227,4 @@ export const SERVER_ERROR_PATTERNS_EN: [RegExp, string][] = [
 
 // Internal infrastructure messages that must never be shown verbatim to a client
 // (they leak implementation details and are not in the client's language).
-export const SERVER_ERRORS_INTERNAL = new Set<string>(["管理后台数据源(PostgreSQL)未连接"]);
+export const SERVER_ERRORS_INTERNAL = new Set<string>(["管理后台数据源(PostgreSQL)未连接", "service_unavailable"]);

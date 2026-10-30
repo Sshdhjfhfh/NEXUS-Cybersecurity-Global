@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api } from "@/lib/api";
+import { api, ServiceUnavailableError } from "@/lib/api";
 import { auth } from "@/lib/auth";
 import { t } from "@/lib/i18n";
 
@@ -75,7 +75,11 @@ export default function LoginPage() {
       window.location.replace("/function/tasks");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      setError(/mfa|verificaci|código|code/i.test(msg) ? msg : t("ui.e17bb972e42bb8f7"));
+      setError(
+        err instanceof ServiceUnavailableError || /mfa|verificaci|código|code/i.test(msg)
+          ? msg
+          : t("ui.e17bb972e42bb8f7"),
+      );
     } finally {
       setLoading(false);
     }

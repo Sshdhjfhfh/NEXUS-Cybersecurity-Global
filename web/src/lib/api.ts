@@ -113,17 +113,27 @@ function getToken(): string | null {
   return localStorage.getItem("nexus_ia_token");
 }
 
+// ServiceUnavailableError: the backend could not be reached, or failed without
+// an error of its own (dev proxy 500, gateway 502/503/504). Callers show it as
+// is instead of blaming the user's input (e.g. "wrong password").
+export class ServiceUnavailableError extends Error {}
+
 export async function http<T>(path: string, init?: RequestInit): Promise<T> {
   if (MOCK) return mockHandle<T>(init?.method ?? "GET", path, init?.body ?? null);
   const token = getToken();
-  const r = await fetch(`/api${path}`, {
-    ...init,
-    headers: {
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init?.headers as Record<string, string> | undefined),
-    },
-  });
+  let r: Response;
+  try {
+    r = await fetch(`/api${path}`, {
+      ...init,
+      headers: {
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init?.headers as Record<string, string> | undefined),
+      },
+    });
+  } catch {
+    throw new ServiceUnavailableError(t("ui.3a90435b8229869e"));
+  }
   if (r.status === 401) {
     if (typeof window !== "undefined") {
       localStorage.removeItem("nexus_ia_token");
@@ -142,6 +152,9 @@ export async function http<T>(path: string, init?: RequestInit): Promise<T> {
       }
     } catch {
       // Keep the status-based fallback for empty or non-JSON error responses.
+    }
+    if (message === fallback && r.status >= 500) {
+      throw new ServiceUnavailableError(t("ui.3a90435b8229869e"));
     }
     throw new Error(localizeText(message));
   }
@@ -174,7 +187,7 @@ export function sseUrl(path: string): string {
   const base =
     process.env.NEXT_PUBLIC_SSE_BASE ??
     (process.env.NODE_ENV !== "production" && typeof window !== "undefined"
-      ? `${window.location.protocol}//${window.location.hostname}:8787`
+      ? `${window.location.protocol}//${window.location.hostname}:${process.env.NEXT_PUBLIC_DEV_BACKEND_PORT ?? "8787"}`
       : "");
   const token = getToken();
   const sep = path.includes("?") ? "&" : "?";

@@ -26,7 +26,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const { theme_mode, theme_preset, content_layout, navbar_style, sidebar_variant, sidebar_collapsible, font } =
     PREFERENCE_DEFAULTS;
   // Nonce for the pre-hydration inline script under the strict CSP (set in proxy.ts).
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  // The static export (production build embedded in the backend) has no request:
+  // there the backend allows each page's inline scripts by hash instead.
+  const nonce = process.env.NEXT_EXPORT === "1" ? undefined : ((await headers()).get("x-nonce") ?? undefined);
   return (
     <html
       lang="es"

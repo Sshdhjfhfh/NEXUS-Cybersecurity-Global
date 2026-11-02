@@ -88,7 +88,8 @@ COPY scripts/seed_skills.py /app/seed_skills.py
 COPY scripts/container-entrypoint.sh /app/entrypoint.sh
 
 # Directorio de datos (SQLite + skills)
-RUN mkdir -p /app/data /app/skills && chmod +x /app/entrypoint.sh
+# /app/keys: JWT/secret-encryption key (volume nexus_keys, NEXUS_KEY_DIR)
+RUN mkdir -p /app/data /app/skills /app/keys && chmod 700 /app/keys && chmod +x /app/entrypoint.sh
 
 # Usuario no-root
 RUN chown -R node:node /app

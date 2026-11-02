@@ -24,6 +24,29 @@ solicitudes, hallazgos publicados, remediación, objetivos verificados, autoriza
 3. **Prueba de restauración periódica** (al menos una vez al mes, y siempre antes del
    lanzamiento): sigue los pasos de abajo en una base de datos de prueba.
 
+## La clave de cifrado (`jwt.key`): cópiala aparte
+
+Los secretos de 2FA y de SSO se guardan cifrados en la base de datos con una clave
+derivada de `jwt.key` (volumen `nexus_keys`, `/app/keys` en el contenedor). **Una copia
+de la base de datos sin esa clave no basta**: al restaurarla, nadie con 2FA podría entrar
+y el SSO dejaría de funcionar. Además, si la clave cambia, se cierran todas las sesiones.
+
+- Guarda una copia de `jwt.key` en un lugar seguro y **distinto** de las copias de la base
+  de datos (por ejemplo, el gestor de secretos de la empresa): quien tenga ambas puede
+  descifrar los secretos de 2FA.
+- No la regeneres ni borres el volumen `nexus_keys` (`make clean`/`make nuke` lo borran).
+
+```bash
+docker compose cp orchestrator:/app/keys/jwt.key ./jwt.key.backup   # luego muévela al gestor de secretos
+```
+
+Restaurar la clave (antes de arrancar `orchestrator` con una base de datos restaurada):
+
+```bash
+docker compose cp ./jwt.key.backup orchestrator:/app/keys/jwt.key
+docker compose restart orchestrator
+```
+
 ## Copia manual
 
 ```bash

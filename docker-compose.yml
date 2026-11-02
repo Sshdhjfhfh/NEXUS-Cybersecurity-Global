@@ -96,11 +96,17 @@ services:
       # NEXUS_OPS_EMAIL si la última copia es más antigua que este máximo.
       NEXUS_BACKUP_DIR:           /backups
       NEXUS_BACKUP_MAX_AGE_HOURS: "${BACKUP_MAX_AGE_HOURS:-26}"
+      # Clave de firma de sesiones y de cifrado de los secretos 2FA/SSO: en su
+      # propio volumen para que sobreviva a actualizaciones del contenedor.
+      NEXUS_KEY_DIR:              /app/keys
     volumes:
       # Persistencia de datos runtime (SQLite, skills, etc.)
       - nexus_data:/app/data
       # Copias de seguridad, solo lectura: para vigilar que se siguen haciendo.
       - nexus_backups:/backups:ro
+      # Clave de sesiones y cifrado (jwt.key). Perderla bloquea a quien use 2FA:
+      # cópiala aparte (docs/engineering/BACKUP_RESTORE.md).
+      - nexus_keys:/app/keys
       # User skills persist under nexus_data; bundled skills are seeded once.
     # Acceso al host Windows (para Ollama)
     extra_hosts:
@@ -199,6 +205,8 @@ volumes:
     name: nexus_data
   nexus_backups:
     name: nexus_backups
+  nexus_keys:
+    name: nexus_keys
   caddy_data:
     name: nexus_caddy_data
   caddy_config:

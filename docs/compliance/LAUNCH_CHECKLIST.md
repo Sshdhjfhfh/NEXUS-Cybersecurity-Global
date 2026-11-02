@@ -48,6 +48,14 @@ Rastrea el avance hacia una revisión de lanzamiento (Directiva §20). Marca `[x
 - [x] El backend ve la IP real de cada cliente detrás del proxy (`NEXUS_TRUSTED_PROXIES`, solo
       la IP fija del proxy): límites por IP, bloqueo de fuerza bruta, auditoría y redes
       permitidas por organización funcionan; un `X-Forwarded-For` falsificado se ignora.
+- [x] La web de producción (exportación estática dentro del backend) se sirve con CSP estricta
+      por página (hashes de sus scripts, sin `unsafe-inline`), anti-clickjacking, `nosniff`,
+      `Referrer-Policy` y caché correcta; antes no llevaba ninguna cabecera (2026-11-02).
+- [x] La imagen Docker vuelve a construirse: la exportación estática fallaba (`/legal/[doc]`,
+      `sitemap`/`robots`, `headers()` en el layout) (2026-11-02).
+- [x] `jwt.key` (firma de sesiones y cifrado de secretos 2FA/SSO) en un volumen propio
+      (`nexus_keys`): antes se perdía al recrear el contenedor y bloqueaba a todo usuario con 2FA.
+- [ ] Guardar una copia de `jwt.key` en el gestor de secretos de la empresa (ver BACKUP_RESTORE.md).
 - [ ] **Dominio**: comprar/apuntar `NEXUS_DOMAIN` al servidor, abrir puertos 80/443 y poner
       `NEXUS_PORTAL_BASE_URL=https://<dominio>/portal` en `.env`.
 - [ ] **Correo real**: `NEXUS_SMTP_*` + `NEXUS_PORTAL_BASE_URL`, con SPF/DKIM/DMARC del dominio

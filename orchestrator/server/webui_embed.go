@@ -31,6 +31,7 @@ func (s *Server) webuiHandler() http.Handler {
 	if err != nil {
 		panic(err)
 	}
+	hdr := &webuiHeaders{fsys: root}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
 		if p == "" {
@@ -41,16 +42,17 @@ func (s *Server) webuiHandler() http.Handler {
 		// 3) <p>.html
 		// 4) SPA 兜底 → index.html（交给客户端路由）
 		for _, cand := range []string{p, p + "/index.html", p + ".html"} {
-			if serveFileIfExists(w, r, root, cand) {
+			if serveFileIfExists(w, r, root, cand, hdr) {
 				return
 			}
 		}
+		hdr.set(w, "index.html")
 		http.ServeFileFS(w, r, root, "index.html")
 	})
 }
 
 // serveFileIfExists serves name from fsys when it exists as a regular file.
-func serveFileIfExists(w http.ResponseWriter, r *http.Request, fsys fs.FS, name string) bool {
+func serveFileIfExists(w http.ResponseWriter, r *http.Request, fsys fs.FS, name string, hdr *webuiHeaders) bool {
 	f, err := fsys.Open(name)
 	if err != nil {
 		return false
@@ -60,6 +62,7 @@ func serveFileIfExists(w http.ResponseWriter, r *http.Request, fsys fs.FS, name 
 	if statErr != nil || st.IsDir() {
 		return false
 	}
+	hdr.set(w, name)
 	http.ServeFileFS(w, r, fsys, name)
 	return true
 }

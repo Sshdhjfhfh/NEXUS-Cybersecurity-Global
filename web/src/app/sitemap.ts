@@ -2,6 +2,9 @@ import type { MetadataRoute } from "next";
 
 const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+// Generated at build time (also for the static export embedded in the backend).
+export const dynamic = "force-static";
+
 // Public marketing routes only (the authenticated console is not indexed).
 const routes = [
   "",

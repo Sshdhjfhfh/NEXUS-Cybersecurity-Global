@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -108,7 +109,7 @@ func run() int {
 		skillDir = abs
 	}
 	log.Printf("[config] skill dir: %s", skillDir)
-	srv := server.New(ctx, mgr, skillDir, *dataDir, config.BaseDir())
+	srv := server.New(ctx, mgr, skillDir, *dataDir, keyDir())
 	httpSrv := &http.Server{
 		Addr:              *addr,
 		Handler:           srv.Handler(),
@@ -154,4 +155,31 @@ func shutdownContext(signalCtx context.Context) (context.Context, context.Cancel
 		}
 	}()
 	return ctx, shutdown
+}
+
+// keyDir is where the JWT signing key lives. The same key also derives the key
+// that encrypts 2FA and SSO secrets, so losing it signs everyone out and locks
+// out every user with 2FA. By default it sits next to the binary; NEXUS_KEY_DIR
+// points it at persistent storage (in Docker the binary's directory is thrown
+// away with the container). Kept apart from the data dir, which is browsable.
+func keyDir() string {
+	base := config.BaseDir()
+	dir := strings.TrimSpace(os.Getenv("NEXUS_KEY_DIR"))
+	if dir == "" || dir == base {
+		return base
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		log.Fatalf("[auth] NEXUS_KEY_DIR %s: %v", dir, err)
+	}
+	// Carry over a key created next to the binary before NEXUS_KEY_DIR was set.
+	dst := filepath.Join(dir, "jwt.key")
+	if _, err := os.Stat(dst); os.IsNotExist(err) {
+		if data, rerr := os.ReadFile(filepath.Join(base, "jwt.key")); rerr == nil {
+			if werr := os.WriteFile(dst, data, 0o600); werr != nil {
+				log.Fatalf("[auth] copy JWT key to %s: %v", dst, werr)
+			}
+			log.Printf("[auth] JWT key copied to %s", dst)
+		}
+	}
+	return dir
 }

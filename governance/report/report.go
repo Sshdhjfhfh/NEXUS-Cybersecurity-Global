@@ -87,12 +87,28 @@ func Markdown(in Input) string {
 			fmt.Fprintf(&b, "### %d. [%s] %s\n\n", i+1, strings.ToUpper(nz(f.Severity, "info")), nz(f.Name, nz(f.VulnClass, "未分类")))
 			fmt.Fprintf(&b, "%s\n\n", nz(f.Summary, ""))
 			if f.PoC != "" {
-				fmt.Fprintf(&b, "**PoC / 证据：**\n\n```\n%s\n```\n\n", f.PoC)
+				fmt.Fprintf(&b, "**PoC / 证据：**\n\n%s\n\n", codeBlock(f.PoC))
 			}
 		}
 	}
 
 	return b.String()
+}
+
+// codeBlock fences s with a backtick run longer than any inside it, so evidence
+// taken from a hostile target cannot close the block and write report text.
+func codeBlock(s string) string {
+	longest, run := 0, 0
+	for _, r := range s {
+		if r == '`' {
+			run++
+			longest = max(longest, run)
+		} else {
+			run = 0
+		}
+	}
+	fence := strings.Repeat("`", max(3, longest+1))
+	return fence + "\n" + s + "\n" + fence
 }
 
 func nz(s, d string) string {

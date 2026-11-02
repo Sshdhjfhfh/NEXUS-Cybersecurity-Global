@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/nexus-ia/nexus/db"
 )
@@ -81,7 +82,7 @@ func FindingsMarkdown(fs []*db.DBFinding, generatedAt time.Time) string {
 			fmt.Fprintf(&b, "%s\n\n", s)
 		}
 		if e := strings.TrimSpace(f.Evidence); e != "" {
-			fmt.Fprintf(&b, "**证据：**\n\n```\n%s\n```\n\n", e)
+			fmt.Fprintf(&b, "**证据：**\n\n%s\n\n", codeBlock(e))
 		}
 		if rep := strings.TrimSpace(f.Report); rep != "" {
 			b.WriteString("**详细报告：**\n\n")
@@ -112,7 +113,7 @@ func SingleFindingMarkdown(f *db.DBFinding, generatedAt time.Time) string {
 		fmt.Fprintf(&b, "## 概述\n\n%s\n\n", s)
 	}
 	if e := strings.TrimSpace(f.Evidence); e != "" {
-		fmt.Fprintf(&b, "## 证据\n\n```\n%s\n```\n\n", e)
+		fmt.Fprintf(&b, "## 证据\n\n%s\n\n", codeBlock(e))
 	}
 	if rep := strings.TrimSpace(f.Report); rep != "" {
 		b.WriteString("## 详细报告\n\n")
@@ -139,7 +140,12 @@ func FindingFilename(f *db.DBFinding) string {
 	// 防御性:再剥一层路径,杜绝 zip slip。
 	name = path.Base(name)
 	if len(name) > 120 {
-		name = name[:120]
+		// Cut on a rune boundary: zip entry names must stay valid UTF-8.
+		cut := 120
+		for cut > 0 && !utf8.RuneStart(name[cut]) {
+			cut--
+		}
+		name = name[:cut]
 	}
 	return name + ".md"
 }
@@ -157,18 +163,28 @@ func FindingsCSV(fs []*db.DBFinding) []byte {
 	for _, f := range items {
 		_ = w.Write([]string{
 			fmt.Sprintf("%d", f.ID),
-			findingTitle(f),
-			f.VulnClass,
-			nz(f.Severity, "info"),
-			nz(f.Status, "pending"),
-			f.TaskDescription,
+			csvText(findingTitle(f)),
+			csvText(f.VulnClass),
+			csvText(nz(f.Severity, "info")),
+			csvText(nz(f.Status, "pending")),
+			csvText(f.TaskDescription),
 			f.CreatedAt.Format("2006-01-02 15:04:05"),
-			strings.TrimSpace(f.Summary),
+			csvText(strings.TrimSpace(f.Summary)),
 			fmt.Sprint(len(f.TrafficBindings)), findingTrafficIDs(f),
 		})
 	}
 	w.Flush()
 	return buf.Bytes()
+}
+
+// csvText keeps a spreadsheet from evaluating a cell as a formula: text that
+// starts with = + - @ tab or CR gets a leading apostrophe (OWASP CSV injection).
+// These fields can carry text from the target under test.
+func csvText(s string) string {
+	if s != "" && strings.ContainsRune("=+-@\t\r", rune(s[0])) {
+		return "'" + s
+	}
+	return s
 }
 
 func findingTrafficIDs(f *db.DBFinding) string {

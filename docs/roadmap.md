@@ -71,10 +71,19 @@ Estado al 2026-11-02: base `d218b3b`. Diagnóstico en
     - 68 avisos previos de formato y orden de imports en 41 archivos. No se reformatearon para no mezclar un diff grande sin cambio funcional.
   - **CI:** el job `web` de `ci.yml` ejecuta `tsc` y `scripts/biome_ratchet.py`, un trinquete por archivo contra `web/biome-baseline.json`. Falla si un archivo supera su cuenta o si un archivo nuevo tiene errores; la base solo puede bajar.
   - **Al commitear los cambios locales del usuario:** el trinquete puede marcar esos 11 archivos. Hay que corregirlos o, si se acepta la deuda, regenerar la base con `--update`.
-- [ ] **P2** `GET /api/tasks`: 128 ms en p50 con 670 tareas. Perfilar y paginar o indexar.
+- [x] **P2** `GET /api/tasks`: con ~1100 tareas ya medía **310 ms en p50 y 505 ms en p95** (en vivo).
+  - **Causa (perfil de CPU):** el estado de cada tarea iniciada llamaba a `engine.ReadyFor`, que lee de la BD las vinculaciones LLM de `planner` y `worker`. Eran ~2 consultas por tarea (N+1). Ordenar las comprobaciones no servía, porque los bucles del motor marcan como iniciadas casi todas las tareas.
+  - **Arreglo:** `listReadiness` aplica la misma regla que el resolvedor del motor, pero lee cada vinculación una sola vez por petición. Lo usan `GET /api/tasks`, la herramienta `list_tasks` y los grupos de hallazgos. No se añadió una caché global, porque una caché caducada podría enviar datos de un cliente al proveedor LLM equivocado.
+  - **Resultado en proceso** (1116 tareas, misma BD): de 301,8 ms a **14,3 ms** por petición.
+  - **Test:** `TestListReadinessMatchesEngineAndReadsBindingsOnce` comprueba que el estado coincide con `engine.ReadyFor` en todas las tareas y que cada vinculación se lee una vez.
 - [x] **P2** Guardia en la CI: `TestWebFetchProxyFallback -count=20` (job `go` de `ci.yml`). En local: 20/20 en 0,66 s.
 - [x] **P2** La CI (`ci.yml`) ahora también corre en las ramas `implementation/**`. Antes solo corría en `main` y `fase2-saneamiento`, así que la rama de trabajo no pasaba por ella.
-- [ ] **P2** Tests para `governance/report` (0 %).
+- [x] **P2** Tests para `governance/report`: la cobertura pasa de 0 % a **97,4 %**. Es el código de las exportaciones a Markdown, CSV y ZIP (un archivo por hallazgo) que se entregan al cliente. Los tests encontraron tres fallos, ya corregidos:
+  - **Evidencia que escapaba de su bloque de código.** Si la evidencia o la PoC contenía ```` ``` ````, el objetivo (que puede ser hostil) escribía texto propio en el informe del cliente, por ejemplo "Sin hallazgos". Ahora la valla es más larga que cualquier secuencia de backticks del contenido (`codeBlock`).
+  - **Inyección de fórmulas en el CSV.** Las celdas que empiezan con `=`, `+`, `-`, `@`, tabulador o CR se ejecutaban como fórmula al abrir el CSV en Excel. Ahora llevan un apóstrofo delante (`csvText`, recomendación de OWASP).
+  - **Nombres inválidos en el ZIP.** El nombre de archivo se cortaba a 120 bytes en mitad de un carácter UTF-8 (títulos en chino o con tildes). Ahora se corta en un límite de carácter.
+  - **Sigue abierto:** el campo `Report` (informe detallado en Markdown escrito por el agente) se inserta tal cual, por diseño. Si algún visor lo convierte a HTML, debe sanearlo.
+- [ ] **P1** Los informes que se entregan al cliente (`governance/report`) están **en chino**: títulos, secciones, estados y el nombre de las columnas del CSV, heredados de ARTEX. Hay que localizarlos al español y al inglés antes de entregar a un cliente real. Encaja con la Fase 6 y con el i18n que ya tiene la web.
 
 ## Fase 2: Cyber Range, benchmarks y evaluador independiente
 

@@ -42,13 +42,23 @@ Rastrea el avance hacia una revisión de lanzamiento (Directiva §20). Marca `[x
       restauración probada. Ver `docs/engineering/BACKUP_RESTORE.md`.
 - [x] `docker-compose.yml`: contraseña de PostgreSQL obligatoria (sin `changeme`), API solo
       en `127.0.0.1` (detrás de HTTPS), variables del portal y del correo.
-- [ ] **Proxy HTTPS** delante de la API (Caddy/Nginx/Traefik) con certificado válido y dominio.
+- [x] **Proxy HTTPS** listo: servicio `https` (Caddy, `deploy/Caddyfile`, `make up-https`) con
+      certificado automático, redirección HTTP→HTTPS, HSTS y compresión. Probado de punta a
+      punta con un certificado local (2026-11-02).
+- [x] El backend ve la IP real de cada cliente detrás del proxy (`NEXUS_TRUSTED_PROXIES`, solo
+      la IP fija del proxy): límites por IP, bloqueo de fuerza bruta, auditoría y redes
+      permitidas por organización funcionan; un `X-Forwarded-For` falsificado se ignora.
+- [ ] **Dominio**: comprar/apuntar `NEXUS_DOMAIN` al servidor, abrir puertos 80/443 y poner
+      `NEXUS_PORTAL_BASE_URL=https://<dominio>/portal` en `.env`.
 - [ ] **Correo real**: `NEXUS_SMTP_*` + `NEXUS_PORTAL_BASE_URL`, con SPF/DKIM/DMARC del dominio
       (sin esto, invitaciones, verificación y recuperación de contraseña no llegan).
 - [ ] **Copia de las copias fuera del servidor** (almacenamiento externo cifrado) + alerta si falla.
 - [ ] Monitorización y alertas (caída del backend, errores 5xx, disco, copia fallida).
-- [ ] Aceptación de Términos y Privacidad en el registro del portal, con versión registrada
-      (depende de que los textos legales estén aprobados).
+- [x] Aceptación de Términos y Privacidad en el registro del portal y al aceptar invitaciones,
+      con versión, fecha e IP registradas y auditadas; quien no aceptó la versión vigente no
+      puede usar el portal hasta aceptarla (2026-11-01).
+- [ ] Al aprobar los textos legales: subir `portalTermsVersion` y poner `portalTermsDraft=false`
+      (`orchestrator/server/portal_terms.go`); a todos se les pedirá aceptar la versión final.
 
 ## 🙋 LO QUE NECESITO DE TI (para no inventar nada)
 ### Datos legales/corporativos → van en `web/src/config/company.ts`

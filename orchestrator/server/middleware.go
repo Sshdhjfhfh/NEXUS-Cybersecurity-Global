@@ -285,8 +285,8 @@ func (l *ipLimiter) janitor() {
 
 // rateLimit applies a per-IP token bucket (default 50 rps, burst 100) to bound
 // abuse from any single client. Streaming endpoints are exempt. Disable with
-// NEXUS_RATE_RPS=0. X-Forwarded-For is only trusted from a loopback peer (see
-// clientIP), so a client cannot spoof its address.
+// NEXUS_RATE_RPS=0. X-Forwarded-For is only trusted from a loopback peer or a
+// configured proxy (see clientIP), so a client cannot spoof its address.
 func rateLimit(next http.Handler) http.Handler {
 	rps, burst := rateParams()
 	if rps <= 0 {

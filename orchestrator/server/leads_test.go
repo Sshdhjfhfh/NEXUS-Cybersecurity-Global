@@ -45,3 +45,38 @@ func TestClientIPIgnoresForgedLeftmostXFF(t *testing.T) {
 		t.Fatal("an unreadable hop must not let the forged entry through")
 	}
 }
+
+func TestClientIPBehindTrustedProxy(t *testing.T) {
+	trusted := parseTrustedProxies("172.30.0.0/16, 10.9.8.7, bogus")
+	if len(trusted) != 2 {
+		t.Fatalf("parsed %d trusted proxies, want 2 (invalid entry skipped)", len(trusted))
+	}
+	r := httptest.NewRequest("POST", "/api/portal/login", nil)
+	// The HTTPS proxy container (172.30.0.5) appends the real client address.
+	r.RemoteAddr = "172.30.0.5:40000"
+	r.Header.Set("X-Forwarded-For", "203.0.113.50")
+	if got := clientIPWith(r, trusted); got != "203.0.113.50" {
+		t.Fatalf("clientIP = %q, want the client behind the trusted proxy", got)
+	}
+	// A forged left-most entry is still ignored.
+	r.Header.Set("X-Forwarded-For", "1.2.3.4, 203.0.113.50")
+	if got := clientIPWith(r, trusted); got != "203.0.113.50" {
+		t.Fatalf("clientIP = %q, want the proxy-appended address", got)
+	}
+	// Chained trusted proxies are skipped from the right.
+	r.Header.Set("X-Forwarded-For", "203.0.113.50, 10.9.8.7")
+	if got := clientIPWith(r, trusted); got != "203.0.113.50" {
+		t.Fatalf("clientIP = %q, want the first untrusted hop", got)
+	}
+	// A peer outside the trusted networks cannot set its address.
+	r.RemoteAddr = "198.51.100.77:1234"
+	r.Header.Set("X-Forwarded-For", "203.0.113.50")
+	if got := clientIPWith(r, trusted); got != "198.51.100.77" {
+		t.Fatalf("clientIP = %q, want the untrusted peer itself", got)
+	}
+	// Without configuration only loopback is trusted (previous behavior).
+	r.RemoteAddr = "172.30.0.5:40000"
+	if got := clientIPWith(r, nil); got != "172.30.0.5" {
+		t.Fatalf("clientIP = %q, want the peer when no proxy is configured", got)
+	}
+}

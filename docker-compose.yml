@@ -5,12 +5,15 @@
 #   - postgres    (base de datos, red aislada)
 #   - orchestrator (backend Go + frontend Next.js embebido)
 #   - backup      (copia diaria verificada de la base de datos)
+#   - https       (perfil "https": Caddy con certificado automático)
 #
 # Obligatorio antes de arrancar: POSTGRES_PASSWORD en .env (no hay valor por
-# defecto). La API escucha solo en 127.0.0.1: publícala con un proxy HTTPS.
+# defecto). La API escucha solo en 127.0.0.1; en producción se publica con el
+# servicio https (NEXUS_DOMAIN en .env).
 #
 # Uso:
-#   make up      → arranca el stack
+#   make up        → arranca el stack (solo local)
+#   make up-https  → arranca el stack publicado en https://NEXUS_DOMAIN
 #   make down    → para el stack
 #   make logs    → logs en vivo
 # ═══════════════════════════════════════════════════════════════
@@ -86,6 +89,9 @@ services:
       NEXUS_SMTP_PASS:        "${NEXUS_SMTP_PASS:-}"
       NEXUS_SMTP_FROM:        "${NEXUS_SMTP_FROM:-}"
       NEXUS_OPS_EMAIL:        "${NEXUS_OPS_EMAIL:-}"
+      # Único proxy autorizado a indicar la IP real del cliente (límites por
+      # IP, bloqueo de fuerza bruta, auditoría y lista de redes permitidas).
+      NEXUS_TRUSTED_PROXIES:  "${NEXUS_PROXY_IP:-172.29.80.10}"
     volumes:
       # Persistencia de datos runtime (SQLite, skills, etc.)
       - nexus_data:/app/data
@@ -103,6 +109,7 @@ services:
     networks:
       - nexus_internal
       - nexus_public
+      - nexus_edge
     # Seguridad
     security_opt:
       - no-new-privileges:true
@@ -142,6 +149,40 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # ─────────────────────────────────────────────────────────────
+  # HTTPS — proxy público con certificado automático (deploy/Caddyfile)
+  # Solo con el perfil "https" (make up-https). NEXUS_DOMAIN debe apuntar a
+  # este servidor y los puertos 80/443 estar abiertos para emitir el
+  # certificado; los certificados se guardan en el volumen caddy_data.
+  # ─────────────────────────────────────────────────────────────
+  https:
+    image: caddy:2.8.4-alpine
+    container_name: nexus-https
+    profiles: ["https"]
+    restart: unless-stopped
+    depends_on:
+      - orchestrator
+    environment:
+      NEXUS_DOMAIN: ${NEXUS_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      nexus_edge:
+        ipv4_address: ${NEXUS_PROXY_IP:-172.29.80.10}
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 # ───────────────────────────────────────────────────────────────
 # VOLUMES — Persistencia
 # ───────────────────────────────────────────────────────────────
@@ -152,6 +193,10 @@ volumes:
     name: nexus_data
   nexus_backups:
     name: nexus_backups
+  caddy_data:
+    name: nexus_caddy_data
+  caddy_config:
+    name: nexus_caddy_config
 
 # ───────────────────────────────────────────────────────────────
 # NETWORKS — Segmentación
@@ -167,3 +212,12 @@ networks:
   nexus_public:
     name: nexus_public
     driver: bridge
+
+  # Red del proxy HTTPS (https + orchestrator). Subred fija para que el
+  # backend reconozca al proxy por su IP (NEXUS_PROXY_IP).
+  nexus_edge:
+    name: nexus_edge
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${NEXUS_EDGE_SUBNET:-172.29.80.0/24}

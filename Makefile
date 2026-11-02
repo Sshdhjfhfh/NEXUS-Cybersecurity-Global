@@ -2,7 +2,7 @@
 # NEXUS IA v6.0 — Makefile
 # ═══════════════════════════════════════════════════════════════
 
-.PHONY: help build up down restart logs ps shell clean nuke \
+.PHONY: help build up up-https down restart logs ps shell clean nuke \
         test test-short lint fmt vet detect tier
 
 # ───────────────────────────────────────────────────────────────
@@ -14,6 +14,7 @@ help:
 	@echo "  Stack Docker:"
 	@echo "    make build       - Construye imagen Docker"
 	@echo "    make up          - Arranca el stack (docker compose up -d)"
+	@echo "    make up-https    - Arranca el stack publicado con HTTPS (NEXUS_DOMAIN)"
 	@echo "    make down        - Para el stack"
 	@echo "    make restart     - Reinicia el stack"
 	@echo "    make logs        - Logs en vivo"
@@ -50,9 +51,17 @@ up:
 	@echo "   Frontend + API: http://localhost:8787"
 	@echo "   Logs: make logs"
 
+up-https:
+	@test -n "$$(grep -E '^NEXUS_DOMAIN=.+' .env 2>/dev/null)" || { echo "✖ Define NEXUS_DOMAIN en .env"; exit 1; }
+	@echo "▶ Arrancando Nexus IA con HTTPS..."
+	docker compose --profile https up -d
+	@echo ""
+	@echo "✅ Nexus IA publicado en https://$$(grep -E '^NEXUS_DOMAIN=' .env | cut -d= -f2-)"
+	@echo "   Logs del certificado: docker compose logs https"
+
 down:
 	@echo "▶ Parando Nexus IA..."
-	docker compose down
+	docker compose --profile https down
 
 restart: down up
 

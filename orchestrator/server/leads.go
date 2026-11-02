@@ -8,9 +8,11 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nexus-ia/nexus/db"
@@ -47,16 +49,21 @@ type leadRequest struct {
 
 // clientIP is the caller's address for rate limiting, brute-force lockout, the
 // audit trail and the org network allowlist. X-Forwarded-For is only honored
-// when the direct peer is loopback (the local Next.js proxy), and then read from
-// the right: each proxy appends the address it received the request from, so
-// everything left of the last non-loopback hop was written by the client and
-// could be forged to dodge a per-IP limit, an allowlist or the audit trail.
+// when the direct peer is a trusted proxy (loopback — the local Next.js proxy —
+// or NEXUS_TRUSTED_PROXIES, e.g. the HTTPS proxy's Docker network), and then
+// read from the right: each proxy appends the address it received the request
+// from, so everything left of the last untrusted hop was written by the client
+// and could be forged to dodge a per-IP limit, an allowlist or the audit trail.
 func clientIP(r *http.Request) string {
+	return clientIPWith(r, trustedProxies())
+}
+
+func clientIPWith(r *http.Request, trusted []*net.IPNet) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		host = r.RemoteAddr
 	}
-	if ip := net.ParseIP(host); ip == nil || !ip.IsLoopback() {
+	if ip := net.ParseIP(host); ip == nil || !isTrustedProxy(ip, trusted) {
 		return host
 	}
 	xff := r.Header.Get("X-Forwarded-For")
@@ -70,11 +77,64 @@ func clientIP(r *http.Request) string {
 		if ip == nil {
 			return hop // never skip past a hop we cannot read into client-written ones
 		}
-		if !ip.IsLoopback() {
+		if !isTrustedProxy(ip, trusted) {
 			return ip.String()
 		}
 	}
 	return host
+}
+
+var (
+	trustedProxyOnce sync.Once
+	trustedProxyNets []*net.IPNet
+)
+
+// trustedProxies are the reverse proxies besides loopback allowed to report
+// the client address: NEXUS_TRUSTED_PROXIES, comma-separated CIDRs or single
+// addresses, read once at first use.
+func trustedProxies() []*net.IPNet {
+	trustedProxyOnce.Do(func() {
+		trustedProxyNets = parseTrustedProxies(os.Getenv("NEXUS_TRUSTED_PROXIES"))
+	})
+	return trustedProxyNets
+}
+
+func parseTrustedProxies(v string) []*net.IPNet {
+	var out []*net.IPNet
+	for _, item := range strings.Split(v, ",") {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		if !strings.Contains(item, "/") {
+			if ip := net.ParseIP(item); ip != nil {
+				bits := 128
+				if ip.To4() != nil {
+					bits = 32
+				}
+				item += "/" + strconv.Itoa(bits)
+			}
+		}
+		_, n, err := net.ParseCIDR(item)
+		if err != nil {
+			log.Printf("[config] NEXUS_TRUSTED_PROXIES: ignoring invalid entry %q", item)
+			continue
+		}
+		out = append(out, n)
+	}
+	return out
+}
+
+func isTrustedProxy(ip net.IP, trusted []*net.IPNet) bool {
+	if ip.IsLoopback() {
+		return true
+	}
+	for _, n := range trusted {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 func trimLimit(s string, max int) string {

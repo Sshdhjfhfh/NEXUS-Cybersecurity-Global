@@ -19,6 +19,7 @@ import (
 
 	"github.com/nexus-ia/nexus/agents/red"
 	"github.com/nexus-ia/nexus/db"
+	"github.com/nexus-ia/nexus/ethical_boundary/guard"
 	"github.com/nexus-ia/nexus/observability/llmrec"
 	"github.com/nexus-ia/nexus/core/llm"
 	"github.com/nexus-ia/nexus/core/transcript"
@@ -600,6 +601,13 @@ func (s *Server) agentsForTask(t *Task) *taskAgentBundle {
 	main.SetProxy(s.m.ProxyAddr(), s.m.ProxyCACert())
 	main.SetWebSearch(s.webSearchFor("mainagent"))
 	main.SetSteerWork(s.engine.SteerWork) // steer_work：人对运行中 work 实时纠偏
+	// Planner and main agent run no intercept rules, but a locked client scope
+	// binds them too: both have Bash and WebFetch.
+	if id, err := strconv.ParseInt(t.ID, 10, 64); err == nil {
+		scopeHooks := guard.ScopeOnly(s.m.ScopeSource(id)).Hooks()
+		pl.SetHooks(scopeHooks)
+		main.SetHooks(scopeHooks)
+	}
 	bundle := &taskAgentBundle{
 		runtime: goalRuntime, plannerRuntime: plannerRuntime, workerRuntime: workerRuntime,
 		mainRuntime: mainRuntime, pl: pl, wk: wk, main: main,

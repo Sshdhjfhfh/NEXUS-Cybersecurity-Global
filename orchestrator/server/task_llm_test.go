@@ -648,7 +648,7 @@ func TestProfileDeleteRestoresQuotaBlockedIntentWhenFallbackAvailable(t *testing
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) - skipping", err)
 	}
-	defer m.Close()
+	t.Cleanup(func() { m.Close() }) // runs after the row cleanups registered below (LIFO)
 
 	profileID, err := m.pg.SaveProfile(&db.LLMProfile{
 		Name:   fmt.Sprintf("delete-quota-fallback-%d", time.Now().UnixNano()),

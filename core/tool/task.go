@@ -132,20 +132,18 @@ type SpawnSpec struct {
 	Description string
 	Kind        TaskKind
 	WorkingDir  string
-	// Env holds extra "KEY=VALUE" entries layered onto the process environment for
-	// this command (see ToolContext.Env). Empty = inherit unchanged.
+	// Env holds extra "KEY=VALUE" entries layered onto the scrubbed process
+	// environment for this command (see ToolContext.Env and ChildEnv).
 	Env []string
 }
 
-// withEnv returns the current process environment extended with extra
-// "KEY=VALUE" entries, or nil when extra is empty (child inherits unchanged).
+// withEnv returns the environment for an agent-spawned command: the process
+// environment without orchestrator secrets (see ChildEnv) extended with extra
+// "KEY=VALUE" entries. It is never nil, so children never inherit unfiltered.
 // os/exec dedups by key — case-insensitive on Windows, keeping the LAST
 // occurrence — so the appended entries override inherited ones on every OS.
 func withEnv(extra []string) []string {
-	if len(extra) == 0 {
-		return nil
-	}
-	return append(os.Environ(), extra...)
+	return ChildEnv(extra)
 }
 
 // Manager owns the background tasks of one Session.
@@ -234,9 +232,7 @@ func (m *Manager) Spawn(spec SpawnSpec) (*Task, error) {
 	shell, flags := shellCmd()
 	cmd := exec.CommandContext(m.rootCtx, shell, append(flags, spec.Command)...)
 	cmd.Dir = spec.WorkingDir
-	if env := withEnv(spec.Env); env != nil {
-		cmd.Env = env
-	}
+	cmd.Env = withEnv(spec.Env)
 	cmd.Stdout = f
 	cmd.Stderr = f
 	setDetached(cmd)

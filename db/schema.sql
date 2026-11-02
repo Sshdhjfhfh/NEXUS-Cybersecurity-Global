@@ -758,6 +758,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_task_scope_v2 ON task_scope(
     task_id, kind, COALESCE(domain,''), COALESCE(net::text,''), COALESCE(company_id,0), COALESCE(value,''));
 CREATE INDEX IF NOT EXISTS idx_ts_domain  ON task_scope(domain) WHERE kind IN ('root_domain','subdomain');
 CREATE INDEX IF NOT EXISTS idx_ts_net     ON task_scope USING GIST(net inet_ops) WHERE kind IN ('ip','cidr');
+
+-- Locked scope (client engagements): only operator-seeded (source='manual') rows
+-- authorize targets, agents cannot widen the scope, and network-capable tool calls
+-- naming any other host are blocked (ethical_boundary/scope).
+CREATE TABLE IF NOT EXISTS task_scope_locks (
+    task_id    BIGINT PRIMARY KEY REFERENCES tasks(id) ON DELETE CASCADE,
+    reason     TEXT NOT NULL DEFAULT '',
+    locked_by  TEXT NOT NULL DEFAULT '',
+    locked_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 CREATE INDEX IF NOT EXISTS idx_ts_company ON task_scope(company_id) WHERE kind = 'company';
 
 -- =====================================================================

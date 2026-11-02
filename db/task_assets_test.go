@@ -16,7 +16,7 @@ func TestRegisterTaskAssetScopesCreatesAssetsAndPersistsTextScope(t *testing.T) 
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) - skipping", err)
 	}
-	defer d.Close()
+	t.Cleanup(func() { d.Close() }) // runs after the row cleanups registered below (LIFO)
 
 	task, err := d.CreateTask("manual scope registration", "goal", nil, 0, 0)
 	if err != nil {
@@ -95,7 +95,7 @@ func TestTaskAssetAttachDetachPreservesGlobalAssetAndAnchors(t *testing.T) {
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) - skipping", err)
 	}
-	defer d.Close()
+	t.Cleanup(func() { d.Close() }) // runs after the row cleanups registered below (LIFO)
 
 	task, err := d.CreateTask("asset editing", "goal", nil, 0, 0)
 	if err != nil {
@@ -148,7 +148,7 @@ func TestIntentAssetsIncludesDirectSourceProvenance(t *testing.T) {
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) - skipping", err)
 	}
-	defer d.Close()
+	t.Cleanup(func() { d.Close() }) // runs after the row cleanups registered below (LIFO)
 
 	source, err := d.CreateTask("source assets", "goal", nil, 0, 0)
 	if err != nil {

@@ -851,6 +851,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/tasks/{id}/scope", s.taskScopeList)
 	mux.HandleFunc("POST /api/tasks/{id}/scope", s.taskScopeAdd)
 	mux.HandleFunc("DELETE /api/tasks/{id}/scope/{sid}", s.taskScopeDelete)
+	mux.HandleFunc("PUT /api/tasks/{id}/scope/lock", s.taskScopeLock)
+	mux.HandleFunc("DELETE /api/tasks/{id}/scope/lock", s.taskScopeLock)
 	mux.HandleFunc("GET /api/tasks/{id}/goals", s.listGoals)                       // 目标管理:列出本任务全部目标
 	mux.HandleFunc("POST /api/tasks/{id}/goals", s.addGoal)                        // 目标管理:人工新增目标(复活任务)
 	mux.HandleFunc("PATCH /api/tasks/{id}/goals/{gid}", s.editGoal)                // 目标管理:修改目标(复活任务)
@@ -1990,7 +1992,50 @@ func (s *Server) taskScopeList(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, err.Error())
 		return
 	}
-	writeJSON(w, 200, map[string]any{"scope": rows})
+	locked, err := s.m.pg.TaskScopeLocked(taskID)
+	if err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]any{"scope": rows, "locked": locked})
+}
+
+// taskScopeLock locks (PUT) or unlocks (DELETE) a task's scope. While locked only
+// operator rows authorize targets and agent tool calls naming other hosts are
+// blocked (ethical_boundary/scope). Unlocking a client engagement needs a reason.
+func (s *Server) taskScopeLock(w http.ResponseWriter, r *http.Request) {
+	t, ok := s.m.Task(r.PathValue("id"))
+	if !ok {
+		writeErr(w, 404, "task not found")
+		return
+	}
+	taskID, _ := strconv.ParseInt(t.ID, 10, 64)
+	var body struct {
+		Reason string `json:"reason"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	body.Reason = strings.TrimSpace(body.Reason)
+	if r.Method == http.MethodDelete {
+		if len(body.Reason) < 10 {
+			writeErr(w, 400, "indica el motivo para desbloquear el alcance (mínimo 10 caracteres)")
+			return
+		}
+		was, err := s.m.pg.UnlockTaskScope(taskID)
+		if err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+		if was {
+			log.Printf("[scope] task %d scope UNLOCKED by operator: %s", taskID, body.Reason)
+		}
+		writeJSON(w, 200, map[string]any{"locked": false})
+		return
+	}
+	if err := s.m.pg.LockTaskScope(taskID, body.Reason, "operator"); err != nil {
+		writeErr(w, 500, err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]any{"locked": true})
 }
 
 func (s *Server) taskScopeAdd(w http.ResponseWriter, r *http.Request) {

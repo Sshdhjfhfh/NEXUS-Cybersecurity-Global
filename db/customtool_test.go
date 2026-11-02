@@ -16,7 +16,7 @@ func TestCustomToolCRUD(t *testing.T) {
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) — skipping", err)
 	}
-	defer d.Close()
+	t.Cleanup(func() { d.Close() }) // runs after the row cleanups registered below (LIFO)
 
 	key := "ct_test_tool"
 	_ = d.DeleteCustomTool(key) // clean slate

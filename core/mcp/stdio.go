@@ -7,8 +7,9 @@ package mcp
 import (
 	"context"
 	"io"
-	"os"
 	"os/exec"
+
+	"github.com/nexus-ia/nexus/core/tool"
 )
 
 // stdioCloser shuts down a spawned MCP server process and its pipes.
@@ -32,15 +33,15 @@ func (s *stdioCloser) Close() error {
 // and returns a connected Client (FR-10.1). Call Close to terminate it.
 //
 // env holds extra environment variables (e.g. API tokens an MCP server needs)
-// applied on top of the parent process environment; pass nil for none.
+// applied on top of the parent process environment minus orchestrator secrets
+// (tool.ChildEnv); pass nil for none. Secrets a server needs must be listed here.
 func NewStdioClient(ctx context.Context, server, command string, env map[string]string, args ...string) (*Client, error) {
 	cmd := exec.Command(command, args...)
-	if len(env) > 0 {
-		cmd.Env = os.Environ()
-		for k, v := range env {
-			cmd.Env = append(cmd.Env, k+"="+v)
-		}
+	extra := make([]string, 0, len(env))
+	for k, v := range env {
+		extra = append(extra, k+"="+v)
 	}
+	cmd.Env = tool.ChildEnv(extra)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, err

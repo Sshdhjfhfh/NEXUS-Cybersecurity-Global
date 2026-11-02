@@ -14,7 +14,7 @@ func TestInheritedActivityReadsRequireTerminalIntent(t *testing.T) {
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) - skipping", err)
 	}
-	defer d.Close()
+	t.Cleanup(func() { d.Close() }) // runs after the row cleanups registered below (LIFO)
 
 	expID, err := d.CreateExploration("source activity boundary", "source activity boundary")
 	if err != nil {
@@ -97,7 +97,7 @@ func TestExplorationDirectSourceReadView(t *testing.T) {
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) - skipping", err)
 	}
-	defer d.Close()
+	t.Cleanup(func() { d.Close() }) // runs after the row cleanups registered below (LIFO)
 
 	grand, err := d.CreateTask("grand source", "grand goal", nil, 0, 0)
 	if err != nil {
@@ -319,7 +319,7 @@ func TestTaskAssetContextUsesDirectSourceScopeAndAnchors(t *testing.T) {
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) - skipping", err)
 	}
-	defer d.Close()
+	t.Cleanup(func() { d.Close() }) // runs after the row cleanups registered below (LIFO)
 
 	grand, err := d.CreateTask("grand assets", "grand goal", nil, 0, 0)
 	if err != nil {

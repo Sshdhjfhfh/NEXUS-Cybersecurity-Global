@@ -24,6 +24,7 @@ import (
 	"github.com/nexus-ia/nexus/lab/enrich"
 	"github.com/nexus-ia/nexus/ethical_boundary/guard"
 	"github.com/nexus-ia/nexus/ethical_boundary/intercept"
+	"github.com/nexus-ia/nexus/ethical_boundary/scope"
 	"github.com/nexus-ia/nexus/lab/proxy"
 	actool "github.com/nexus-ia/nexus/core/tool"
 )
@@ -833,6 +834,22 @@ func unixNanoOrZero(t *time.Time) int64 {
 	return t.UnixNano()
 }
 
+// ScopeSource feeds a task's guards its locked scope, read fresh on every
+// inspected tool call so locking or editing the scope applies immediately.
+func (m *Manager) ScopeSource(taskID int64) guard.ScopeSource {
+	return func() (bool, scope.Policy, error) {
+		locked, rows, err := m.pg.LockedTaskScope(taskID)
+		if err != nil || !locked {
+			return locked, scope.Policy{}, err
+		}
+		rules := make([]scope.Rule, 0, len(rows))
+		for _, r := range rows {
+			rules = append(rules, scope.Rule{Kind: r.Kind, Domain: r.Domain, Net: r.Net})
+		}
+		return true, scope.New(rules), nil
+	}
+}
+
 func taskFromPG(pt *pgdb.Task, store *pgdb.ExplorationStore, ic *intercept.Interceptor) *Task {
 	return &Task{
 		ID: strconv.FormatInt(pt.ID, 10), ExpID: pt.ExplorationID,
@@ -903,6 +920,7 @@ func (m *Manager) CreateTaskWithOptions(description, goal string, opts pgdb.Task
 		return nil, err
 	}
 	t := taskFromPG(pt, m.pg.Exploration(pt.ExplorationID), m.interceptor)
+	t.Guard.SetScope(m.ScopeSource(pt.ID))
 	m.mu.Lock()
 	m.tasks[t.ID] = t
 	m.active = t.ID
@@ -1102,6 +1120,7 @@ func (m *Manager) LoadExisting() []*Task {
 			continue
 		}
 		t := taskFromPG(pt, m.pg.Exploration(pt.ExplorationID), m.interceptor)
+		t.Guard.SetScope(m.ScopeSource(pt.ID))
 		m.tasks[id] = t
 		loaded = append(loaded, t)
 	}

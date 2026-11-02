@@ -6,6 +6,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -80,9 +81,12 @@ func (s *AssetStore) upsertTaskScopeResult(ts TaskScope) (bool, error) {
 	if src == "" {
 		src = "auto"
 	}
+	// A locked scope only takes operator rows; the check is part of the INSERT so
+	// a lock taken concurrently cannot be raced.
 	query := `
 INSERT INTO task_scope(task_id, kind, company_id, domain, net, value, source, reason)
-VALUES ($1,$2,$3,$4,$5::cidr,$6,$7,NULLIF($8,''))
+SELECT $1::bigint,$2::text,$3::bigint,$4::text,$5::cidr,$6::text,$7::text,NULLIF($8::text,'')
+WHERE $7::text='manual' OR NOT EXISTS (SELECT 1 FROM task_scope_locks WHERE task_id=$1::bigint)
 ON CONFLICT DO NOTHING`
 	var (
 		result sql.Result
@@ -155,6 +159,13 @@ func (s *AssetStore) AddAgentScope(taskID int64, kind, value, reason, source str
 	if taskID <= 0 {
 		return ts, fmt.Errorf("需要 task_id")
 	}
+	if source != "manual" {
+		if locked, err := s.db.TaskScopeLocked(taskID); err != nil {
+			return ts, err
+		} else if locked {
+			return ts, ErrScopeLocked
+		}
+	}
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return ts, fmt.Errorf("value 不能为空")
@@ -222,6 +233,61 @@ func (s *AssetStore) AddAgentScope(taskID int64, kind, value, reason, source str
 		return ts, err
 	}
 	return ts, nil
+}
+
+// ErrScopeLocked is returned when anything but the operator tries to widen a
+// locked task scope.
+var ErrScopeLocked = errors.New("el alcance de esta tarea está bloqueado (encargo de cliente): solo el operador puede ampliarlo")
+
+// LockTaskScope locks a task's scope: from now on only operator-seeded
+// (source='manual') rows authorize targets and agents cannot add scope.
+// Locking an already-locked task keeps the original record.
+func (d *DB) LockTaskScope(taskID int64, reason, by string) error {
+	_, err := d.Exec(`INSERT INTO task_scope_locks(task_id, reason, locked_by) VALUES ($1,$2,$3)
+ON CONFLICT (task_id) DO NOTHING`, taskID, reason, by)
+	return err
+}
+
+// UnlockTaskScope removes the lock. Reports whether the task was locked.
+func (d *DB) UnlockTaskScope(taskID int64) (bool, error) {
+	res, err := d.Exec(`DELETE FROM task_scope_locks WHERE task_id=$1`, taskID)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
+}
+
+// TaskScopeLocked reports whether the task's scope is locked.
+func (d *DB) TaskScopeLocked(taskID int64) (bool, error) {
+	var locked bool
+	err := d.QueryRow(`SELECT EXISTS(SELECT 1 FROM task_scope_locks WHERE task_id=$1)`, taskID).Scan(&locked)
+	return locked, err
+}
+
+// LockedTaskScope returns whether the scope is locked and, if so, the operator
+// rows that authorize targets. Rows added by agents or auto-scoping before the
+// lock do not count.
+func (d *DB) LockedTaskScope(taskID int64) (bool, []TaskScope, error) {
+	locked, err := d.TaskScopeLocked(taskID)
+	if err != nil || !locked {
+		return locked, nil, err
+	}
+	rows, err := d.Query(`SELECT kind, COALESCE(domain,''), COALESCE(net::text,'') FROM task_scope
+WHERE task_id=$1 AND source='manual' AND kind IN ('root_domain','subdomain','ip','cidr')`, taskID)
+	if err != nil {
+		return true, nil, err
+	}
+	defer rows.Close()
+	var out []TaskScope
+	for rows.Next() {
+		ts := TaskScope{TaskID: taskID, Source: "manual"}
+		if err := rows.Scan(&ts.Kind, &ts.Domain, &ts.Net); err != nil {
+			return true, nil, err
+		}
+		out = append(out, ts)
+	}
+	return true, out, rows.Err()
 }
 
 // DeleteTaskScope removes a single scope row by id, scoped to the given task.

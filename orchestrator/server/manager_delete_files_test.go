@@ -22,7 +22,7 @@ func TestSeedAssociatesTargetAssetWithTask(t *testing.T) {
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) - skipping", err)
 	}
-	defer m.Close()
+	t.Cleanup(func() { m.Close() }) // runs after the row cleanups registered below (LIFO)
 	task, err := m.CreateTask("seed ownership", "seed ownership", nil, 0, 0)
 	if err != nil {
 		t.Fatal(err)

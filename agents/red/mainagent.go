@@ -9,6 +9,8 @@ import (
 	"fmt"
 
 	"github.com/nexus-ia/nexus/core/agent"
+	"github.com/nexus-ia/nexus/core/harness"
+	"github.com/nexus-ia/nexus/core/hook"
 	"github.com/nexus-ia/nexus/core/llm"
 	"github.com/nexus-ia/nexus/core/permission"
 	actool "github.com/nexus-ia/nexus/core/tool"
@@ -37,6 +39,14 @@ type MainAgent struct {
 	nonStreamingFn  func() bool                            // resolver: use non-streaming (Complete) path? (nil = streaming)
 	noaEnabledFn    func() bool                            // resolver: use experimental noa compaction? (nil = off)
 	maxTokensFn     func() int                             // resolver: per-reply output cap (nil/0 = send no cap)
+	hooks           harness.HookRunner                     // tool-call hooks (task scope gate); nil = none
+}
+
+// SetHooks installs tool-call hooks for every main-agent run (the task scope gate).
+func (m *MainAgent) SetHooks(h *hook.Registry) {
+	if h != nil { // typed-nil guard: a nil *Registry inside the interface would panic
+		m.hooks = h
+	}
 }
 
 // SetNoaEnabled wires a resolver deciding whether runs use the experimental noa
@@ -168,6 +178,9 @@ func (m *MainAgent) Chat(ctx context.Context, taskID int64, mainSeg int, as *db.
 		Settlement:   wrapupSettlement("mainagent", nil),
 		NonStreaming: m.nonStreaming(), // 该 profile 选非流式时走 Provider.Complete
 		MaxTokens:    m.maxTokens(),    // 0 = 不发上限,由服务端默认值决定
+	}
+	if m.hooks != nil {
+		opts.Hooks = m.hooks
 	}
 	if m.tx != nil { // persist raw human↔AI conversation; one accumulating file per segment
 		opts.Transcript = m.tx

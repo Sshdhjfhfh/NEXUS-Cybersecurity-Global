@@ -15,7 +15,7 @@ func TestConversationPinOrderingAndPatch(t *testing.T) {
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) — skipping", err)
 	}
-	defer d.Close()
+	t.Cleanup(func() { d.Close() }) // runs after the row cleanups registered below (LIFO)
 
 	suffix := time.Now().UnixNano()
 	first, err := d.CreateConversation("mainagent", fmt.Sprintf("pin-first-%d", suffix), nil)

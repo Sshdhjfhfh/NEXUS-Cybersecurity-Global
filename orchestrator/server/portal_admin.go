@@ -161,6 +161,14 @@ func (s *Server) adminPromoteRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	taskID, _ := strconv.ParseInt(t.ID, 10, 64)
 
+	// Lock first, before any scope exists: from here on only these operator rows
+	// authorize targets, the agents cannot widen them, and tool calls naming any
+	// other host are blocked. An empty locked scope denies every external host.
+	if err := pg.LockTaskScope(taskID, "portal request #"+strconv.FormatInt(reqID, 10), "operator"); err != nil {
+		writeErr(w, 500, "tarea creada pero no se pudo bloquear su alcance; no la inicies")
+		return
+	}
+
 	// Seed the engine scope with exactly the authorized targets (see
 	// engineScopeForTarget). Only an audited override falls back to parsing the
 	// client's free text, and then only as exact hosts — never whole root domains.

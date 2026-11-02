@@ -82,8 +82,8 @@ Implementados en commits previos y cubiertos por la batería E2E (591/591):
 |---|---|---|---|---|
 | R1 | Licencia AGPL en un SaaS comercial | Legal, bloquea la venta | P0 (decisión) | — |
 | R2 | El módulo `phantom` (onion/garlic routing, mixnet, ofuscación, esteganografía, tráfico de cobertura) está en el repositorio | Para un proveedor de gobiernos, poseer herramientas de evasión y anonimato es un riesgo reputacional y de cumplimiento. Hoy no se compila en el producto | P1 (decisión) | 1 |
-| R3 | No se ha probado de extremo a extremo que el motor RED no toque objetivos fuera de alcance | Ataque no autorizado contra terceros | P1 | 1–2 (prueba negativa en el Cyber Range) |
-| R4 | `ethical_boundary` (guard e intercept) tiene ~34 % de cobertura | Un control de seguridad con poca verificación | P1 | 1 |
+| R3 | No se ha probado de extremo a extremo que el motor RED no toque objetivos fuera de alcance. Mitigado en parte por R12 | Ataque no autorizado contra terceros | P1 | 1–2 (prueba negativa en el Cyber Range) |
+| R4 | ~~`ethical_boundary` (guard e intercept) tiene ~34 % de cobertura~~. **Cerrado en la Fase 1:** guard 71,0 %, intercept 62,3 %, scope 96,9 % | Un control de seguridad con poca verificación | P1 | 1 ✅ |
 | R5 | Deadlock entre el esquema y el tráfico (F1 en current-state) | Errores 5xx en despliegues o reinicios | P1 | 1 |
 | R6 | Sin backups cifrados off-site ni HA | Pérdida de datos o indisponibilidad | P1 | 7 |
 | R7 | Sin pentest externo independiente | Vulnerabilidades no detectadas | P1 | 7–8 |
@@ -91,8 +91,24 @@ Implementados en commits previos y cubiertos por la batería E2E (591/591):
 | R9 | Errores de accesibilidad (Biome a11y) | Requisitos WCAG en compras públicas | P2 | 6 |
 | R10 | Sin emergency stop para el cliente ni política de retención y destrucción de datos | Contractual y normativo | P2 | 5/7 |
 | R11 | Sin modo de "IA solo local" por organización (soberanía de datos) | Requisito de gobiernos | P2 | 5 |
+| R12 | El alcance de la tarea (`task_scope`) no se aplicaba a las llamadas de herramientas. Los agentes podían ampliarlo (`add_task_scope`, auto-alcance) y el planner y el agente principal corrían sin hooks. **Mitigado en la Fase 1** con el bloqueo del alcance en encargos de cliente y la puerta de alcance en `PreToolUse`. Sigue abierta la evasión mediante scripts o codificación | Ataque fuera de alcance | P0, mitigado (defensa en profundidad) | 1 |
+| R13 | **Bash sin sandbox.** Corre en el contenedor del orquestador como `node`, con red hacia la BD y con `/proc/<ppid>/environ` y `/app/keys/jwt.key` legibles. Desde la Fase 1 ya no hereda las variables con secretos, pero eso no es una frontera | Robo de credenciales de BD, de SMTP y de la clave JWT mediante prompt injection desde un objetivo hostil | **P0** (bloquea los encargos reales) | 1–7 (tool-runner aislado) |
+| R14 | El proxy de captura (127.0.0.1:8788) es global, no por tarea | La evidencia de encargos simultáneos se mezcla | P2 | 2 |
 
-## 5. Lo que esta auditoría no cubre
+## 5. Hallazgos de la Fase 1 (2026-11-02)
+
+Durante la estabilización se revisó cómo llegan a la red las órdenes de los agentes.
+
+1. **El alcance no era un control.** `task_scope` solo alimentaba el prompt y la cobertura. Ninguna llamada de herramienta lo consultaba, y el propio agente podía añadirse objetivos.
+   - **Ahora:** los encargos de cliente bloquean el alcance, y el hook `PreToolUse` rechaza los destinos que quedan fuera en el worker, el planner y el agente principal.
+2. **El planner y el agente principal no tenían hooks:** corrían en modo `Bypass` con Bash y WebFetch.
+   - **Ahora:** llevan como mínimo la puerta de alcance.
+3. **No hay sandbox de herramientas (R13).**
+   - **Ya resuelto:** quitar los secretos del entorno evita las fugas triviales (`env`, `printenv`).
+   - **Sigue abierto:** un comando todavía puede leer el entorno del proceso padre, las claves montadas y la BD.
+   - **Solución:** un tool-runner separado. Mientras no exista, **no se deben ejecutar encargos contra objetivos de clientes reales**.
+
+## 6. Lo que esta auditoría no cubre
 
 - Revisión manual línea por línea.
 - Fuzzing del API.

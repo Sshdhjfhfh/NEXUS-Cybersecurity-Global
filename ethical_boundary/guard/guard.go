@@ -15,11 +15,13 @@ import (
 	"context"
 	"encoding/json"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/nexus-ia/nexus/ethical_boundary/intercept"
 	"github.com/nexus-ia/nexus/core/hook"
+	"github.com/nexus-ia/nexus/ethical_boundary/intercept"
+	"github.com/nexus-ia/nexus/ethical_boundary/scope"
 )
 
 // AuditEntry records one gated tool call.
@@ -38,6 +40,28 @@ type Guard struct {
 	attrib      map[string]int // failure attribution counts (Observer / G5)
 	reg         *hook.Registry
 	interceptor *intercept.Interceptor // optional; nil disables user-configured rules
+	scope       ScopeSource            // optional; nil = no authorized-target enforcement
+}
+
+// ScopeSource reports whether the current task's scope is locked and, if so, its
+// authorized targets. It is consulted on every inspected tool call so a lock or
+// a scope edit takes effect immediately.
+type ScopeSource func() (locked bool, policy scope.Policy, err error)
+
+// SetScope enables authorized-target enforcement for the task this guard serves.
+func (g *Guard) SetScope(src ScopeSource) {
+	g.mu.Lock()
+	g.scope = src
+	g.mu.Unlock()
+}
+
+// ScopeOnly returns a guard that enforces only the task scope — no user intercept
+// rules. Used for the planner and main agent, whose tool calls were never routed
+// through the intercept rules but must not reach out-of-scope hosts either.
+func ScopeOnly(src ScopeSource) *Guard {
+	g := newGuard(nil)
+	g.scope = src
+	return g
 }
 
 // New creates a Guard without user-configured intercept rules (used for pentest
@@ -78,8 +102,44 @@ func (g *Guard) preToolUse(ctx context.Context, ev hook.Event) hook.Result {
 		_ = json.Unmarshal(ev.Input, &in)
 		cmd = in.Text
 	}
+	if res, blocked := g.applyScope(ctx, ev, cmd); blocked {
+		return res
+	}
 	g.record(ev.ToolName, "allow", "", cmd)
 	return g.applyIntercept(ctx, ev)
+}
+
+// applyScope blocks a network-capable tool call that names a host outside a
+// locked task scope. It fails closed: if the scope cannot be read, inspected
+// tools are blocked rather than allowed.
+func (g *Guard) applyScope(ctx context.Context, ev hook.Event, cmd string) (hook.Result, bool) {
+	g.mu.Lock()
+	src := g.scope
+	g.mu.Unlock()
+	if src == nil || !scope.Inspected(ev.ToolName) {
+		return hook.Result{}, false
+	}
+	locked, policy, err := src()
+	if err != nil {
+		return g.scopeBlock(ctx, ev, cmd, "no se pudo verificar el alcance autorizado de la tarea"), true
+	}
+	if !locked {
+		return hook.Result{}, false
+	}
+	bad := policy.Violations(ev.ToolName, ev.Input)
+	if len(bad) == 0 {
+		return hook.Result{}, false
+	}
+	return g.scopeBlock(ctx, ev, cmd, "destino fuera del alcance autorizado: "+strings.Join(bad, ", ")+
+		". Solo están autorizados los objetivos verificados de este encargo; usa sus nombres de host exactos"), true
+}
+
+func (g *Guard) scopeBlock(ctx context.Context, ev hook.Event, cmd, reason string) hook.Result {
+	if g.interceptor != nil {
+		g.interceptor.Log(ctx, intercept.ConvIDFromContext(ctx),
+			intercept.Decision{Action: "deny", RuleName: "scope", Message: reason}, ev.ToolName, ev.Input, "denied")
+	}
+	return g.block(ev.ToolName, systemBlockMessage(reason), cmd)
 }
 
 // applyIntercept evaluates user-configured intercept rules against the tool call.

@@ -35,7 +35,7 @@ func TestWireTools(t *testing.T) {
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) — skipping", err)
 	}
-	defer pg.Close()
+	t.Cleanup(func() { pg.Close() }) // runs after the row cleanups registered below (LIFO)
 
 	wireTools(pg, nil) // nil domainReg: test only covers filter/decoration, not injection
 	t.Cleanup(func() { agent.ToolResolve = nil })

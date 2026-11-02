@@ -28,7 +28,32 @@ Estado al 2026-11-02: base `d218b3b`. Diagnóstico en
   - Suite Go completa (`-p 4`) 2 veces seguidas: 1.654 aprobados, 0 fallidos, 6 omitidos. E2E 591/591.
   - `go test ./db` en A/B dentro de la misma ventana: 35 s antes, 28–29 s después.
 - [x] **P2** F3: `release_smoke.py` compatible con Python 3.10. `lab/benchmark` 16/16.
-- [ ] **P1** R4: subir la cobertura de `ethical_boundary/{guard,intercept}` con casos negativos.
+- [x] **P1** R4: cobertura de `ethical_boundary` con casos negativos.
+  - `guard` sube de 33,8 % a 71,0 % e `intercept` de 34,0 % a 62,3 %; el nuevo paquete `scope` tiene 96,9 %.
+  - Los tests de `intercept` crean reglas etiquetadas y las borran. Verificado: 0 residuales.
+- [x] **P0** R12: el alcance de un encargo de cliente no se aplicaba a las herramientas y los agentes podían ampliarlo.
+  - **Bloqueo al promover:** al promover una solicitud del portal, la tarea queda con el alcance bloqueado (`task_scope_locks`). Desde ese momento:
+    - `add_task_scope` del agente devuelve `ErrScopeLocked`;
+    - el auto-alcance por activos insertados no hace nada;
+    - solo el operador puede ampliarlo (filas `manual`).
+  - **Endpoints:** `PUT` y `DELETE /api/tasks/{id}/scope/lock`. Desbloquear exige un motivo de al menos 10 caracteres y queda en el log.
+  - **Puerta de alcance en `PreToolUse`:** cubre Bash, shell, WebFetch y MCP en el worker, el planner y el agente principal. El planner y el agente principal antes corrían **sin hooks**. Si la consulta del alcance falla, la llamada se bloquea.
+  - **Tests:** `TestTaskScopeLock`, `TestScopeGuardBlocksOutOfScope`, `TestScopeGuardUnlockedAndFailClosed` y `scope_test.go`.
+  - **Verificación del conjunto de la Fase 1, parte 2:**
+    - Suite Go completa (`go test ./...`), 2 ejecuciones. La 1.ª: 2.042 aprobados, 0 fallidos, 8 omitidos. La 2.ª: 2.040 aprobados y 2 fallidos (los dos tests de cola compartida de abajo). Ahora se cuentan también los subtests, por eso no es comparable con los 1.654 anteriores.
+    - E2E: 597/597 (13 suites). Incluye 6 comprobaciones nuevas en `admin_e2e`: alcance bloqueado al promover, el token del portal no puede desbloquearlo, desbloqueo sin motivo → 400, y desbloqueo y rebloqueo del operador.
+  - **Límite honesto:** la puerta inspecciona el texto de la llamada. No ve hosts construidos dentro de scripts, codificados o sin punto. Es defensa en profundidad, no una frontera de red (ver R13 abajo).
+- [x] **P1** R13 (parcial): los comandos que lanzan los agentes ya no heredan los secretos del orquestador.
+  - **Aplica a:** Bash en primer y segundo plano, shell interactivo, herramientas personalizadas y servidores MCP stdio.
+  - **Se eliminan:** `NEXUS_*`, `ARTEX_*`, `PG*`, `POSTGRES*`, `DATABASE_*`, `SMTP*`, `AWS_*`, `AZURE_*` y cualquier variable que contenga `SECRET`, `PASSWORD`, `TOKEN`, `CREDENTIAL` o `PRIVATE`, o que termine en `_KEY`, `_PASS` o `_DSN`.
+  - **Se conservan** las entradas explícitas: proxy, CA y el `env` declarado de cada MCP.
+  - **Tests:** `TestBashDoesNotInheritSecrets`, `TestSensitiveEnvKey` y `TestChildEnvKeepsExplicitSecrets`.
+- [ ] **P0** R13: ejecutar las herramientas de los agentes en un contenedor separado (tool-runner).
+  - **Requisitos:** sin red hacia la BD, sin secretos montados, sin acceso a `/proc` del orquestador y con la salida limitada a una allowlist derivada del alcance del encargo.
+  - **Hoy:** Bash corre dentro del contenedor del orquestador como usuario `node`. Puede leer `/proc/<ppid>/environ` y `/app/keys` y alcanzar la BD.
+  - **Bloquea los encargos contra clientes reales.**
+- [x] **P2** Higiene de tests: 38 `defer X.Close()` en 17 archivos pasan a `t.Cleanup`, registrado antes de los borrados de filas. El residuo por ejecución de `db`, `agents/red` y `orchestrator/server` baja a 1 tarea.
+- [ ] **P2** Tests que comparten colas globales con el backend de desarrollo: `TestFindingTrafficArchiveV3RoundTripAndRetry` y `TestNotifyDeepLinkUsesPublicBaseURL` fallaron 1 vez en 2 ejecuciones de la suite completa. Aislados pasan 5/5. Causa probable: otro proceso de la misma BD reclama el trabajo o el evento. Arreglo: filtrar por los IDs del test o usar una BD por ejecución en la CI.
 - [x] **P2** R8: `shadcn` 4.23.0 pasa a devDependencies, `zod` sube a 4.6.7, `next` a 16.4.4, más `npm audit fix`.
   - osv-scanner: de 20 paquetes y 84 avisos a **2 paquetes y 2 avisos medios, ambos de desarrollo** (`deepmerge` y `minimatch`, vía shadcn).
   - `npm audit --omit=dev`: 0.

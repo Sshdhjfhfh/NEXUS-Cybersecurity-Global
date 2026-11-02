@@ -1,6 +1,8 @@
 # Diseño: aislamiento de las herramientas de los agentes (R13)
 
-Estado: **propuesta** (2026-11-02). Bloquea los encargos contra objetivos reales de clientes.
+Estado: **en implementación** (2026-11-02). Pasos 1 y 3 (protocolo/servidor/cliente)
+hechos; faltan el namespace de montaje, el cableado en `cmd/nexus` y el despliegue en
+contenedor. Bloquea los encargos contra objetivos reales de clientes.
 
 ## 1. Problema
 
@@ -54,22 +56,37 @@ Un comando lanzado por un agente:
 
 ### 3.2 Protocolo orquestador → runner
 
-Un servicio pequeño dentro del runner (Go, el mismo módulo) escucha en un socket Unix
-compartido (`nexus_runner_sock`), no en TCP. Así no queda expuesto en ninguna red.
+El paquete `core/runner` implementa un servidor (Go, el mismo módulo) que escucha en un
+socket Unix compartido (`nexus_runner_sock`), no en TCP. Así no queda expuesto en ninguna
+red. Protocolo real implementado (`core/runner/protocol.go`):
 
-- `Exec{task_id, cmd, timeout, env}` devuelve la salida en streaming, el código de
-  salida y señales de cancelación. Cubre Bash y las tareas en segundo plano.
-- `Session{task_id}` abre un PTY persistente para `shell_session.go`.
-- Cada petición lleva un token por tarea, firmado por el orquestador con una clave que
-  **no** está en el runner: el runner solo verifica (clave pública Ed25519). Así un
-  comando no puede pedir ejecutar en otra tarea ni usar el directorio de otra.
-- El runner ejecuta cada comando con `cwd = /work/<task_id>` y un usuario por tarea o,
-  como mínimo, un `setpriv` con `--no-new-privs`.
+- Una petición `Request{Command, Dir, Env, TTY, Rows, Cols}` por conexión, enmarcada
+  (`[tipo][len][payload]`, tope de trama 1 MiB). El cliente transmite stdin y recibe
+  stdout/stderr, el código de salida, y reenvía señales y cambios de tamaño de terminal.
+  En modo TTY el servidor abre un PTY para `shell_session.go`.
+- **Autenticación por `SO_PEERCRED`, no por token firmado.** El servidor lee el uid real
+  del proceso que se conecta por el socket y rechaza cualquiera que no sea el esperado
+  (`PeerUID`). Combinado con los permisos del propio socket, esto evita Ed25519: no hay
+  clave que custodiar ni que pueda filtrarse, y el orquestador y el runner comparten uid.
+- **Confinamiento del directorio en el servidor, no por el cliente.** `resolveRoot`
+  (`server_unix.go`) resuelve enlaces simbólicos con `EvalSymlinks` y solo acepta
+  `tasks/<x>` o `sessions/<x>` bajo `WorkBase`; rechaza fugas por `../` y por symlink. El
+  comando corre con `cwd` = esa raíz y `HOME` = esa raíz. Un comando no puede pedir
+  ejecutar en el directorio de otra tarea aunque construya la ruta en tiempo de ejecución.
+- **Mismo uid + namespace de montaje por comando, no un uid por tarea.** Se descartó un
+  uid por tarea: los archivos que el orquestador crea en el directorio de la tarea (las
+  herramientas Read/Write/Edit trabajan sobre ellos) quedarían ilegibles para otro uid
+  sin ACLs. En su lugar, el hook `Isolate(cmd, root)` monta un namespace por comando que
+  solo expone la raíz de esa tarea en su ruta absoluta; el runner necesita `CAP_SYS_ADMIN`
+  para montar, y los procesos hijo sueltan todas las capacidades.
+- Al desconectarse el cliente, el servidor mata el grupo de procesos (guard contra reuso
+  de pgid tras `wait`), y solo reenvía señales INT/TERM/HUP/QUIT/KILL.
 
-En `core/tool` se introduce una interfaz `Launcher` (`Local` hoy y `Runner` nuevo) que
-reemplaza las tres llamadas a `exec.CommandContext`. `Local` queda solo para desarrollo
-y se rechaza al arrancar cuando `NEXUS_PORTAL_BASE_URL` es `https://` (modo producción,
-igual que el watchdog de operaciones).
+En `core/tool` se introdujo la interfaz `Launcher` (`LocalLauncher` hoy, `runner.Launcher`
+para el runner) que reemplaza las tres llamadas a `exec.CommandContext`. El orquestador se
+convierte en el cliente por el subcomando `runner-exec` (`runner.ClientMain`). `Local`
+queda solo para desarrollo y se rechazará al arrancar cuando `NEXUS_PORTAL_BASE_URL` sea
+`https://` (modo producción, igual que el watchdog de operaciones) — pendiente, paso 6.
 
 ### 3.3 Salida de red limitada al alcance
 
@@ -102,9 +119,15 @@ igual que el watchdog de operaciones).
    (`customtool.go`, `core/mcp/stdio.go`) todavía no; van en el paso 4.
 2. Raíz de trabajo por tarea para Read/Write/Edit/Grep/Glob, con tests negativos de
    recorrido de rutas (`../`, enlaces simbólicos).
-3. Servicio runner, protocolo `Exec`, tokens por tarea y tests de integración en un
-   contenedor real. Prueba negativa: un comando no puede leer `/app/keys`, ni
-   `/proc/<pid>/environ` del orquestador, ni conectar con Postgres.
+3. 🟡 Servicio runner, protocolo y cliente. **Hecho (`core/runner`, commit f281bce):**
+   protocolo enmarcado, servidor con PTY, verificación `SO_PEERCRED`, confinamiento de
+   directorio con rechazo de symlinks, muerte del grupo al desconectar, reenvío de señales
+   y de tamaño de terminal. Tests con `-race -count=3`, cobertura 71,4%. **Pendiente:** el
+   hook `Isolate` (namespace de montaje), el subcomando `runner-serve` en `cmd/nexus`, el
+   cableado de `SetLauncher` cuando `NEXUS_RUNNER_SOCKET` esté definido, y los tests de
+   integración en contenedor (bloqueados por la integración Docker–WSL). Prueba negativa
+   objetivo: un comando no puede leer `/app/keys`, ni `/proc/<pid>/environ` del
+   orquestador, ni conectar con Postgres.
 4. `Session` (PTY) y MCP stdio sobre el runner.
 5. Pasarela de salida y proxy con alcance. Prueba negativa en el Cyber Range (Fase 2):
    un host fuera de alcance no recibe ni un paquete.
@@ -117,6 +140,7 @@ igual que el watchdog de operaciones).
 - **Un runner por tarea o compartido:** un contenedor por tarea aísla mejor, pero
   requiere orquestar contenedores. Hoy eso exigiría montar el socket de Docker en el
   orquestador, y montarlo equivale a root en el host: queda descartado. El runner
-  compartido con usuario y directorio por tarea es el punto de partida.
+  compartido con **mismo uid** y un **namespace de montaje por comando** (ver 3.2) es el
+  punto de partida, ya decidido e implementado en el protocolo.
 - **Coste operativo:** dos contenedores más (runner y egress). Encaja con la Fase 7
   (resiliencia).

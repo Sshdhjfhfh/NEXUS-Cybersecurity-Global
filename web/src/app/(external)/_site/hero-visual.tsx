@@ -1,7 +1,16 @@
 "use client";
 
 // Floating glass dashboards overlaid on the hero's operations-center photo. The
-// numbers are illustrative sample UI (a product mockup), not live operational data.
+// numbers are illustrative sample UI (a product mockup), not live operational data,
+// so every panel carries a visible "sample data" badge and never says "live".
+
+function SampleBadge() {
+  return (
+    <span className="shrink-0 whitespace-nowrap rounded-full border border-amber-300/40 bg-amber-300/10 px-1.5 py-px font-medium text-[9px] text-amber-200 normal-case tracking-normal">
+      Datos de ejemplo
+    </span>
+  );
+}
 
 function Stat({ value, label, delta, up }: { value: string; label: string; delta: string; up: boolean }) {
   return (
@@ -19,14 +28,17 @@ function Stat({ value, label, delta, up }: { value: string; label: string; delta
 
 export function AnalysisPanel() {
   const rows = [
-    { label: "Scanning 12.4M events/s", on: true },
+    { label: "Scanning events", on: true },
     { label: "Analyzing indicators", on: true },
     { label: "Correlating threats", on: true },
     { label: "Generating insights", on: false },
   ];
   return (
     <div className="w-56 rounded-xl border border-cyan-400/20 bg-[#0a1324]/85 p-4 shadow-2xl backdrop-blur-md">
-      <div className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-cyan-300">AI Threat Analysis</div>
+      <div className="mb-3 flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wider text-cyan-300">
+        AI Threat Analysis
+        <SampleBadge />
+      </div>
       <ul className="space-y-2.5">
         {rows.map((r) => (
           <li key={r.label} className="flex items-center gap-2.5 text-[12px] text-slate-200">
@@ -47,8 +59,9 @@ export function OverviewPanel() {
   const bars = [40, 65, 48, 80, 58, 72, 90, 62, 76, 52, 68, 84];
   return (
     <div className="w-72 rounded-xl border border-cyan-400/20 bg-[#0a1324]/85 p-4 shadow-2xl backdrop-blur-md">
-      <div className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-cyan-300">
+      <div className="mb-3 flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wider text-cyan-300">
         Global Threat Overview
+        <SampleBadge />
       </div>
       <div className="grid grid-cols-3 gap-3">
         <Stat value="1,328" label="Threats Detected" delta="12%" up />
@@ -95,7 +108,7 @@ export function OverviewPanel() {
         </ul>
       </div>
       <div className="mt-4">
-        <div className="mb-1.5 text-[10px] uppercase tracking-wide text-slate-400">Live Global Activity</div>
+        <div className="mb-1.5 text-[10px] uppercase tracking-wide text-slate-400">Global Activity</div>
         <div className="flex h-10 items-end gap-1">
           {bars.map((h, i) => (
             <div

@@ -172,7 +172,7 @@ desarrollo con datos de test acumulados. **No es una prueba de carga.**
 
 ## 7. Cobertura Go
 
-Ver [evidence/phase0/coverage.txt](evidence/phase0/coverage.txt).
+Ver [evidence/phase0/go-coverage-by-package.txt](evidence/phase0/go-coverage-by-package.txt).
 
 - **Con 0 %:**
   - `cmd/nexus`, `cmd/nexus-evolve`, `cmd/nexus-scan`

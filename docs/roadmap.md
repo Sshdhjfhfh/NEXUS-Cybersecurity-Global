@@ -79,6 +79,7 @@ Estado al 2026-11-02: base `d218b3b`. Diagnóstico en
   - **Causa (perfil de CPU):** el estado de cada tarea iniciada llamaba a `engine.ReadyFor`, que lee de la BD las vinculaciones LLM de `planner` y `worker`. Eran ~2 consultas por tarea (N+1). Ordenar las comprobaciones no servía, porque los bucles del motor marcan como iniciadas casi todas las tareas.
   - **Arreglo:** `listReadiness` aplica la misma regla que el resolvedor del motor, pero lee cada vinculación una sola vez por petición. Lo usan `GET /api/tasks`, la herramienta `list_tasks` y los grupos de hallazgos. No se añadió una caché global, porque una caché caducada podría enviar datos de un cliente al proveedor LLM equivocado.
   - **Resultado en proceso** (1116 tareas, misma BD): de 301,8 ms a **14,3 ms** por petición.
+  - **Resultado en vivo** (backend de desarrollo recompilado, ~1117 tareas, 100 peticiones, todas 200): p50 de 310 a **33,3 ms**, p95 de 505 a **64,7 ms** y p99 de 120,5 ms. La batería E2E pasó entera con ese binario (597/597).
   - **Test:** `TestListReadinessMatchesEngineAndReadsBindingsOnce` comprueba que el estado coincide con `engine.ReadyFor` en todas las tareas y que cada vinculación se lee una vez.
 - [x] **P2** Guardia en la CI: `TestWebFetchProxyFallback -count=20` (job `go` de `ci.yml`). En local: 20/20 en 0,66 s.
 - [x] **P2** La CI (`ci.yml`) ahora también corre en las ramas `implementation/**`. Antes solo corría en `main` y `fase2-saneamiento`, así que la rama de trabajo no pasaba por ella.

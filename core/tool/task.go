@@ -229,10 +229,7 @@ func (m *Manager) Spawn(spec SpawnSpec) (*Task, error) {
 	if kind == "" {
 		kind = KindBash
 	}
-	shell, flags := shellCmd()
-	cmd := exec.CommandContext(m.rootCtx, shell, append(flags, spec.Command)...)
-	cmd.Dir = spec.WorkingDir
-	cmd.Env = withEnv(spec.Env)
+	cmd := launch(m.rootCtx, spec.Command, spec.WorkingDir, spec.Env)
 	cmd.Stdout = f
 	cmd.Stderr = f
 	setDetached(cmd)

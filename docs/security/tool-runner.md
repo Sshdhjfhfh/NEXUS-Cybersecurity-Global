@@ -95,8 +95,11 @@ igual que el watchdog de operaciones).
 
 ## 4. Plan por pasos (cada uno con pruebas)
 
-1. `Launcher` en `core/tool` con la implementación `Local` actual, sin cambio funcional.
-   Tests existentes en verde.
+1. ✅ `Launcher` en `core/tool` (`launcher.go`), con la implementación `LocalLauncher`
+   actual y sin cambio funcional. Bash en primer y segundo plano y las sesiones de
+   shell ya arrancan por ahí. `TestCommandsGoThroughLauncher` comprueba que las tres
+   rutas pasan por el launcher. Las herramientas personalizadas y los MCP stdio
+   (`customtool.go`, `core/mcp/stdio.go`) todavía no; van en el paso 4.
 2. Raíz de trabajo por tarea para Read/Write/Edit/Grep/Glob, con tests negativos de
    recorrido de rutas (`../`, enlaces simbólicos).
 3. Servicio runner, protocolo `Exec`, tokens por tarea y tests de integración en un

@@ -160,14 +160,12 @@ func runBashSync(ctx context.Context, tc *ToolContext, command string, timeout t
 	cctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	shell, flags := shellCmd()
-	cmd := exec.CommandContext(cctx, shell, append(flags, command)...)
+	var dir string
 	var extra []string
 	if tc != nil {
-		cmd.Dir = tc.WorkingDir
-		extra = tc.Env
+		dir, extra = tc.WorkingDir, tc.Env
 	}
-	cmd.Env = withEnv(extra)
+	cmd := launch(cctx, command, dir, extra)
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf

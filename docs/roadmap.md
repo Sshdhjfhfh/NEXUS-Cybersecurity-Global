@@ -51,9 +51,13 @@ Estado al 2026-11-02: base `d218b3b`. Diagnóstico en
 - [ ] **P0** R13: ejecutar las herramientas de los agentes en un contenedor separado (tool-runner).
   - **Requisitos:** sin red hacia la BD, sin secretos montados, sin acceso a `/proc` del orquestador y con la salida limitada a una allowlist derivada del alcance del encargo.
   - **Hoy:** Bash corre dentro del contenedor del orquestador como usuario `node`. Puede leer `/proc/<ppid>/environ` y `/app/keys` y alcanzar la BD.
+  - **También las herramientas de archivos:** `resolvePath` acepta rutas absolutas sin filtro, así que Read puede abrir `/app/keys/jwt.key` o los datos de otra tarea sin usar Bash.
+  - **Diseño y plan por pasos:** `docs/security/tool-runner.md`. El paso 2 (confinar las herramientas de archivos al directorio de la tarea) no depende del contenedor y va primero.
   - **Bloquea los encargos contra clientes reales.**
 - [x] **P2** Higiene de tests: 38 `defer X.Close()` en 17 archivos pasan a `t.Cleanup`, registrado antes de los borrados de filas. El residuo por ejecución de `db`, `agents/red` y `orchestrator/server` baja a 1 tarea.
-- [ ] **P2** Tests que comparten colas globales con el backend de desarrollo: `TestFindingTrafficArchiveV3RoundTripAndRetry` y `TestNotifyDeepLinkUsesPublicBaseURL` fallaron 1 vez en 2 ejecuciones de la suite completa. Aislados pasan 5/5. Causa probable: otro proceso de la misma BD reclama el trabajo o el evento. Arreglo: filtrar por los IDs del test o usar una BD por ejecución en la CI.
+- [x] **P2** `TestFindingTrafficArchiveV3RoundTripAndRetry` y `TestNotifyDeepLinkUsesPublicBaseURL` fallaban a veces. **Causa:** la suite local corría contra la BD `nexus` del backend de desarrollo, cuyos workers reclamaban los trabajos de los tests: la cola de archivado es global y el notificador reparte los eventos.
+  - No era un fallo del código: la CI ya usa una BD propia (`nexus_test`) y `docs/engineering/IMPLEMENTATION_20261026.md` pide una base dedicada.
+  - **Arreglo:** la suite local también usa `nexus_test` (misma instancia, otra base). Con ella, el par pasó 10/10 y la suite completa dos veces seguidas (2060 tests, 0 fallos). La BD de desarrollo no cambia: 1117 tareas antes y después, así que ya no aparecen tareas de prueba en el panel.
 - [x] **P2** R8: `shadcn` 4.23.0 pasa a devDependencies, `zod` sube a 4.6.7, `next` a 16.4.4, más `npm audit fix`.
   - osv-scanner: de 20 paquetes y 84 avisos a **2 paquetes y 2 avisos medios, ambos de desarrollo** (`deepmerge` y `minimatch`, vía shadcn).
   - `npm audit --omit=dev`: 0.
@@ -83,7 +87,10 @@ Estado al 2026-11-02: base `d218b3b`. Diagnóstico en
   - **Inyección de fórmulas en el CSV.** Las celdas que empiezan con `=`, `+`, `-`, `@`, tabulador o CR se ejecutaban como fórmula al abrir el CSV en Excel. Ahora llevan un apóstrofo delante (`csvText`, recomendación de OWASP).
   - **Nombres inválidos en el ZIP.** El nombre de archivo se cortaba a 120 bytes en mitad de un carácter UTF-8 (títulos en chino o con tildes). Ahora se corta en un límite de carácter.
   - **Sigue abierto:** el campo `Report` (informe detallado en Markdown escrito por el agente) se inserta tal cual, por diseño. Si algún visor lo convierte a HTML, debe sanearlo.
-- [ ] **P1** Los informes que se entregan al cliente (`governance/report`) están **en chino**: títulos, secciones, estados y el nombre de las columnas del CSV, heredados de ARTEX. Hay que localizarlos al español y al inglés antes de entregar a un cliente real. Encaja con la Fase 6 y con el i18n que ya tiene la web.
+- [x] **P2** Las exportaciones del operador (`governance/report`: página de hallazgos en Markdown, ZIP y CSV, y `/api/report`) salían **en chino**, heredado de ARTEX. Los informes PDF que recibe el cliente en el portal (`portal_report_pdf.go`) ya estaban en español e inglés.
+  - Ahora se generan en español por defecto, en inglés o en chino. Elige el parámetro `lang`, que la web envía con el idioma del panel; sin él se usa `Accept-Language`.
+  - Los estados y las severidades también se traducen (por ejemplo "Riesgo aceptado" o "[CRÍTICA]").
+  - Tests: `TestParseLang`, `TestCatalogComplete` (ningún texto vacío en ningún idioma), `TestExportLang` y `TestFindingsExportFollowsLang`.
 
 ## Fase 2: Cyber Range, benchmarks y evaluador independiente
 

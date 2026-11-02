@@ -177,7 +177,7 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string, keyDi
 	// that router through Agent bindings and then the global provider, so adding a
 	// first chain to a running task takes effect on its very next LLM call.
 	s.engine.SetAuthoritativeAgentResolver(func(t *Task) (*agent.Planner, *agent.Worker) {
-		if !s.taskRuntimeAvailable(t, "planner", "worker") {
+		if !s.taskRuntimeAvailable(t, engineRoles...) {
 			return nil, nil
 		}
 		b := s.agentsForTask(t)
@@ -1154,7 +1154,7 @@ func (s *Server) stats(w http.ResponseWriter, r *http.Request) {
 	last := s.engine.LastActivity(t.ID)
 	paused := s.engine.IsPaused(t.ID)
 	activeCalls := s.engine.ActiveLLMCalls(t.ID)
-	running := s.engine.ReadyFor(t) && s.engine.Started(t.ID) && !paused
+	running := s.engine.Started(t.ID) && !paused && s.engine.ReadyFor(t)
 	// A live event-driven engine with no work is healthy idle. Only a persisted
 	// running intent without any corresponding LLM call can be considered stalled.
 	stalled := running && activeCalls == 0 && inFlight > 0 && last > 0 && time.Now().Unix()-last > 120
@@ -1194,9 +1194,10 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 	list := s.m.List()
 	metrics, _ := s.m.PG().TaskListMetricsAll()
 	archiveBlockers, _ := s.m.PG().TaskArchiveBlockers()
+	ready := s.listReadiness(s.agentHasBinding)
 	dtos := make([]TaskDTO, 0, len(list))
 	for _, t := range list {
-		dto := taskDTO(t, s.resolvedTaskStatus(t))
+		dto := taskDTO(t, s.resolvedTaskStatusWith(t, ready))
 		applyTaskArchiveBlocker(&dto, archiveBlockers)
 		metric := metrics[t.ExpID]
 		dto.Tokens = tokenTotalDTO(metric.Tokens)
@@ -1221,6 +1222,13 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) resolvedTaskStatus(t *Task) string {
+	return s.resolvedTaskStatusWith(t, s.engine.ReadyFor)
+}
+
+// resolvedTaskStatusWith derives the status with readyFor standing in for
+// engine.ReadyFor; listings pass listReadiness so they don't hit the database
+// once per task.
+func (s *Server) resolvedTaskStatusWith(t *Task, readyFor func(*Task) bool) string {
 	if t == nil {
 		return "created"
 	}
@@ -1236,7 +1244,7 @@ func (s *Server) resolvedTaskStatus(t *Task) string {
 		// LLM readiness is an execution dependency, not lifecycle state. Keeping
 		// an exhausted task running lets the user edit/reset its chain directly.
 		return "running"
-	case s.engine.ReadyFor(t) && s.engine.Started(t.ID):
+	case s.engine.Started(t.ID) && readyFor(t):
 		return "running"
 	default:
 		return "created"

@@ -73,12 +73,13 @@ func (s *Server) findingGroups(w http.ResponseWriter, r *http.Request) {
 	// derived running/idle view used by task DTOs, so finding groups do not lag
 	// behind the task list while an Agent is actively executing.
 	if s.engine != nil {
+		ready := s.listReadiness(s.agentHasBinding)
 		for i := range groups {
 			if groups[i].TaskID == nil {
 				continue
 			}
 			if task, ok := s.m.Task(i64s(*groups[i].TaskID)); ok {
-				groups[i].TaskStatus = s.resolvedTaskStatus(task)
+				groups[i].TaskStatus = s.resolvedTaskStatusWith(task, ready)
 			}
 		}
 	}

@@ -521,11 +521,44 @@ func (s *Server) globalProvider() (llm.Provider, agent.Config, bool) {
 	return s.llmProv, s.llmCfg, true
 }
 
+// engineRoles are the roles the engine's authoritative resolver needs before a
+// task can run; listReadiness checks the same set.
+var engineRoles = []string{"planner", "worker"}
+
 // taskRuntimeAvailable reports whether every listed role can resolve a provider
 // under the runtime precedence in current(): the role's own binding first, then
 // the task chain, then global. An exhausted chain is a hard stop for unbound
 // roles rather than a silent fall through to global — same as current().
 func (s *Server) taskRuntimeAvailable(t *Task, agentKeys ...string) bool {
+	return s.taskRuntimeAvailableWith(t, s.agentHasBinding, agentKeys...)
+}
+
+// agentHasBinding reports whether a role's own LLM binding resolves a provider.
+// It reads the agent from the database on every call.
+func (s *Server) agentHasBinding(agentKey string) bool {
+	_, _, ok := s.agentBindingProvider(agentKey)
+	return ok
+}
+
+// listReadiness returns engine.ReadyFor's answer for listing many tasks at once.
+// The authoritative resolver returns agents exactly when
+// taskRuntimeAvailable(t, engineRoles...) holds, so this checks that, reading each
+// role binding once per listReadiness call instead of once per task, and without
+// building every task's agent bundle. Not safe for concurrent use.
+func (s *Server) listReadiness(bound func(agentKey string) bool) func(*Task) bool {
+	memo := map[string]bool{}
+	cached := func(agentKey string) bool {
+		ok, seen := memo[agentKey]
+		if !seen {
+			ok = bound(agentKey)
+			memo[agentKey] = ok
+		}
+		return ok
+	}
+	return func(t *Task) bool { return s.taskRuntimeAvailableWith(t, cached, engineRoles...) }
+}
+
+func (s *Server) taskRuntimeAvailableWith(t *Task, bound func(agentKey string) bool, agentKeys ...string) bool {
 	if t == nil || len(agentKeys) == 0 {
 		return false
 	}
@@ -539,7 +572,7 @@ func (s *Server) taskRuntimeAvailable(t *Task, agentKeys ...string) bool {
 		_, _, unboundReady = s.globalProvider()
 	}
 	for _, key := range agentKeys {
-		if _, _, ok := s.agentBindingProvider(key); ok {
+		if bound(key) {
 			continue
 		}
 		if !unboundReady {

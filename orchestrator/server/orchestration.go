@@ -192,8 +192,9 @@ func (s *Server) toolListTasks() actool.CoreTool {
 				}
 			}
 			out := make([]map[string]any, 0)
+			ready := s.listReadiness(s.agentHasBinding)
 			for _, t := range s.m.List() {
-				status := s.deriveTaskStatus(t)
+				status := s.deriveTaskStatus(t, ready)
 				end := lastAct[t.ExpID]
 				if live := s.engine.LastActivity(t.ID); live > end {
 					end = live
@@ -458,15 +459,16 @@ func (s *Server) toolUpdateFindingReport() actool.CoreTool {
 		})
 }
 
-// deriveTaskStatus mirrors listTasks' status derivation for the list_tasks tool.
-func (s *Server) deriveTaskStatus(t *Task) string {
+// deriveTaskStatus mirrors listTasks' status derivation for the list_tasks tool;
+// readyFor stands in for engine.ReadyFor (see listReadiness).
+func (s *Server) deriveTaskStatus(t *Task, readyFor func(*Task) bool) string {
 	lifecycle := t.lifecycleSnapshot()
 	switch {
 	case isTerminalStatus(lifecycle.Status):
 		return lifecycle.Status
 	case lifecycle.Paused || s.engine.IsPaused(t.ID):
 		return "paused"
-	case s.engine.ReadyFor(t) && s.engine.Started(t.ID):
+	case s.engine.Started(t.ID) && readyFor(t):
 		return "running"
 	}
 	return "created"

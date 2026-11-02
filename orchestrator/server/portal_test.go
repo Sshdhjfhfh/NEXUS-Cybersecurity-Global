@@ -106,7 +106,8 @@ func TestAuditorRole(t *testing.T) {
 	}
 	for path := range auditorSelfService {
 		if !strings.HasPrefix(path, "/api/portal/me/") && !strings.HasPrefix(path, "/api/portal/mfa/") &&
-			path != "/api/portal/password/change" && path != "/api/portal/email/resend" {
+			path != "/api/portal/password/change" && path != "/api/portal/email/resend" &&
+			path != "/api/portal/terms/accept" { // consent is personal: each person accepts for themselves
 			t.Fatalf("auditor write exception %q is not the auditor's own account", path)
 		}
 	}

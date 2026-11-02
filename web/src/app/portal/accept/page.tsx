@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { usePortalI18n } from "../_lib/i18n";
 import { portalApi, setPortalToken } from "../_lib/portal";
+import { TermsCheckbox, useTermsInfo } from "../_lib/terms";
 import { authLink, Field, FormError, PortalAuthShell, PortalLoading, PrimaryButton } from "../_lib/ui";
 
 function AcceptInner() {
@@ -17,6 +18,8 @@ function AcceptInner() {
 
   const [info, setInfo] = useState<{ email: string; org: string; role: string } | null>(null);
   const [password, setPassword] = useState("");
+  const [agreed, setAgreed] = useState(false);
+  const termsInfo = useTermsInfo();
   const [err, setErr] = useState("");
   const [fatal, setFatal] = useState<"" | "missing" | "invalid">("");
   const [loading, setLoading] = useState(false);
@@ -44,7 +47,7 @@ function AcceptInner() {
     setLoading(true);
     setErr("");
     try {
-      const { token: jwt } = await portalApi.acceptInvite(token, password);
+      const { token: jwt } = await portalApi.acceptInvite(token, password, termsInfo?.version);
       setPortalToken(jwt);
       router.replace("/portal");
     } catch (ex) {
@@ -98,8 +101,9 @@ function AcceptInner() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
         />
+        <TermsCheckbox info={termsInfo} checked={agreed} onChange={setAgreed} />
         {err ? <FormError>{err}</FormError> : null}
-        <PrimaryButton type="submit" disabled={loading || password.length < 8}>
+        <PrimaryButton type="submit" disabled={loading || password.length < 8 || !agreed}>
           {loading ? t.auth.joining : t.auth.join}
         </PrimaryButton>
       </form>

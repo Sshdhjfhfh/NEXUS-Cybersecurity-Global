@@ -264,6 +264,11 @@ export function TeamPanel({ me }: { me: Me }) {
                             {t.team.disabled}
                           </span>
                         ) : null}
+                        {me.terms && m.terms_version !== me.terms.version ? (
+                          <span className="ml-2 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-[10px] text-amber-800 uppercase tracking-wide">
+                            {t.team.termsPending}
+                          </span>
+                        ) : null}
                       </span>
                       <span className="text-[11px] text-slate-500">{t.team.since(fmtDate(m.created_at))}</span>
                     </div>

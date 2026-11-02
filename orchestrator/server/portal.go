@@ -126,6 +126,9 @@ func (s *Server) portalAuth(w http.ResponseWriter, r *http.Request) (orgID, user
 			if !s.enforceOrgPolicy(w, r, a, userID, iat) {
 				return 0, 0, false
 			}
+			if !termsGate(w, r, a.TermsVersion) {
+				return 0, 0, false
+			}
 			if time.Since(a.SessionLastSeen) > time.Minute {
 				_ = s.m.pg.TouchPortalSession(c.SID, clientIP(r))
 			}
@@ -165,9 +168,11 @@ func (s *Server) portalRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		OrgName  string `json:"org_name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		OrgName      string `json:"org_name"`
+		Email        string `json:"email"`
+		Password     string `json:"password"`
+		AcceptTerms  bool   `json:"accept_terms"`
+		TermsVersion string `json:"terms_version"`
 	}
 	if err := decode(r, &req); err != nil {
 		writeErr(w, 400, "cuerpo inválido")
@@ -185,6 +190,9 @@ func (s *Server) portalRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	if p := portalPasswordProblem(req.Password, req.Email); p != "" {
 		writeErr(w, 400, p)
+		return
+	}
+	if !termsConsent(w, req.AcceptTerms, req.TermsVersion) {
 		return
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -208,6 +216,8 @@ func (s *Server) portalRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, &orgID, req.Email, "portal_user", "org.register",
 		"org:"+strconv.FormatInt(orgID, 10), "org="+req.OrgName)
+	// On failure the account is asked again on first use (terms gate).
+	_ = s.recordTermsAcceptance(r, orgID, userID, req.Email)
 	s.sendVerification(userID, req.Email)
 	writeJSON(w, 201, map[string]any{"token": tok, "org": map[string]any{"id": orgID, "name": req.OrgName}})
 }
@@ -330,14 +340,18 @@ func (s *Server) portalMe(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		notifyEmail = true
 	}
+	termsVersion, termsAt, _ := pg.GetPortalTerms(userID)
 	writeJSON(w, 200, map[string]any{
 		"user": map[string]any{
 			"id": userID, "role": role, "email": email, "email_verified": verified,
 			"view_profile": viewProfile, "lang": lang, "notify_email": notifyEmail,
 			"mfa_enabled": mfaEnabled, "mfa_enrollment_required": requireMFA && !mfaEnabled && !sso,
 			"org_requires_mfa": requireMFA, "signed_in_with_sso": sso,
+			"terms_version": termsVersion, "terms_accepted_at": termsAt,
+			"terms_acceptance_required": termsVersion != portalTermsVersion,
 		},
-		"org": org,
+		"org":   org,
+		"terms": termsInfo(),
 	})
 }
 

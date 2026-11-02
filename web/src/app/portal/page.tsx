@@ -23,6 +23,7 @@ import { ResultsPanel } from "./_lib/results";
 import { SecurityPanel } from "./_lib/security";
 import { RequestAuthorizationBlock, TargetPicker, TargetsPanel } from "./_lib/targets";
 import { TeamPanel } from "./_lib/team";
+import { TermsGate } from "./_lib/terms";
 import { Field, PrimaryButton } from "./_lib/ui";
 
 const STATUS_TONE: Record<string, string> = {
@@ -112,6 +113,10 @@ export default function PortalDashboard() {
       setView(defaultView(meData));
       // A language saved on the account wins over this browser's default.
       if (isPortalLang(meData.user.lang)) setLang(meData.user.lang);
+      // Until the current terms are accepted the server refuses everything else.
+      if (meData.user.terms_acceptance_required) {
+        return;
+      }
       // The org requires 2FA and this user has not enrolled: the server refuses
       // everything else until they do, so only the enrollment screen is shown.
       if (meData.user.mfa_enrollment_required) {
@@ -214,6 +219,19 @@ export default function PortalDashboard() {
       <div className="grid min-h-screen place-items-center bg-gradient-to-b from-slate-50 to-[#eef3fa] text-sm text-slate-500">
         {t.loading}
       </div>
+    );
+  }
+
+  if (me.user.terms_acceptance_required) {
+    return (
+      <TermsGate
+        me={me}
+        onAccepted={() => {
+          setLoading(true);
+          void load();
+        }}
+        onLogout={() => void logout()}
+      />
     );
   }
 

@@ -57,6 +57,11 @@ async function portalFetch(path: string, init?: RequestInit, fallback = "no se p
   }
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string };
+    // A new version of the terms was published mid-session: the dashboard
+    // shows the acceptance screen.
+    if (data.error === "terms_acceptance_required" && typeof window !== "undefined") {
+      window.location.assign("/portal");
+    }
     if (data.error) {
       throw new Error(localizeServerError(data.error));
     }
@@ -140,6 +145,8 @@ export type Member = {
   role: PortalRole;
   disabled: boolean;
   created_at: string;
+  terms_version?: string;
+  terms_accepted_at?: string | null;
 };
 // IssuedInvite is a newly issued invitation link: mailed to the invitee and
 // shown once to the admin (only its hash is stored).
@@ -177,9 +184,19 @@ export type Me = {
     mfa_enrollment_required?: boolean;
     org_requires_mfa?: boolean;
     signed_in_with_sso?: boolean;
+    // Version of the terms this person accepted ("" = none) and whether they
+    // must accept the current one before using the portal.
+    terms_version?: string;
+    terms_accepted_at?: string | null;
+    terms_acceptance_required?: boolean;
   };
   org: Org;
+  terms?: TermsInfo;
 };
+
+// TermsInfo is the current Terms of Service / Privacy Policy version and where
+// to read them; draft = still pending legal review.
+export type TermsInfo = { version: string; draft: boolean; terms: string; privacy: string };
 
 // Org security policy (owner edits; admins and auditors read).
 export type SecurityPolicy = {
@@ -354,11 +371,14 @@ export type RemediationUpdate = {
 type ItemResponse = { ok: boolean; item: RemediationItem };
 
 export const portalApi = {
-  register: (org_name: string, email: string, password: string) =>
+  register: (org_name: string, email: string, password: string, terms_version?: string) =>
     req<{ token: string; org: Org }>("/register", {
       method: "POST",
-      body: JSON.stringify({ org_name, email, password }),
+      body: JSON.stringify({ org_name, email, password, accept_terms: true, terms_version }),
     }),
+  terms: () => req<TermsInfo>("/terms"),
+  acceptTerms: (version: string) =>
+    req<{ ok: boolean; version: string }>("/terms/accept", { method: "POST", body: JSON.stringify({ version }) }),
   login: (email: string, password: string, code?: string) =>
     req<{ token: string }>("/login", { method: "POST", body: JSON.stringify({ email, password, code }) }),
   me: () => req<Me>("/me"),
@@ -480,10 +500,10 @@ export const portalApi = {
   // --- invitation acceptance (public, token-gated; no auth header needed) ---
   lookupInvite: (token: string) =>
     req<{ email: string; role: PortalRole; org: string }>(`/invites/lookup?token=${encodeURIComponent(token)}`),
-  acceptInvite: (token: string, password: string) =>
+  acceptInvite: (token: string, password: string, terms_version?: string) =>
     req<{ token: string }>("/invites/accept", {
       method: "POST",
-      body: JSON.stringify({ token, password }),
+      body: JSON.stringify({ token, password, accept_terms: true, terms_version }),
     }),
 };
 

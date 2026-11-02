@@ -60,6 +60,23 @@ const en: PortalDict = {
     done: "Completed",
   },
 
+  terms: {
+    agreePrefix: "I have read and accept the",
+    termsLink: "Terms of Service",
+    agreeJoin: "and the",
+    privacyLink: "Privacy Policy",
+    draftNote: (v: string) => `Version ${v}: draft pending legal review.`,
+    title: "Terms of Service and Privacy",
+    intro: (org: string) =>
+      `To use the ${org} portal you need to accept the NEXUS Terms of Service and Privacy Policy.`,
+    updatedTitle: "We have updated our terms",
+    updatedIntro:
+      "There is a new version of the Terms of Service and Privacy Policy. Read it and accept it to keep using the portal.",
+    personal: "Each person accepts them for themselves; the date and version are recorded.",
+    accept: "Accept and continue",
+    accepting: "Saving…",
+    acceptError: "The acceptance could not be recorded",
+  },
   auth: {
     portalTitle: "Client portal",
     loginSubtitle: "Sign in to your organization.",
@@ -248,6 +265,7 @@ const en: PortalDict = {
     members: (n: number) => `Members (${n})`,
     you: "(you)",
     disabled: "Deactivated",
+    termsPending: "Terms pending",
     since: (date: string) => `Since ${date}`,
     reactivate: "Reactivate",
     deactivate: "Deactivate",
@@ -298,6 +316,7 @@ const en: PortalDict = {
     exportError: "Could not export the audit log",
     actions: {
       "org.register": "Organization created",
+      "terms.accept": "Terms accepted",
       "org.delete": "Organization deleted",
       "org.suspend": "Organization suspended",
       "org.reactivate": "Organization reactivated",

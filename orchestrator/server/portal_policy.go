@@ -31,6 +31,8 @@ var mfaEnrollmentPaths = map[string]bool{
 	"/api/portal/mfa/enable":      true,
 	"/api/portal/password/change": true,
 	"/api/portal/email/resend":    true,
+	"/api/portal/terms/accept":    true,
+	"/api/portal/logout":          true,
 }
 
 // normalizeAllowlist validates CIDRs or single addresses and returns them in

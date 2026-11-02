@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 
 import { usePortalI18n } from "../_lib/i18n";
 import { portalApi, setPortalToken } from "../_lib/portal";
+import { TermsCheckbox, useTermsInfo } from "../_lib/terms";
 import { authLink, Field, FormError, PortalAuthShell, PrimaryButton } from "../_lib/ui";
 
 export default function PortalRegister() {
@@ -15,6 +16,8 @@ export default function PortalRegister() {
   const [orgName, setOrgName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [agreed, setAgreed] = useState(false);
+  const termsInfo = useTermsInfo();
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -27,7 +30,7 @@ export default function PortalRegister() {
     setLoading(true);
     setErr("");
     try {
-      const { token } = await portalApi.register(orgName, email, password);
+      const { token } = await portalApi.register(orgName, email, password, termsInfo?.version);
       setPortalToken(token);
       router.replace("/portal");
     } catch (ex) {
@@ -72,8 +75,9 @@ export default function PortalRegister() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
         />
+        <TermsCheckbox info={termsInfo} checked={agreed} onChange={setAgreed} />
         {err ? <FormError>{err}</FormError> : null}
-        <PrimaryButton type="submit" disabled={loading || !orgName || !email || password.length < 8}>
+        <PrimaryButton type="submit" disabled={loading || !orgName || !email || password.length < 8 || !agreed}>
           {loading ? t.auth.creating : t.auth.createAccount}
         </PrimaryButton>
       </form>

@@ -73,7 +73,7 @@ func (s *Server) adminVerifyAudit(w http.ResponseWriter, r *http.Request) {
 
 // auditCategories group the org's audit actions for filtering.
 var auditCategories = map[string][]string{
-	"access": {"auth.", "password.", "mfa.", "email."},
+	"access": {"auth.", "password.", "mfa.", "email.", "terms."},
 	"team":   {"invite.", "member."},
 	"config": {"org.", "policy.", "sso.", "target.", "roe.", "audit."},
 	"work":   {"request.", "results.", "remediation.", "report.", "data."},

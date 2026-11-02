@@ -57,6 +57,7 @@ func isReadMethod(m string) bool { return m == http.MethodGet || m == http.Metho
 // preferences and account security.
 var auditorSelfService = map[string]bool{
 	"/api/portal/me/preferences":  true,
+	"/api/portal/terms/accept":    true,
 	"/api/portal/mfa/setup":       true,
 	"/api/portal/mfa/enable":      true,
 	"/api/portal/mfa/disable":     true,
@@ -498,8 +499,10 @@ func (s *Server) portalAcceptInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Token    string `json:"token"`
-		Password string `json:"password"`
+		Token        string `json:"token"`
+		Password     string `json:"password"`
+		AcceptTerms  bool   `json:"accept_terms"`
+		TermsVersion string `json:"terms_version"`
 	}
 	if err := decode(r, &req); err != nil {
 		writeErr(w, 400, "cuerpo inválido")
@@ -512,6 +515,9 @@ func (s *Server) portalAcceptInvite(w http.ResponseWriter, r *http.Request) {
 	}
 	if p := portalPasswordProblem(req.Password, ""); p != "" {
 		writeErr(w, 400, p)
+		return
+	}
+	if !termsConsent(w, req.AcceptTerms, req.TermsVersion) {
 		return
 	}
 	inv, err := pg.GetInviteByToken(hashToken(req.Token))
@@ -560,6 +566,7 @@ func (s *Server) portalAcceptInvite(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, &inv.OrgID, inv.Email, "portal_user", "invite.accept",
 		"user:"+strconv.FormatInt(userID, 10), "role="+inv.Role)
+	_ = s.recordTermsAcceptance(r, inv.OrgID, userID, inv.Email)
 	s.sendVerification(userID, inv.Email)
 	writeJSON(w, 201, map[string]any{"token": tok})
 }

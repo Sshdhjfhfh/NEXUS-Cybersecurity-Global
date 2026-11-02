@@ -61,6 +61,23 @@ const es = {
     done: "Completada",
   } as Record<string, string>,
 
+  terms: {
+    agreePrefix: "He leído y acepto los",
+    termsLink: "Términos del Servicio",
+    agreeJoin: "y la",
+    privacyLink: "Política de Privacidad",
+    draftNote: (v: string) => `Versión ${v}: borrador pendiente de revisión legal.`,
+    title: "Términos del Servicio y Privacidad",
+    intro: (org: string) =>
+      `Para usar el portal de ${org} necesitas aceptar los Términos del Servicio y la Política de Privacidad de NEXUS.`,
+    updatedTitle: "Hemos actualizado nuestros términos",
+    updatedIntro:
+      "Hay una nueva versión de los Términos del Servicio y la Política de Privacidad. Léela y acéptala para seguir usando el portal.",
+    personal: "Cada persona los acepta por sí misma; queda registrado con la fecha y la versión.",
+    accept: "Aceptar y continuar",
+    accepting: "Guardando…",
+    acceptError: "No se pudo registrar la aceptación",
+  },
   auth: {
     portalTitle: "Portal de clientes",
     loginSubtitle: "Inicia sesión en tu organización.",
@@ -250,6 +267,7 @@ const es = {
     members: (n: number) => `Miembros (${n})`,
     you: "(tú)",
     disabled: "Desactivado",
+    termsPending: "Términos pendientes",
     since: (date: string) => `Desde ${date}`,
     reactivate: "Reactivar",
     deactivate: "Desactivar",
@@ -302,6 +320,7 @@ const es = {
     exportError: "No se pudo exportar la auditoría",
     actions: {
       "org.register": "Organización creada",
+      "terms.accept": "Términos aceptados",
       "org.delete": "Organización eliminada",
       "org.suspend": "Organización suspendida",
       "org.reactivate": "Organización reactivada",

@@ -283,6 +283,12 @@ CREATE TABLE IF NOT EXISTS portal_sso_states (
 );
 ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS sso_subject TEXT NOT NULL DEFAULT '';
 
+-- Terms of Service / Privacy Policy accepted by each person: which version,
+-- when and from where ('' = not accepted yet).
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS terms_version TEXT NOT NULL DEFAULT '';
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ;
+ALTER TABLE portal_users ADD COLUMN IF NOT EXISTS terms_accepted_ip TEXT NOT NULL DEFAULT '';
+
 -- Server-side sessions: every portal token names one (sid claim), so a single
 -- device can be signed out, and the user sees where their account is open.
 -- Ended sessions are kept 90 days to recognise known devices for sign-in alerts.
@@ -489,6 +495,9 @@ type Member struct {
 	Role      string    `json:"role"`
 	Disabled  bool      `json:"disabled"`
 	CreatedAt time.Time `json:"created_at"`
+	// Terms of Service / Privacy Policy version accepted ("" = none) and when.
+	TermsVersion    string     `json:"terms_version"`
+	TermsAcceptedAt *time.Time `json:"terms_accepted_at"`
 }
 
 // PortalInvite es una invitación pendiente/aceptada a una organización.
@@ -523,7 +532,7 @@ func (d *DB) GetPortalUserByID(id int64) (*PortalUser, error) {
 // ListMembers devuelve SOLO los miembros de la organización dada (aislamiento).
 func (d *DB) ListMembers(orgID int64) ([]Member, error) {
 	rows, err := d.Query(
-		`SELECT id, org_id, email, role, disabled, created_at FROM portal_users
+		`SELECT id, org_id, email, role, disabled, created_at, terms_version, terms_accepted_at FROM portal_users
          WHERE org_id = $1 ORDER BY created_at ASC LIMIT 500`, orgID,
 	)
 	if err != nil {
@@ -533,8 +542,12 @@ func (d *DB) ListMembers(orgID int64) ([]Member, error) {
 	out := []Member{}
 	for rows.Next() {
 		var m Member
-		if err := rows.Scan(&m.ID, &m.OrgID, &m.Email, &m.Role, &m.Disabled, &m.CreatedAt); err != nil {
+		var termsAt sql.NullTime
+		if err := rows.Scan(&m.ID, &m.OrgID, &m.Email, &m.Role, &m.Disabled, &m.CreatedAt, &m.TermsVersion, &termsAt); err != nil {
 			return nil, err
+		}
+		if termsAt.Valid {
+			m.TermsAcceptedAt = &termsAt.Time
 		}
 		out = append(out, m)
 	}
@@ -577,6 +590,8 @@ type PortalAuthInfo struct {
 	// revoked, not expired), and when it was last used.
 	SessionActive   bool
 	SessionLastSeen time.Time
+	// Version of the terms this user accepted ("" = none).
+	TermsVersion string
 }
 
 // PortalAuthState resuelve, en una sola consulta, el estado necesario para
@@ -592,13 +607,13 @@ func (d *DB) PortalAuthState(userID int64, sid string) (*PortalAuthInfo, error) 
 		`SELECT u.org_id, u.role, u.disabled, u.sessions_revoked_at, o.suspended,
                 u.mfa_enabled, o.require_mfa, o.ip_allowlist, o.session_max_hours,
                 (s.id IS NOT NULL AND s.revoked_at IS NULL AND s.expires_at > now()),
-                COALESCE(s.last_seen_at, 'epoch'::timestamptz)
+                COALESCE(s.last_seen_at, 'epoch'::timestamptz), u.terms_version
          FROM portal_users u JOIN orgs o ON o.id = u.org_id
          LEFT JOIN portal_sessions s ON s.id = $2 AND s.user_id = u.id
          WHERE u.id = $1`, userID, sid,
 	).Scan(&a.OrgID, &a.Role, &a.Disabled, &rev, &a.Suspended,
 		&a.MFAEnabled, &a.RequireMFA, &allow, &a.SessionMaxHours,
-		&a.SessionActive, &a.SessionLastSeen)
+		&a.SessionActive, &a.SessionLastSeen, &a.TermsVersion)
 	a.IPAllowlist = splitAllowlist(allow)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil

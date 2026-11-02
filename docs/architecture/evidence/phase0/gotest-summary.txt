@@ -1,0 +1,13 @@
+top-level tests: {'pass': 1652, 'skip': 6, 'fail': 1}
+packages: {'pass': 71, 'fail': 1}
+FAILED TESTS:
+   github.com/nexus-ia/nexus/db TestActivityPageSessions
+FAILED PACKAGES:
+   github.com/nexus-ia/nexus/db
+SKIPPED:
+   github.com/nexus-ia/nexus/agents/blue/sigma TestLoadRealSigmaRules
+   github.com/nexus-ia/nexus/agents/red/scan TestHTTPXAuthorizesThenProbes
+   github.com/nexus-ia/nexus/core/noa TestHowToCompressRulesMatchesUpstream
+   github.com/nexus-ia/nexus/core/noa TestTierRulesAreVerbatim
+   github.com/nexus-ia/nexus/core/tool TestGrepViaRipgrepIfAvailable
+   github.com/nexus-ia/nexus/orchestrator/server TestLiveContextReview

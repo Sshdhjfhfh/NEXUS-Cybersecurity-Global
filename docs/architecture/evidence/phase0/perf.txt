@@ -1,0 +1,7 @@
+# sequential ~20 rps (below 50 rps per-IP limit), 150 req each, loopback, dev backend :8790 (go run), 2026-11-02T10:32:56-05:00
+health           http=200 non200=0 n=150 p50=2.2ms p95=3.0ms p99=4.8ms
+portal-site      http=404 non200=150 n=150 p50=2.0ms p95=2.6ms p99=3.0ms
+tasks-list       http=200 non200=0 n=150 p50=128.1ms p95=180.0ms p99=191.7ms
+assets-list      http=200 non200=0 n=150 p50=6.1ms p95=7.7ms p99=9.9ms
+companies-list   http=200 non200=0 n=150 p50=39.6ms p95=61.7ms p99=75.7ms
+ops-status       http=200 non200=0 n=150 p50=2.2ms p95=2.8ms p99=3.7ms

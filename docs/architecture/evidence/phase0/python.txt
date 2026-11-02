@@ -1,0 +1,19 @@
+-- lab/academy
+Ran 8 tests in 0.230s
+OK
+-- lab/benchmark
+ValueError: bad query field: ''
+Ran 16 tests in 2.667s
+FAILED (errors=1)
+-- phantom/runtime
+Ran 2 tests in 0.002s
+OK
+-- scripts
+Ran 10 tests in 1.530s
+OK
+-- terminal
+Ran 12 tests in 0.037s
+OK
+-- zero_day
+Ran 11 tests in 0.018s
+OK

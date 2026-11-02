@@ -1,0 +1,13 @@
+agents           -> core, db, ethical_boundary, evolve, lab, observability, orchestrator
+cmd              -> agents, config, core, evolve, lab, orchestrator, selfimprove
+db               -> config, governance, orchestrator
+ethical_boundary -> core, db
+evidence         -> db, lab
+evolve           -> core
+governance       -> db
+lab              -> abm, ans, core, db, nhi_manager
+llm_gateway      -> core
+mcphttp          -> core
+observability    -> core, db
+orchestrator     -> agents, core, db, ethical_boundary, evidence, governance, lab, llm_gateway, mcphttp, observability, selfimprove, swarm
+swarm            -> lab

@@ -5,6 +5,7 @@ name: Security
 # - osv-scanner: vulnerable dependencies (go.mod)
 # - gitleaks:    leaked secrets in the repo/history
 # - npm audit:   vulnerable web dependencies
+# - sbom:        CycloneDX SBOMs of the Go binary and the web production tree
 
 on:
   push:
@@ -61,3 +62,48 @@ jobs:
           node-version: 20
       - run: npm ci --ignore-scripts
       - run: npm audit --audit-level=high
+
+  sbom:
+    name: SBOM (CycloneDX)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Instalar cyclonedx-gomod fijado
+        env:
+          GOBIN: ${{ runner.temp }}/nexus-tools
+        run: go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.12.0
+      - name: SBOM de Go (módulos de cmd/nexus y binario compilado)
+        run: |
+          mkdir -p sbom
+          T="${{ runner.temp }}/nexus-tools/cyclonedx-gomod"
+          "$T" app -json -licenses -main cmd/nexus -output sbom/nexus-app.cdx.json .
+          go build -o "${{ runner.temp }}/nexus" ./cmd/nexus
+          "$T" bin -json -output sbom/nexus-bin.cdx.json "${{ runner.temp }}/nexus"
+      - name: SBOM de la web (árbol de producción)
+        working-directory: web
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npx --yes @cyclonedx/cyclonedx-npm@6.0.1 --omit dev --output-format JSON --output-file ../sbom/web.cdx.json
+      - name: Comprobar que los SBOM no están vacíos
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          for f in ("sbom/nexus-app.cdx.json", "sbom/nexus-bin.cdx.json", "sbom/web.cdx.json"):
+              d = json.load(open(f))
+              n = len(d.get("components", []))
+              print(f, d.get("bomFormat"), d.get("specVersion"), n, "componentes")
+              if d.get("bomFormat") != "CycloneDX" or n == 0:
+                  sys.exit(f"{f}: SBOM vacío o inválido")
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexus-sbom
+          path: sbom/

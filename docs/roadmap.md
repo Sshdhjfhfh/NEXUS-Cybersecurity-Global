@@ -58,10 +58,22 @@ Estado al 2026-11-02: base `d218b3b`. Diagnóstico en
   - osv-scanner: de 20 paquetes y 84 avisos a **2 paquetes y 2 avisos medios, ambos de desarrollo** (`deepmerge` y `minimatch`, vía shadcn).
   - `npm audit --omit=dev`: 0.
   - `tsc` 0 errores; `build:static` correcto (68 páginas).
-- [ ] **P2** SBOM CycloneDX generado en la CI.
-- [ ] **P2** F6: corregir los errores de Biome en archivos commiteados (sin tocar los cambios locales del usuario) y añadir Biome a la CI.
+- [x] **P2** SBOM CycloneDX en la CI (`security.yml`, job `sbom`).
+  - **Go:** `cyclonedx-gomod` v1.12.0 genera el SBOM de los módulos de `cmd/nexus` y el del binario compilado.
+  - **Web:** `@cyclonedx/cyclonedx-npm` 6.0.1 genera el SBOM del árbol de producción.
+  - Se suben como artefacto `nexus-sbom`, y la CI falla si alguno está vacío.
+  - Probado en local: 50 módulos Go en el binario y 363 paquetes web de producción (CycloneDX 1.6).
+- [x] **P2** F6: errores de Biome y Biome en la CI.
+  - **Medición:** con `biome check` sobre el árbol commiteado y el mismo método antes y después, se pasa de **253 a 219 errores**.
+  - **Archivos sin cambios locales del usuario:** quedan **0 errores de lint**. Se corrigieron promesas sin manejar, bloques vacíos y `forEach` que devolvían valor. Además, el `Checkbox` de Radix se declara como control de etiqueta, porque renderiza un `<button role="checkbox">`, que es etiquetable.
+  - **Lo que queda (219):**
+    - 151 errores en 11 archivos con cambios locales sin commitear del usuario, que no se tocaron.
+    - 68 avisos previos de formato y orden de imports en 41 archivos. No se reformatearon para no mezclar un diff grande sin cambio funcional.
+  - **CI:** el job `web` de `ci.yml` ejecuta `tsc` y `scripts/biome_ratchet.py`, un trinquete por archivo contra `web/biome-baseline.json`. Falla si un archivo supera su cuenta o si un archivo nuevo tiene errores; la base solo puede bajar.
+  - **Al commitear los cambios locales del usuario:** el trinquete puede marcar esos 11 archivos. Hay que corregirlos o, si se acepta la deuda, regenerar la base con `--update`.
 - [ ] **P2** `GET /api/tasks`: 128 ms en p50 con 670 tareas. Perfilar y paginar o indexar.
-- [ ] **P2** Guardia en la CI: `TestWebFetchProxyFallback -count=20`.
+- [x] **P2** Guardia en la CI: `TestWebFetchProxyFallback -count=20` (job `go` de `ci.yml`). En local: 20/20 en 0,66 s.
+- [x] **P2** La CI (`ci.yml`) ahora también corre en las ramas `implementation/**`. Antes solo corría en `main` y `fase2-saneamiento`, así que la rama de trabajo no pasaba por ella.
 - [ ] **P2** Tests para `governance/report` (0 %).
 
 ## Fase 2: Cyber Range, benchmarks y evaluador independiente

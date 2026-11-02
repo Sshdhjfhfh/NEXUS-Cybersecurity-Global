@@ -197,7 +197,7 @@ export async function setLang(lang: Lang): Promise<void> {
   applyDir(lang);
 
   // Notificar a los suscriptores
-  subscribers.forEach((fn) => fn(lang));
+  for (const fn of subscribers) fn(lang);
 }
 
 /**

@@ -7,7 +7,7 @@ name: CI
 
 on:
   push:
-    branches: [main, fase2-saneamiento]
+    branches: [main, fase2-saneamiento, "implementation/**"]
   pull_request:
     branches: [main]
 
@@ -76,6 +76,35 @@ jobs:
 
       - name: Tests (cortos)
         run: go test -short -count=1 -timeout 120s ./...
+
+      # F4 (docs/architecture/current-state.md): fallo histórico por timeout que
+      # no se reproduce. Se repite para detectar si vuelve a ser intermitente.
+      - name: Guardia de estabilidad (TestWebFetchProxyFallback ×20)
+        run: go test -count=20 -run '^TestWebFetchProxyFallback$' -timeout 300s ./core/tool
+
+  web:
+    name: Web · tipos · Biome (trinquete)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Instalar frontend sin scripts de instalación
+        working-directory: web
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Tipos (tsc)
+        working-directory: web
+        run: npx tsc --noEmit -p .
+      - name: Probar el trinquete de Biome
+        run: python3 -m unittest discover -s scripts -p 'test_biome_ratchet.py' -v
+      # La deuda existente está en web/biome-baseline.json: ningún archivo puede
+      # superar su cuenta ni un archivo nuevo puede tener errores.
+      - name: Biome sin regresiones
+        run: python3 scripts/biome_ratchet.py
 
   release-lab:
     name: Laboratorio · binario real · PostgreSQL · HTTP

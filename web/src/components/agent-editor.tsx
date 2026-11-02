@@ -72,10 +72,10 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
   const [settings, setSettings] = React.useState<Settings | null>(null);
 
   React.useEffect(() => {
-    api.mcpServers().then(setMcp).catch(() => {});
-    api.skills().then(setSkills).catch(() => {});
-    api.tools().then(setTools).catch(() => {});
-    api.settings().then(setSettings).catch(() => {});
+    api.mcpServers().then(setMcp).catch(() => { /* optional catalog: the editor still works with an empty list */ });
+    api.skills().then(setSkills).catch(() => { /* optional catalog: the editor still works with an empty list */ });
+    api.tools().then(setTools).catch(() => { /* optional catalog: the editor still works with an empty list */ });
+    api.settings().then(setSettings).catch(() => { /* gates fall back to their defaults */ });
   }, []);
   // global gates: traffic tools need captura de tráfico, web search needs the master switch.
   const captureOn = !!settings?.traffic_capture;
@@ -218,7 +218,7 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
   function toggleMcp(id: number) {
     const on = mcpVisible.includes(id);
     const name = mcp.find((m) => m.id === id)?.name ?? String(id);
-    applyVis(
+    void applyVis(
       on ? mcpVisible.filter((x) => x !== id) : [...mcpVisible, id],
       skillVisible,
       `${on ? t("ui.f407384e2f304cf0") : t("ui.56f90b9199cea3b0")} MCP「${name}"Visible`,
@@ -226,7 +226,7 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
   }
   function toggleSkill(name: string) {
     const on = skillVisible.includes(name);
-    applyVis(
+    void applyVis(
       mcpVisible,
       on ? skillVisible.filter((x) => x !== name) : [...skillVisible, name],
       `${on ? t("ui.f407384e2f304cf0") : t("ui.56f90b9199cea3b0")} Skill「${name}"Visible`,
@@ -249,7 +249,7 @@ export function AgentEditor({ agentKey, onSaved }: { agentKey: string; onSaved?:
     } catch (e) {
       toast.error(t("ui.9506df170156d591") + (e as Error).message);
       reload();
-      api.tools().then(setTools).catch(() => {});
+      api.tools().then(setTools).catch(() => { /* optional catalog: the editor still works with an empty list */ });
     }
   }
 
@@ -916,7 +916,7 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
               onValueChange={(v) => {
                 const rm = v as "serial" | "parallel";
                 setRunMode(rm);
-                saveBehavior({ trigger_run_mode: rm });
+                void saveBehavior({ trigger_run_mode: rm });
               }}
             >
               <SelectTrigger size="sm" className="h-8 w-40">
@@ -937,7 +937,7 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
               onValueChange={(v) => {
                 const mm = v as "by_task" | "all" | "none";
                 setMergeMode(mm);
-                saveBehavior({ trigger_merge_mode: mm });
+                void saveBehavior({ trigger_merge_mode: mm });
               }}
             >
               <SelectTrigger size="sm" className="h-8 w-44">
@@ -964,7 +964,7 @@ function AgentTriggersTab({ agentKey, agent }: { agentKey: string; agent?: Agent
                 onBlur={() => {
                   const n = Math.max(0, Math.floor(Number(maxParallel) || 0));
                   setMaxParallel(String(n));
-                  saveBehavior({ trigger_max_parallel: n });
+                  void saveBehavior({ trigger_max_parallel: n });
                 }}
               />
             </div>

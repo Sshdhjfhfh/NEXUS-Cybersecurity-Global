@@ -55,6 +55,7 @@ type Server struct {
 	jwtKey   []byte // HS256 signing key loaded from / generated into dataDir/jwt.key
 
 	portalNotify *portalNotifier // client-portal email notifications (nil without Postgres)
+	ops          *opsWatch       // operations watchdog: health checks + alerts to NEXUS staff
 
 	// concMu serializes concurrency-cap decisions (admission + reconcile) so a
 	// scheduler tick and an HTTP settings change / task creation can't both count
@@ -161,6 +162,8 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string, keyDi
 		profChatAgents: map[int64]*agent.ChatAgent{},
 		provByProfile:  map[int64]*provEntry{}, llmHealth: newLLMHealthRegistry(m.pg),
 		taskAgents: map[string]*taskAgentBundle{}, archiveWake: make(chan struct{}, 1)}
+	s.ops = newOpsWatch(s, dataDir)
+	go s.ops.run(ctx)
 	if m.pg != nil {
 		if err := s.ConfigureLevel12(level12.Config{}); err != nil {
 			log.Printf("[laboratory] initialization failed: %v", err)
@@ -776,6 +779,8 @@ func (s *Server) Handler() http.Handler {
 	// Client email notifications (operator): run a sweep now, inspect the outbox.
 	mux.HandleFunc("POST /api/admin/portal/notifications/run", s.adminRunNotifications)
 	mux.HandleFunc("GET /api/admin/portal/mail-outbox", s.adminListMailOutbox)
+	mux.HandleFunc("GET /api/admin/ops/status", s.adminOpsStatus)
+	mux.HandleFunc("POST /api/admin/ops/check", s.adminOpsCheck)
 	mux.HandleFunc("GET /api/admin/portal/mail-outbox/{id}/preview", s.adminPreviewMail)
 	// Platform-admin: manage every organization (list with counts, suspend/reactivate).
 	mux.HandleFunc("GET /api/admin/portal/orgs", s.adminListOrgs)

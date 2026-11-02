@@ -234,3 +234,16 @@ FROM portal_mail_outbox WHERE id = $1`, id).Scan(&m.ID, &org, &m.Kind, &m.To, &m
 	}
 	return m, nil
 }
+
+// MailHealth summarizes delivery problems for the operations watchdog: mail
+// given up since `since`, mail queued before `stuckBefore` and still pending,
+// and the most recent delivery error in that period.
+func (d *DB) MailHealth(since, stuckBefore time.Time) (failed, stuck int, lastErr string, err error) {
+	err = d.QueryRow(`SELECT
+  count(*) FILTER (WHERE status = 'failed' AND created_at >= $1),
+  count(*) FILTER (WHERE status = 'pending' AND created_at < $2),
+  COALESCE((SELECT last_error FROM portal_mail_outbox
+    WHERE status <> 'sent' AND last_error <> '' AND created_at >= $1 ORDER BY id DESC LIMIT 1), '')
+FROM portal_mail_outbox`, since, stuckBefore).Scan(&failed, &stuck, &lastErr)
+	return failed, stuck, lastErr, err
+}

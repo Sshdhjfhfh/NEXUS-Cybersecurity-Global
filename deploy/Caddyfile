@@ -16,6 +16,9 @@
 		-Server
 	}
 
+	# Las métricas son solo para la red interna (127.0.0.1:8787/api/metrics).
+	respond /api/metrics 404
+
 	reverse_proxy orchestrator:8787 {
 		# Sin búfer: los eventos en vivo (SSE) llegan al momento.
 		flush_interval -1

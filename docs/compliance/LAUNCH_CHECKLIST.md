@@ -53,7 +53,11 @@ Rastrea el avance hacia una revisión de lanzamiento (Directiva §20). Marca `[x
 - [ ] **Correo real**: `NEXUS_SMTP_*` + `NEXUS_PORTAL_BASE_URL`, con SPF/DKIM/DMARC del dominio
       (sin esto, invitaciones, verificación y recuperación de contraseña no llegan).
 - [ ] **Copia de las copias fuera del servidor** (almacenamiento externo cifrado) + alerta si falla.
-- [ ] Monitorización y alertas (caída del backend, errores 5xx, disco, copia fallida).
+- [x] Vigilancia de operación con avisos por email a `NEXUS_OPS_EMAIL` (base de datos, copias,
+      disco, errores 5xx/panics, correo saliente) y página **Estado del servicio** en la
+      consola. Ver `docs/engineering/MONITORING.md` (2026-11-02).
+- [ ] **Monitor externo** de disponibilidad sobre `https://<dominio>/api/ready` (la caída total
+      del servidor no puede avisarse desde dentro) y `NEXUS_OPS_EMAIL` con un buzón real.
 - [x] Aceptación de Términos y Privacidad en el registro del portal y al aceptar invitaciones,
       con versión, fecha e IP registradas y auditadas; quien no aceptó la versión vigente no
       puede usar el portal hasta aceptarla (2026-11-01).

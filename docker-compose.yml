@@ -92,9 +92,15 @@ services:
       # Único proxy autorizado a indicar la IP real del cliente (límites por
       # IP, bloqueo de fuerza bruta, auditoría y lista de redes permitidas).
       NEXUS_TRUSTED_PROXIES:  "${NEXUS_PROXY_IP:-172.29.80.10}"
+      # Vigilancia de operación (docs/engineering/MONITORING.md): avisa a
+      # NEXUS_OPS_EMAIL si la última copia es más antigua que este máximo.
+      NEXUS_BACKUP_DIR:           /backups
+      NEXUS_BACKUP_MAX_AGE_HOURS: "${BACKUP_MAX_AGE_HOURS:-26}"
     volumes:
       # Persistencia de datos runtime (SQLite, skills, etc.)
       - nexus_data:/app/data
+      # Copias de seguridad, solo lectura: para vigilar que se siguen haciendo.
+      - nexus_backups:/backups:ro
       # User skills persist under nexus_data; bundled skills are seeded once.
     # Acceso al host Windows (para Ollama)
     extra_hosts:

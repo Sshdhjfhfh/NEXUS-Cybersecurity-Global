@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"path"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -49,6 +50,55 @@ func mustOrder(t *testing.T, out string, parts ...string) {
 	}
 }
 
+func TestParseLang(t *testing.T) {
+	for in, want := range map[string]Lang{
+		"":                        ES,
+		"es":                      ES,
+		"EN":                      EN,
+		"zh":                      ZH,
+		"en-US,en;q=0.9":          EN,
+		"zh-CN,zh;q=0.9,en;q=0.8": ZH,
+		"fr-FR,es;q=0.8":          ES, // first supported wins
+		"de-DE,de;q=0.9":          ES, // unsupported falls back to Spanish
+		"pt":                      ES,
+		" en ; q=1":               EN,
+	} {
+		if got := ParseLang(in); got != want {
+			t.Errorf("ParseLang(%q) = %q, want %q", in, got, want)
+		}
+	}
+	if Lang("xx").t() != catalog[ES] {
+		t.Error("an unknown Lang must render Spanish")
+	}
+}
+
+// Every language must define every string; a missing one would render as an
+// empty heading or label.
+func TestCatalogComplete(t *testing.T) {
+	for lang, tx := range catalog {
+		v := reflect.ValueOf(*tx)
+		for i := 0; i < v.NumField(); i++ {
+			if f := v.Field(i); f.Kind() == reflect.String && f.String() == "" {
+				t.Errorf("%s: %s is empty", lang, v.Type().Field(i).Name)
+			}
+		}
+		if len(tx.csvHeader) != 10 {
+			t.Errorf("%s: CSV header has %d columns, want 10", lang, len(tx.csvHeader))
+		}
+		for _, s := range []string{"critical", "high", "medium", "low", "info"} {
+			if tx.severities[s] == "" {
+				t.Errorf("%s: no label for severity %s", lang, s)
+			}
+		}
+		for _, s := range []string{db.FindingPending, db.FindingInProgress, db.FindingConfirmed, db.FindingResolved,
+			db.FindingFixed, db.FindingFalsePositive, db.FindingIgnored, db.FindingDuplicate, db.FindingRiskAccepted} {
+			if tx.statuses[s] == "" {
+				t.Errorf("%s: no label for status %s", lang, s)
+			}
+		}
+	}
+}
+
 func TestMarkdownSortsBySeverityAndDefaults(t *testing.T) {
 	out := Markdown(Input{
 		GeneratedAt: genAt,
@@ -61,20 +111,30 @@ func TestMarkdownSortsBySeverityAndDefaults(t *testing.T) {
 		},
 	})
 	mustContain(t, out,
-		"未命名任务", "（未指定）", "2026-11-02 10:30:00",
-		"**4** 个",
-		"domain 1、host 2", // asset types are sorted
-		"' OR 1=1--",
+		"# Informe de pruebas de penetración — Tarea sin nombre",
+		"- **Objetivo**: (sin especificar)", "- **Generado**: 2026-11-02 10:30:00",
+		"Hallazgos confirmados: **4**",
+		"- Activos: domain 1, host 2", // asset types are sorted
+		"**PoC / evidencia:**", "' OR 1=1--",
 	)
-	mustOrder(t, out, "### 1. [CRITICAL] SQLi", "### 2. [LOW] info-leak", "### 3. [INFO] 未分类", "### 4. [INFO] 未分类")
-	if strings.Count(out, "PoC / 证据") != 1 {
+	mustOrder(t, out, "### 1. [CRÍTICA] SQLi", "### 2. [BAJA] info-leak", "### 3. [INFORMATIVA] Sin clasificar", "### 4. [INFORMATIVA] Sin clasificar")
+	if strings.Count(out, "PoC / evidencia") != 1 {
 		t.Errorf("PoC block must appear only for findings that have one:\n%s", out)
 	}
 }
 
 func TestMarkdownWithoutFindings(t *testing.T) {
 	out := Markdown(Input{Title: "Acme", Goal: "web", GeneratedAt: genAt})
-	mustContain(t, out, "# 渗透测试报告 — Acme", "web", "**0** 个", "_本次未确认漏洞。_")
+	mustContain(t, out, "# Informe de pruebas de penetración — Acme", "- **Objetivo**: web", "**0**", "_No se confirmaron vulnerabilidades._")
+}
+
+func TestMarkdownLanguages(t *testing.T) {
+	in := Input{Title: "Acme", GeneratedAt: genAt, AssetCounts: map[string]int{"a": 1, "b": 2},
+		Findings: []*db.Node{node(t, map[string]any{"name": "SQLi", "severity": "high"})}}
+	in.Lang = EN
+	mustContain(t, Markdown(in), "# Penetration test report — Acme", "- **Goal**: (not specified)", "Confirmed findings: **1**", "- Assets: a 1, b 2", "### 1. [HIGH] SQLi")
+	in.Lang = ZH
+	mustContain(t, Markdown(in), "# 渗透测试报告 — Acme", "- **任务目标**：（未指定）", "确认发现：**1** 个", "- 资产：a 1、b 2", "### 1. [高危] SQLi")
 }
 
 func TestFindingsMarkdownOrderCountsAndSections(t *testing.T) {
@@ -84,28 +144,36 @@ func TestFindingsMarkdownOrderCountsAndSections(t *testing.T) {
 		{ID: 2, VulnClass: "xss", Severity: "medium", Status: "confirmed", TaskDescription: " Acme web ", CreatedAt: genAt,
 			Summary: "reflected", Evidence: "GET /?q=<script>", Report: "## detail"},
 		{ID: 3, Name: "new high", Severity: "high", CreatedAt: genAt},
-		{ID: 4, Name: "crit", Severity: "critical", CreatedAt: old},
+		{ID: 4, Name: "crit", Severity: "critical", CreatedAt: old, Status: "weird_state"},
 	}
-	out := FindingsMarkdown(in, genAt)
+	out := FindingsMarkdown(in, genAt, ES)
 
 	if in[0].ID != 1 || in[3].ID != 4 {
 		t.Fatal("FindingsMarkdown must not reorder the caller's slice")
 	}
 	mustContain(t, out,
-		"**发现总数**：4 个",
-		"| 严重 | 1 |", "| 高危 | 2 |", "| 中危 | 1 |", "| 低危 | 0 |",
-		"- **类别**：xss", "- **状态**：confirmed", "- **所属任务**：Acme web",
-		"- **状态**：pending", // empty status defaults to pending
-		"reflected", "GET /?q=<script>", "**详细报告：**\n\n## detail",
+		"# Informe consolidado de hallazgos",
+		"- **Total de hallazgos**: 4",
+		"| Severidad | Cantidad |",
+		"| Crítica | 1 |", "| Alta | 2 |", "| Media | 1 |", "| Baja | 0 |",
+		"- **Categoría**: xss", "- **Estado**: Confirmado", "- **Tarea**: Acme web",
+		"- **Estado**: Pendiente",   // empty status defaults to pending
+		"- **Estado**: weird_state", // unknown status is shown as stored
+		"reflected", "**Evidencia:**", "GET /?q=<script>", "**Informe detallado:**\n\n## detail",
 	)
 	// Severity first, then newest first within a severity.
-	mustOrder(t, out, "[CRITICAL] crit", "[HIGH] new high", "[HIGH] old high", "[MEDIUM] xss")
+	mustOrder(t, out, "[CRÍTICA] crit", "[ALTA] new high", "[ALTA] old high", "[MEDIA] xss")
+
+	en := FindingsMarkdown(in, genAt, EN)
+	mustContain(t, en, "# Findings summary report", "- **Total findings**: 4", "| Critical | 1 |", "- **Status**: Confirmed", "[MEDIUM] xss")
+	zh := FindingsMarkdown(in, genAt, ZH)
+	mustContain(t, zh, "# 漏洞发现汇总报告", "- **发现总数**：4 个", "| 严重 | 1 |", "- **状态**：已确认", "**证据：**")
 }
 
 func TestFindingsMarkdownEmpty(t *testing.T) {
-	out := FindingsMarkdown(nil, genAt)
-	mustContain(t, out, "**发现总数**：0 个", "| 严重 | 0 |", "_无匹配的漏洞。_")
-	if strings.Contains(out, "漏洞明细") {
+	out := FindingsMarkdown(nil, genAt, ES)
+	mustContain(t, out, "- **Total de hallazgos**: 0", "| Crítica | 0 |", "_No hay hallazgos que coincidan._")
+	if strings.Contains(out, "Detalle de hallazgos") {
 		t.Error("empty export must not render a details section")
 	}
 }
@@ -119,19 +187,21 @@ func TestSingleFindingMarkdownTraffic(t *testing.T) {
 			Snapshot: db.TrafficEvidenceSnapshot{Method: "GET", URL: "https://t.example/a`b", Status: 200},
 		}},
 	}
-	out := SingleFindingMarkdown(f, genAt)
+	out := SingleFindingMarkdown(f, genAt, ES)
 	mustContain(t, out,
-		"# [HIGH] IDOR", "- **严重等级**：high", "## 详细报告\n\nbody",
-		"## 关联流量证据", "证据版本：3；绑定数量：1。",
-		"证据已变更，详细报告待更新。", // report written for evidence v2, evidence is now v3
-		"**证据 #11 · exploit** — `GET https://t.example/a%60b`，状态码 200",
+		"# [ALTA] IDOR", "- **Severidad**: Alta", "## Informe detallado\n\nbody",
+		"## Evidencia de tráfico asociada", "Versión de la evidencia: 3; vínculos: 1.",
+		"La evidencia cambió", // report written for evidence v2, evidence is now v3
+		"**Evidencia #11 · exploit** — `GET https://t.example/a%60b`, código 200",
 		"   line1\n   line2",
-		"[请求报文](evidence/7/11/request.http) · [响应报文](evidence/7/11/response.http)",
+		"[Solicitud](evidence/7/11/request.http) · [Respuesta](evidence/7/11/response.http)",
 	)
+	mustContain(t, SingleFindingMarkdown(f, genAt, EN), "# [HIGH] IDOR", "**Evidence #11 · exploit**", "[Request](evidence/7/11/request.http)")
+	mustContain(t, SingleFindingMarkdown(f, genAt, ZH), "# [高危] IDOR", "证据已变更，详细报告待更新。", "，状态码 200")
 
 	// The aggregated report has no attachments to link to.
-	agg := FindingsMarkdown([]*db.DBFinding{f}, genAt)
-	mustContain(t, agg, "**证据 #11 · exploit**")
+	agg := FindingsMarkdown([]*db.DBFinding{f}, genAt, ES)
+	mustContain(t, agg, "**Evidencia #11 · exploit**")
 	if strings.Contains(agg, "request.http") {
 		t.Error("aggregated report must not link to per-finding attachments")
 	}
@@ -139,7 +209,7 @@ func TestSingleFindingMarkdownTraffic(t *testing.T) {
 
 func TestTrafficSectionOmittedWhenNothingToSay(t *testing.T) {
 	f := &db.DBFinding{ID: 1, Name: "x", Report: "r", EvidenceVersion: 2, ReportEvidenceVersion: 2}
-	if out := SingleFindingMarkdown(f, genAt); strings.Contains(out, "关联流量证据") {
+	if out := SingleFindingMarkdown(f, genAt, ES); strings.Contains(out, "Evidencia de tráfico") {
 		t.Errorf("no bindings and an up-to-date report must not render a traffic section:\n%s", out)
 	}
 }
@@ -153,15 +223,15 @@ func TestEvidenceCannotBreakOutOfCodeBlock(t *testing.T) {
 	n := node(t, map[string]any{"name": "x", "evidence": map[string]any{"poc": evidence}})
 
 	for name, out := range map[string]string{
-		"FindingsMarkdown":      FindingsMarkdown([]*db.DBFinding{f}, genAt),
-		"SingleFindingMarkdown": SingleFindingMarkdown(f, genAt),
+		"FindingsMarkdown":      FindingsMarkdown([]*db.DBFinding{f}, genAt, ES),
+		"SingleFindingMarkdown": SingleFindingMarkdown(f, genAt, ES),
 		"Markdown":              Markdown(Input{GeneratedAt: genAt, Findings: []*db.Node{n}}),
 	} {
 		t.Run(name, func(t *testing.T) {
 			if !strings.Contains(out, evidence) {
 				t.Fatalf("evidence must be kept verbatim:\n%s", out)
 			}
-			if insideFence(out, injected) == false {
+			if !insideFence(out, injected) {
 				t.Fatalf("evidence escaped its code block:\n%s", out)
 			}
 		})
@@ -191,16 +261,19 @@ func TestFindingFilenameIsSafe(t *testing.T) {
 	cases := []struct {
 		name string
 		f    db.DBFinding
+		lang Lang
 		want string
 	}{
-		{"plain", db.DBFinding{ID: 123, Name: "SQL注入", Severity: "critical"}, "critical_SQL注入__123.md"},
-		{"defaults", db.DBFinding{ID: 5}, "info_未分类__5.md"},
-		{"class fallback", db.DBFinding{ID: 6, VulnClass: "rce", Severity: "high"}, "high_rce__6.md"},
-		{"traversal", db.DBFinding{ID: 9, Name: "../../etc/passwd", Severity: "low"}, "low_.._.._etc_passwd__9.md"},
+		{"plain", db.DBFinding{ID: 123, Name: "SQL注入", Severity: "critical"}, ES, "critical_SQL注入__123.md"},
+		{"defaults", db.DBFinding{ID: 5}, ES, "info_Sin_clasificar__5.md"},
+		{"defaults en", db.DBFinding{ID: 5}, EN, "info_Uncategorized__5.md"},
+		{"defaults zh", db.DBFinding{ID: 5}, ZH, "info_未分类__5.md"},
+		{"class fallback", db.DBFinding{ID: 6, VulnClass: "rce", Severity: "high"}, ES, "high_rce__6.md"},
+		{"traversal", db.DBFinding{ID: 9, Name: "../../etc/passwd", Severity: "low"}, ES, "low_.._.._etc_passwd__9.md"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := FindingFilename(&c.f); got != c.want {
+			if got := FindingFilename(&c.f, c.lang); got != c.want {
 				t.Errorf("FindingFilename = %q, want %q", got, c.want)
 			}
 		})
@@ -217,11 +290,11 @@ func TestFindingFilenameIsSafe(t *testing.T) {
 		strings.Repeat("Ñ", 200),
 	}
 	for _, name := range hostile {
-		got := FindingFilename(&db.DBFinding{ID: 42, Name: name, Severity: "high"})
+		got := FindingFilename(&db.DBFinding{ID: 42, Name: name, Severity: "high"}, ES)
 		if !strings.HasSuffix(got, ".md") {
 			t.Errorf("%q → %q: missing .md", name, got)
 		}
-		if strings.ContainsAny(got, "/\\\x00\n\r\t") || path.Base(got) != got || got == "..md" {
+		if strings.ContainsAny(got, "/\\\x00\n\r\t") || path.Base(got) != got {
 			t.Errorf("%q → %q: unsafe zip entry name", name, got)
 		}
 		if !utf8.ValidString(got) {
@@ -233,12 +306,8 @@ func TestFindingFilenameIsSafe(t *testing.T) {
 	}
 }
 
-func TestFindingsCSV(t *testing.T) {
-	raw := FindingsCSV([]*db.DBFinding{
-		{ID: 2, Name: "low one", Severity: "low", CreatedAt: genAt, Summary: " s ", TaskDescription: "Acme, Inc."},
-		{ID: 1, VulnClass: "sqli", Severity: "critical", CreatedAt: genAt, Report: "full report", Evidence: "big evidence",
-			TrafficBindings: []db.FindingTrafficBinding{{ID: 10}, {ID: 11}}},
-	})
+func readCSV(t *testing.T, raw []byte) [][]string {
+	t.Helper()
 	if !bytes.HasPrefix(raw, []byte("\xEF\xBB\xBF")) {
 		t.Fatal("CSV must start with a UTF-8 BOM so Excel reads it as UTF-8")
 	}
@@ -246,21 +315,38 @@ func TestFindingsCSV(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 3 || len(rows[0]) != 10 || rows[0][0] != "ID" {
+	return rows
+}
+
+func TestFindingsCSV(t *testing.T) {
+	in := []*db.DBFinding{
+		{ID: 2, Name: "low one", Severity: "low", CreatedAt: genAt, Summary: " s ", TaskDescription: "Acme, Inc."},
+		{ID: 1, VulnClass: "sqli", Severity: "critical", CreatedAt: genAt, Report: "full report", Evidence: "big evidence",
+			TrafficBindings: []db.FindingTrafficBinding{{ID: 10}, {ID: 11}}},
+	}
+	raw := FindingsCSV(in, ES)
+	rows := readCSV(t, raw)
+	if len(rows) != 3 || len(rows[0]) != 10 || rows[0][0] != "ID" || rows[0][3] != "Severidad" {
 		t.Fatalf("unexpected shape: %q", rows)
 	}
 	crit, low := rows[1], rows[2]
-	want := []string{"1", "sqli", "sqli", "critical", "pending", "", "2026-11-02 10:30:00", "", "2", "10,11"}
+	want := []string{"1", "sqli", "sqli", "Crítica", "Pendiente", "", "2026-11-02 10:30:00", "", "2", "10,11"}
 	for i := range want {
 		if crit[i] != want[i] {
 			t.Errorf("critical row col %d = %q, want %q", i, crit[i], want[i])
 		}
 	}
-	if low[0] != "2" || low[5] != "Acme, Inc." || low[7] != "s" || low[8] != "0" || low[9] != "" {
+	if low[0] != "2" || low[3] != "Baja" || low[5] != "Acme, Inc." || low[7] != "s" || low[8] != "0" || low[9] != "" {
 		t.Errorf("low row = %q", low)
 	}
 	if bytes.Contains(raw, []byte("full report")) || bytes.Contains(raw, []byte("big evidence")) {
 		t.Error("CSV must not carry the full report or evidence")
+	}
+	if en := readCSV(t, FindingsCSV(in, EN)); en[0][1] != "Name" || en[1][3] != "Critical" || en[1][4] != "Pending" {
+		t.Errorf("English CSV = %q", en)
+	}
+	if zh := readCSV(t, FindingsCSV(in, ZH)); zh[0][1] != "名称" || zh[1][3] != "严重" {
+		t.Errorf("Chinese CSV = %q", zh)
 	}
 }
 
@@ -277,12 +363,8 @@ func TestFindingsCSVNeutralizesFormulas(t *testing.T) {
 		"\r=1+1",
 	}
 	for _, p := range payloads {
-		raw := FindingsCSV([]*db.DBFinding{{ID: 1, Name: p, VulnClass: p, Summary: p, TaskDescription: p, Severity: "high", CreatedAt: genAt}})
-		rows, err := csv.NewReader(bytes.NewReader(raw[3:])).ReadAll()
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, col := range []int{1, 2, 5, 7} {
+		rows := readCSV(t, FindingsCSV([]*db.DBFinding{{ID: 1, Name: p, VulnClass: p, Summary: p, TaskDescription: p, Severity: p, Status: p, CreatedAt: genAt}}, ES))
+		for _, col := range []int{1, 2, 3, 4, 5, 7} {
 			cell := rows[1][col]
 			if cell == "" || strings.ContainsRune("=+-@\t\r", rune(cell[0])) {
 				t.Errorf("payload %q: column %d = %q starts with a formula character", p, col, cell)

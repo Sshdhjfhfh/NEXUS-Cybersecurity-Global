@@ -2354,6 +2354,7 @@ func (s *Server) findingsExport(w http.ResponseWriter, r *http.Request) {
 	}
 	now := time.Now()
 	stamp := now.Format("20060102-150405")
+	lang := exportLang(r)
 	setDownload := func(contentType, filename string) {
 		w.Header().Set("Content-Type", contentType)
 		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
@@ -2362,10 +2363,10 @@ func (s *Server) findingsExport(w http.ResponseWriter, r *http.Request) {
 	switch format {
 	case "md-single":
 		setDownload("text/markdown; charset=utf-8", "findings-"+stamp+".md")
-		_, _ = w.Write([]byte(report.FindingsMarkdown(fs, now)))
+		_, _ = w.Write([]byte(report.FindingsMarkdown(fs, now, lang)))
 	case "md-zip":
 		path := filepath.Join(stage, "findings.zip")
-		if err := buildFindingsEvidenceZip(path, fs, stage, now); err != nil {
+		if err := buildFindingsEvidenceZip(path, fs, stage, now, lang); err != nil {
 			writeErr(w, 500, err.Error())
 			return
 		}
@@ -2379,7 +2380,7 @@ func (s *Server) findingsExport(w http.ResponseWriter, r *http.Request) {
 		http.ServeContent(w, r, "findings.zip", now, file)
 	case "csv":
 		setDownload("text/csv; charset=utf-8", "findings-"+stamp+".csv")
-		_, _ = w.Write(report.FindingsCSV(fs))
+		_, _ = w.Write(report.FindingsCSV(fs, lang))
 	case "json":
 		assets := s.resolveFindingAssets(fs)
 		out := make([]FindingDTO, 0, len(fs))
@@ -4042,6 +4043,15 @@ func (s *Server) fallbackChat(t *Task, msg string) string {
 	}
 }
 
+// exportLang is the language of a rendered export: the lang query parameter
+// (the panel's language), else Accept-Language, else Spanish.
+func exportLang(r *http.Request) report.Lang {
+	if l := r.URL.Query().Get("lang"); l != "" {
+		return report.ParseLang(l)
+	}
+	return report.ParseLang(r.Header.Get("Accept-Language"))
+}
+
 func (s *Server) getReport(w http.ResponseWriter, r *http.Request) {
 	t := s.m.ResolveTask(r.URL.Query().Get("task"))
 	if t == nil {
@@ -4058,7 +4068,7 @@ func (s *Server) getReport(w http.ResponseWriter, r *http.Request) {
 	}
 	md := report.Markdown(report.Input{
 		Title: t.Description, Goal: t.Goal, GeneratedAt: time.Now(),
-		AssetCounts: counts, Findings: findings,
+		AssetCounts: counts, Findings: findings, Lang: exportLang(r),
 	})
 	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
 	w.WriteHeader(200)

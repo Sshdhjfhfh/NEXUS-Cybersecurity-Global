@@ -1,4 +1,4 @@
-import { localizeApiDisplay, localizeText, t } from "@/lib/i18n";
+import { getLang, localizeApiDisplay, localizeText, t } from "@/lib/i18n";
 
 // Real backend client. /api/* is proxied to the Go backend (next.config rewrites).
 // Returns the domain types in lib/types.ts. Shapes match the backend handlers;
@@ -580,7 +580,7 @@ export const api = {
     filters?: Omit<FindingQuery, "page" | "pageSize">;
     ids?: string[];
   }) => {
-    const p = new URLSearchParams({ format: opts.format, scope: opts.scope });
+    const p = new URLSearchParams({ format: opts.format, scope: opts.scope, lang: getLang() });
     if (opts.scope === "selected") {
       p.set("ids", (opts.ids ?? []).join(","));
     } else if (opts.scope === "filtered" && opts.filters) {
@@ -881,7 +881,7 @@ export const api = {
   report: async (task?: string) => {
     if (MOCK) return mockReport(task);
     const token = getToken();
-    const r = await fetch(`/api/report${tq(task)}`, {
+    const r = await fetch(`/api/report?lang=${getLang()}${tq(task, "&")}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!r.ok) throw new Error(`report: ${r.status}`);

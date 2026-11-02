@@ -55,6 +55,48 @@ func TestApplySchemaRetriesOnlyDeadlocks(t *testing.T) {
 	}
 }
 
+// TestOpenSkipsUnchangedSchema pins the startup fast path: a second Open with the
+// same schema.sql must not re-run it (its DDL takes ACCESS EXCLUSIVE locks that
+// deadlocked live writes), while NEXUS_SCHEMA_FORCE=1 still re-applies it.
+func TestOpenSkipsUnchangedSchema(t *testing.T) {
+	d, err := Open(testDSN(t))
+	if err != nil {
+		t.Skipf("postgres unavailable (%v) — skipping", err)
+	}
+	t.Cleanup(func() { d.Close() })
+
+	state := func() (digest string, at time.Time) {
+		t.Helper()
+		if err := d.QueryRow(`SELECT sha256, applied_at FROM nexus_schema_state`).Scan(&digest, &at); err != nil {
+			t.Fatal(err)
+		}
+		return digest, at
+	}
+	digest, first := state()
+	if digest != schemaDigest() {
+		t.Fatalf("recorded digest %s, want %s", digest, schemaDigest())
+	}
+
+	d2, err := Open(testDSN(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d2.Close()
+	if _, at := state(); !at.Equal(first) {
+		t.Fatalf("unchanged schema was re-applied (applied_at %v -> %v)", first, at)
+	}
+
+	t.Setenv("NEXUS_SCHEMA_FORCE", "1")
+	d3, err := Open(testDSN(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d3.Close()
+	if _, at := state(); !at.After(first) {
+		t.Fatalf("NEXUS_SCHEMA_FORCE=1 did not re-apply the schema (applied_at %v)", at)
+	}
+}
+
 // testDSN returns the configured DSN, skipping the test when neither the env var
 // nor a config file supplies one (DSN no longer has a built-in default).
 func testDSN(t *testing.T) string {

@@ -18,7 +18,9 @@ func TestProfileRetryRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) — skipping", err)
 	}
-	defer d.Close()
+	// Cleanup registered first runs last (LIFO), after the row-deleting cleanups;
+	// a plain defer would close the pool first and leave the test rows behind.
+	t.Cleanup(func() { d.Close() })
 
 	want := RetryOverride{
 		Connect: RetryRule{Attempts: 5, IntervalMS: 2000},
@@ -75,7 +77,9 @@ func TestProfileRetryClampedOnSave(t *testing.T) {
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) — skipping", err)
 	}
-	defer d.Close()
+	// Cleanup registered first runs last (LIFO), after the row-deleting cleanups;
+	// a plain defer would close the pool first and leave the test rows behind.
+	t.Cleanup(func() { d.Close() })
 
 	id, err := d.SaveProfile(&LLMProfile{
 		Name: "t-retry-clamp", Format: "openai", Model: "m", APIKey: "k",
@@ -101,7 +105,9 @@ func TestLLMRetryPolicyRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Skipf("postgres unavailable (%v) — skipping", err)
 	}
-	defer d.Close()
+	// Cleanup registered first runs last (LIFO), after the row-deleting cleanups;
+	// a plain defer would close the pool first and leave the test rows behind.
+	t.Cleanup(func() { d.Close() })
 
 	before, hadBefore, err := d.GetSetting(settingLLMRetryPolicy)
 	if err != nil {

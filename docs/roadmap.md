@@ -23,11 +23,16 @@ Estado al 2026-11-02: base `d218b3b`. Diagnóstico en
 
 ## Fase 1: estabilización
 
-- [ ] **P1** F2: los tests de `db` limpian después de `Close()`. Registrar el cierre con `t.Cleanup` para que corra al final (5 archivos). Tests repetibles con `-count=3`.
-- [ ] **P1** F1: el esquema no debe tomar locks exclusivos en cada arranque. Saltar `schema.sql` si su hash ya está aplicado (tabla `schema_meta`) y reintentar ante deadlock. Probarlo con escrituras concurrentes.
-- [ ] **P2** F3: `release_smoke.py` compatible con Python 3.10 (query vacía).
+- [x] **P1** F2: los tests de `db` borraban sus filas después de `Close()`. Ahora el cierre va en `t.Cleanup` registrado primero (`config_test.go`, `llmretry_test.go`; los otros 3 archivos ya lo hacían). Verificado: `go test ./db` 3 veces seguidas en verde y 0 filas `t-%` residuales.
+- [x] **P1** F1: `db.Open` salta `schema.sql` si su SHA-256 ya consta en `nexus_schema_state`. Un `schema.sql` nuevo se aplica una vez, bajo el lock de migración; `NEXUS_SCHEMA_FORCE=1` fuerza la reaplicación. Test: `TestOpenSkipsUnchangedSchema`.
+  - Suite Go completa (`-p 4`) 2 veces seguidas: 1.654 aprobados, 0 fallidos, 6 omitidos. E2E 591/591.
+  - `go test ./db` en A/B dentro de la misma ventana: 35 s antes, 28–29 s después.
+- [x] **P2** F3: `release_smoke.py` compatible con Python 3.10. `lab/benchmark` 16/16.
 - [ ] **P1** R4: subir la cobertura de `ethical_boundary/{guard,intercept}` con casos negativos.
-- [ ] **P2** R8: mover `shadcn` a devDependencies, revisar `zod` y actualizar next/geist/postcss. Volver a ejecutar osv-scanner.
+- [x] **P2** R8: `shadcn` 4.23.0 pasa a devDependencies, `zod` sube a 4.6.7, `next` a 16.4.4, más `npm audit fix`.
+  - osv-scanner: de 20 paquetes y 84 avisos a **2 paquetes y 2 avisos medios, ambos de desarrollo** (`deepmerge` y `minimatch`, vía shadcn).
+  - `npm audit --omit=dev`: 0.
+  - `tsc` 0 errores; `build:static` correcto (68 páginas).
 - [ ] **P2** SBOM CycloneDX generado en la CI.
 - [ ] **P2** F6: corregir los errores de Biome en archivos commiteados (sin tocar los cambios locales del usuario) y añadir Biome a la CI.
 - [ ] **P2** `GET /api/tasks`: 128 ms en p50 con 670 tareas. Perfilar y paginar o indexar.

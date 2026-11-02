@@ -8,8 +8,10 @@ package db
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	_ "embed"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/url"
@@ -59,6 +61,51 @@ type schemaExecer interface {
 func isPostgresDeadlock(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "40P01"
+}
+
+// schemaStateDDL records which schema.sql was last applied. Re-running the whole
+// script on every start is idempotent but not free: its DROP TRIGGER / ALTER TABLE
+// statements take ACCESS EXCLUSIVE locks, so a restart or a second instance coming
+// up next to live traffic deadlocked ordinary writes (seen as 40P01 on INSERT INTO
+// activity). With the same binary the script is skipped; a new schema.sql still
+// applies once, under the migration lock.
+const schemaStateDDL = `CREATE TABLE IF NOT EXISTS nexus_schema_state (
+    id         BOOLEAN PRIMARY KEY DEFAULT true CHECK (id),
+    sha256     TEXT NOT NULL,
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+)`
+
+func schemaDigest() string {
+	sum := sha256.Sum256([]byte(schemaSQL))
+	return hex.EncodeToString(sum[:])
+}
+
+// schemaForced lets an operator re-run schema.sql after manual surgery on the
+// database (NEXUS_SCHEMA_FORCE=1).
+func schemaForced() bool { return strings.TrimSpace(os.Getenv("NEXUS_SCHEMA_FORCE")) == "1" }
+
+// applySchemaIfChanged runs schema.sql unless the recorded digest already matches
+// it. Must be called with the migration lock held. Reports whether it ran.
+func applySchemaIfChanged(ctx context.Context, conn *sql.Conn, sleep func(time.Duration)) (bool, error) {
+	digest := schemaDigest()
+	if !schemaForced() {
+		var current string
+		// A missing table or row just means "never recorded" — apply.
+		if err := conn.QueryRowContext(ctx, `SELECT sha256 FROM nexus_schema_state`).Scan(&current); err == nil && current == digest {
+			return false, nil
+		}
+	}
+	if err := applySchemaWithRetry(ctx, conn, sleep); err != nil {
+		return false, err
+	}
+	if _, err := conn.ExecContext(ctx, schemaStateDDL); err != nil {
+		return true, fmt.Errorf("schema state table: %w", err)
+	}
+	if _, err := conn.ExecContext(ctx, `INSERT INTO nexus_schema_state(id, sha256, applied_at) VALUES (true, $1, now())
+ON CONFLICT (id) DO UPDATE SET sha256=EXCLUDED.sha256, applied_at=now()`, digest); err != nil {
+		return true, fmt.Errorf("record schema state: %w", err)
+	}
+	return true, nil
 }
 
 func applySchemaWithRetry(ctx context.Context, execer schemaExecer, sleep func(time.Duration)) error {
@@ -176,7 +223,7 @@ func Open(dsn string) (*DB, error) {
 	// Keep the dedicated lock connection checked out until both DDL and seeding
 	// finish so concurrent application instances cannot initialize out of order.
 	err = withSchemaMigrationLock(context.Background(), sqlDB, func(conn *sql.Conn) error {
-		if err := applySchemaWithRetry(context.Background(), conn, time.Sleep); err != nil {
+		if _, err := applySchemaIfChanged(context.Background(), conn, time.Sleep); err != nil {
 			return fmt.Errorf("apply schema: %w", err)
 		}
 		if err := d.seedBuiltins(); err != nil {

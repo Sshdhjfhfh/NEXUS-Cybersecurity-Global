@@ -27,7 +27,8 @@ def lab_dsn(value):
     p = urlsplit(value)
     if p.scheme not in ("postgres", "postgresql") or not re.fullmatch(r"/nexus_lab_[a-zA-Z0-9_]{1,40}", p.path):
         raise ValueError("a dedicated nexus_lab_* database is required")
-    query = parse_qs(p.query, strict_parsing=True)
+    # Python < 3.11 raises on an empty query under strict parsing.
+    query = parse_qs(p.query, strict_parsing=True) if p.query else {}
     if set(query) - {"host", "sslmode"} or any(len(v) != 1 for v in query.values()):
         raise ValueError("unsupported laboratory database parameters")
     if p.hostname in ("127.0.0.1", "::1") and "host" not in query:

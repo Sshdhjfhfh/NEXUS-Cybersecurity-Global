@@ -1,8 +1,9 @@
 # Diseño: aislamiento de las herramientas de los agentes (R13)
 
-Estado: **en implementación** (2026-11-02). Pasos 1 y 3 (protocolo/servidor/cliente)
-hechos; faltan el namespace de montaje, el cableado en `cmd/nexus` y el despliegue en
-contenedor. Bloquea los encargos contra objetivos reales de clientes.
+Estado: **en implementación** (2026-11-07). Pasos 1 y 3 completos en código
+(protocolo/servidor/cliente, namespace de montaje y cableado en `cmd/nexus`); falta el
+despliegue en contenedor con su prueba negativa (bloqueado por Docker–WSL) y los pasos 2,
+4 y 6. Bloquea los encargos contra objetivos reales de clientes.
 
 ## 1. Problema
 
@@ -119,15 +120,18 @@ queda solo para desarrollo y se rechazará al arrancar cuando `NEXUS_PORTAL_BASE
    (`customtool.go`, `core/mcp/stdio.go`) todavía no; van en el paso 4.
 2. Raíz de trabajo por tarea para Read/Write/Edit/Grep/Glob, con tests negativos de
    recorrido de rutas (`../`, enlaces simbólicos).
-3. 🟡 Servicio runner, protocolo y cliente. **Hecho (`core/runner`, commit f281bce):**
-   protocolo enmarcado, servidor con PTY, verificación `SO_PEERCRED`, confinamiento de
-   directorio con rechazo de symlinks, muerte del grupo al desconectar, reenvío de señales
-   y de tamaño de terminal. Tests con `-race -count=3`, cobertura 71,4%. **Pendiente:** el
-   hook `Isolate` (namespace de montaje), el subcomando `runner-serve` en `cmd/nexus`, el
-   cableado de `SetLauncher` cuando `NEXUS_RUNNER_SOCKET` esté definido, y los tests de
-   integración en contenedor (bloqueados por la integración Docker–WSL). Prueba negativa
-   objetivo: un comando no puede leer `/app/keys`, ni `/proc/<pid>/environ` del
-   orquestador, ni conectar con Postgres.
+3. 🟢 Servicio runner, protocolo, cliente e **isolación**. **Hecho (`core/runner`,
+   commits f281bce + f078063; cableado en `cmd/nexus`):** protocolo enmarcado, servidor
+   con PTY, verificación `SO_PEERCRED`, confinamiento de directorio con rechazo de
+   symlinks, muerte del grupo al desconectar, reenvío de señales y de tamaño de terminal;
+   `MountIsolate` (namespaces PID+montaje+usuario, `/proc` fresco, enmascarado de rutas,
+   `no_new_privs`) con el subcomando `runner-init`; subcomandos `runner-exec`/`runner-serve`
+   y `SetLauncher` (cuando `NEXUS_RUNNER_SOCKET` está definido) cableados en `cmd/nexus`.
+   Tests con `-race`; `TestMountIsolateSeparatesPIDAndProc` cubre la propiedad (se salta si
+   el kernel no tiene user namespaces sin privilegios); verificado end-to-end con el
+   binario real. **Pendiente:** los **tests de integración en contenedor** (bloqueados por
+   la integración Docker–WSL). Prueba negativa objetivo: un comando no puede leer
+   `/app/keys`, ni `/proc/<pid>/environ` del orquestador, ni conectar con Postgres.
 4. `Session` (PTY) y MCP stdio sobre el runner.
 5. Pasarela de salida y proxy con alcance. Prueba negativa en el Cyber Range (Fase 2):
    un host fuera de alcance no recibe ni un paquete.

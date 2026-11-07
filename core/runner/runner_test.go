@@ -21,9 +21,12 @@ import (
 	"github.com/nexus-ia/nexus/core/tool"
 )
 
-// The test binary doubles as the per-command client, the way the orchestrator
-// binary does with ClientSubcommand.
+// The test binary doubles as the per-command client (the way the orchestrator
+// binary does with ClientSubcommand) and as the in-namespace init (InitSubcommand).
 func TestMain(m *testing.M) {
+	if len(os.Args) > 1 && os.Args[1] == InitSubcommand {
+		os.Exit(InitMain(os.Args[2:]))
+	}
 	if os.Getenv(envRequest) != "" {
 		os.Exit(ClientMain())
 	}
@@ -36,6 +39,12 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T, peerUID int) *fixture {
+	return newFixtureOpt(t, peerUID, nil)
+}
+
+// newFixtureOpt is newFixture with an optional isolator, set before Serve starts
+// so -race sees no write to srv.Isolate racing the accept loop.
+func newFixtureOpt(t *testing.T, peerUID int, isolate func(*exec.Cmd, string) error) *fixture {
 	t.Helper()
 	base := t.TempDir()
 	for _, d := range []string{"tasks/7/i3", "tasks/8", "sessions/abc"} {
@@ -54,7 +63,7 @@ func newFixture(t *testing.T, peerUID int) *fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv := &Server{WorkBase: base, PeerUID: peerUID, BaseEnv: []string{"PATH=/usr/bin:/bin"}}
+	srv := &Server{WorkBase: base, PeerUID: peerUID, BaseEnv: []string{"PATH=/usr/bin:/bin"}, Isolate: isolate}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	go func() { _ = srv.Serve(ctx, l) }()
@@ -78,6 +87,54 @@ func (f *fixture) exec(t *testing.T, req Request, stdin string) (int, string, st
 	defer cancel()
 	code, err := Exec(ctx, f.socket, req, r, &out, &errb, nil, nil)
 	return code, out.String(), errb.String(), err
+}
+
+// TestMountIsolateSeparatesPIDAndProc checks the concrete property the mount
+// namespace gives: an agent command runs in a fresh PID namespace with its own
+// /proc, so it cannot read the orchestrator's /proc/<pid>/environ, and masked
+// paths (e.g. a key directory) are invisible. Skips where unprivileged user
+// namespaces are disabled.
+func TestMountIsolateSeparatesPIDAndProc(t *testing.T) {
+	self, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	secretDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(secretDir, "jwt.key"), []byte("TOPSECRET"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f := newFixtureOpt(t, os.Getuid(), MountIsolate(self, []string{secretDir}))
+
+	code, out, errOut, err := f.exec(t, Request{Command: "echo $$", Dir: f.dir("tasks/7")}, "")
+	if err != nil {
+		if strings.Contains(err.Error(), "operation not permitted") || strings.Contains(err.Error(), "permission denied") {
+			t.Skipf("unprivileged user namespaces unavailable: %v", err)
+		}
+		t.Fatalf("exec: %v (stderr=%q)", err, errOut)
+	}
+	// In a fresh PID namespace the shell is PID 1.
+	if strings.TrimSpace(out) != "1" {
+		t.Fatalf("shell pid in namespace = %q, want 1 (stderr=%q)", out, errOut)
+	}
+
+	// The orchestrator (this test process) has no /proc entry in the namespace.
+	pid := strconv.Itoa(os.Getpid())
+	code, _, _, err = f.exec(t, Request{Command: "cat /proc/" + pid + "/environ", Dir: f.dir("tasks/7")}, "")
+	if err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+	if code == 0 {
+		t.Fatalf("reading /proc/%s/environ succeeded inside the namespace; it must not be visible there", pid)
+	}
+
+	// The masked key directory is hidden.
+	_, out, _, err = f.exec(t, Request{Command: "cat " + filepath.Join(secretDir, "jwt.key"), Dir: f.dir("tasks/7")}, "")
+	if err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+	if strings.Contains(out, "TOPSECRET") {
+		t.Fatalf("masked secret leaked through isolation: %q", out)
+	}
 }
 
 func TestExecStreamsAndExitCode(t *testing.T) {

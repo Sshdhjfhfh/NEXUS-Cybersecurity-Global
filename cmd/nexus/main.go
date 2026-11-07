@@ -51,6 +51,9 @@ func printBanner(addr string) {
 
 // main only maps run's result onto the process exit code.
 func main() {
+	// The runner re-execs this binary as runner-init/runner-exec, and the
+	// tool-runner container runs it as runner-serve. Handle those before flags.
+	maybeRunnerSubcommand()
 	os.Exit(run())
 }
 
@@ -64,6 +67,10 @@ func run() int {
 
 	// hand the build version to the server package so GET /api/health can report it
 	server.BuildVersion = version
+
+	// Route agent shell commands through the isolated runner when configured.
+	// Must happen before the engine starts any task.
+	wireLauncher()
 
 	printBanner(*addr)
 

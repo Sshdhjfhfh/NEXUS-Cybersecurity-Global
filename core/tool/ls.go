@@ -42,6 +42,9 @@ func runLS(_ context.Context, input json.RawMessage, tc *ToolContext) (Result, e
 	dir := tc.WorkingDir
 	if in.Path != "" {
 		dir = resolvePath(tc, in.Path)
+		if err := confinePath(tc, dir); err != nil {
+			return Errorf(err.Error()), nil
+		}
 	}
 	if dir == "" {
 		dir = "."

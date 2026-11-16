@@ -50,6 +50,9 @@ func runGlob(_ context.Context, input json.RawMessage, tc *ToolContext) (Result,
 	root := tc.WorkingDir
 	if in.Path != "" {
 		root = resolvePath(tc, in.Path)
+		if err := confinePath(tc, root); err != nil {
+			return Errorf(err.Error()), nil
+		}
 	}
 	if root == "" {
 		root = "."
@@ -212,6 +215,9 @@ func runGrep(_ context.Context, input json.RawMessage, tc *ToolContext) (Result,
 	root := tc.WorkingDir
 	if in.Path != "" {
 		root = resolvePath(tc, in.Path)
+		if err := confinePath(tc, root); err != nil {
+			return Errorf(err.Error()), nil
+		}
 	}
 	if root == "" {
 		root = "."

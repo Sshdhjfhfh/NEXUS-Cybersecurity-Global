@@ -48,6 +48,9 @@ func runRead(_ context.Context, input json.RawMessage, tc *ToolContext) (Result,
 		return Result{}, err
 	}
 	path := resolvePath(tc, in.FilePath)
+	if err := confinePath(tc, path); err != nil {
+		return Errorf(err.Error()), nil
+	}
 	info, err := os.Stat(path)
 	if err != nil {
 		return Errorf(fmt.Sprintf("Error reading %s: %v", in.FilePath, err)), nil
@@ -173,6 +176,9 @@ func runWrite(_ context.Context, input json.RawMessage, tc *ToolContext) (Result
 		return Result{}, err
 	}
 	path := resolvePath(tc, in.FilePath)
+	if err := confinePath(tc, path); err != nil {
+		return Errorf(err.Error()), nil
+	}
 	existed := false
 	if info, err := os.Stat(path); err == nil {
 		if info.IsDir() {
@@ -229,6 +235,9 @@ func runEdit(_ context.Context, input json.RawMessage, tc *ToolContext) (Result,
 		return Errorf("Error: old_string and new_string are identical"), nil
 	}
 	path := resolvePath(tc, in.FilePath)
+	if err := confinePath(tc, path); err != nil {
+		return Errorf(err.Error()), nil
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return Errorf(fmt.Sprintf("Error reading %s: %v", in.FilePath, err)), nil

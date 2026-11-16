@@ -96,43 +96,48 @@ func (s *Server) portalAuth(w http.ResponseWriter, r *http.Request) (orgID, user
 	// One query resolves everything that can revoke access mid-session: the org
 	// being suspended, the user being deactivated, their sessions being revoked
 	// (token issued before sessions_revoked_at) or this session being signed out.
-	// Fails open only on a DB error (any write then fails on the same DB anyway).
-	if s.m != nil && s.m.pg != nil && s.m.pg.EnsurePortalTables() == nil {
-		a, err := s.m.pg.PortalAuthState(userID, c.SID)
-		if err == nil {
-			if a == nil {
-				writeErr(w, 401, "no autorizado")
-				return 0, 0, false
-			}
-			if a.Suspended {
-				writeErr(w, 403, "organización suspendida")
-				return 0, 0, false
-			}
-			if a.Disabled {
-				writeErr(w, 403, "cuenta desactivada")
-				return 0, 0, false
-			}
-			if !a.SessionActive || (a.RevokedAt != nil && iat < a.RevokedAt.Unix()) {
-				writeErr(w, 401, "sesión revocada; inicia sesión de nuevo")
-				return 0, 0, false
-			}
-			// The auditor role is read-only everywhere — enforced here, once, so
-			// a write endpoint can never forget it — except for the auditor's own
-			// account security.
-			if a.Role == roleAuditor && !isReadMethod(r.Method) && !isAuditorSelfService(r.URL.Path) {
-				writeErr(w, 403, "el rol auditor es de solo lectura")
-				return 0, 0, false
-			}
-			if !s.enforceOrgPolicy(w, r, a, userID, iat) {
-				return 0, 0, false
-			}
-			if !termsGate(w, r, a.TermsVersion) {
-				return 0, 0, false
-			}
-			if time.Since(a.SessionLastSeen) > time.Minute {
-				_ = s.m.pg.TouchPortalSession(c.SID, clientIP(r))
-			}
-		}
+	// This MUST fail closed: if the live auth state cannot be resolved, a revoked,
+	// suspended or role-limited session must not slip through, so an unresolvable
+	// state is a 503, never an allow.
+	if s.m == nil || s.m.pg == nil || s.m.pg.EnsurePortalTables() != nil {
+		writeErr(w, 503, "servicio no disponible")
+		return 0, 0, false
+	}
+	a, err := s.m.pg.PortalAuthState(userID, c.SID)
+	if err != nil {
+		writeErr(w, 503, "servicio no disponible")
+		return 0, 0, false
+	}
+	if a == nil {
+		writeErr(w, 401, "no autorizado")
+		return 0, 0, false
+	}
+	if a.Suspended {
+		writeErr(w, 403, "organización suspendida")
+		return 0, 0, false
+	}
+	if a.Disabled {
+		writeErr(w, 403, "cuenta desactivada")
+		return 0, 0, false
+	}
+	if !a.SessionActive || (a.RevokedAt != nil && iat < a.RevokedAt.Unix()) {
+		writeErr(w, 401, "sesión revocada; inicia sesión de nuevo")
+		return 0, 0, false
+	}
+	// The auditor role is read-only everywhere — enforced here, once, so a write
+	// endpoint can never forget it — except for the auditor's own account security.
+	if a.Role == roleAuditor && !isReadMethod(r.Method) && !isAuditorSelfService(r.URL.Path) {
+		writeErr(w, 403, "el rol auditor es de solo lectura")
+		return 0, 0, false
+	}
+	if !s.enforceOrgPolicy(w, r, a, userID, iat) {
+		return 0, 0, false
+	}
+	if !termsGate(w, r, a.TermsVersion) {
+		return 0, 0, false
+	}
+	if time.Since(a.SessionLastSeen) > time.Minute {
+		_ = s.m.pg.TouchPortalSession(c.SID, clientIP(r))
 	}
 	return orgID, userID, true
 }

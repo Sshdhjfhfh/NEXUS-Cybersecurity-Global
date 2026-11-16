@@ -73,14 +73,16 @@ const maxFetchBytes = 2 << 20 // 2 MiB
 
 // newFetchClient returns an HTTP client honoring the proxy / TLS config.
 func newFetchClient(cfg WebFetchConfig) *http.Client {
-	if cfg.Proxy == "" && !cfg.InsecureTLS && cfg.CACert == "" {
-		return &http.Client{}
-	}
 	tr := &http.Transport{}
 	if cfg.Proxy != "" {
 		if pu, err := url.Parse(cfg.Proxy); err == nil {
 			tr.Proxy = http.ProxyURL(pu)
 		}
+	} else {
+		// Direct egress (no capture proxy): block SSRF to private, loopback,
+		// link-local and cloud-metadata addresses at dial time. When a proxy is
+		// configured it is the egress boundary instead.
+		tr.DialContext = ssrfSafeDialContext()
 	}
 	switch {
 	case cfg.InsecureTLS:

@@ -134,6 +134,7 @@ func (s *Server) enforceOrgPolicy(w http.ResponseWriter, r *http.Request, a *db.
 			}
 			s.audit(r, &a.OrgID, actor, "portal_user", "auth.ip_blocked", "user:"+strconv.FormatInt(userID, 10), "ip="+ip)
 		}
+		s.flagAbuse(r, a.OrgID, userID, "auth.ip_blocked")
 		writeErr(w, 403, "acceso no permitido desde esta red por la política de la organización")
 		return false
 	}

@@ -94,12 +94,14 @@ func (s *Server) portalRequireRole(w http.ResponseWriter, r *http.Request, minRo
 	}
 	if u.Role == roleAuditor {
 		if !isReadMethod(r.Method) || roleRank(minRole) > roleRank("admin") {
+			s.flagAbuse(r, orgID, userID, "authz.forbidden")
 			writeErr(w, 403, "no tienes permisos para esta acción")
 			return 0, 0, "", false
 		}
 		return orgID, userID, u.Role, true
 	}
 	if roleRank(u.Role) < roleRank(minRole) {
+		s.flagAbuse(r, orgID, userID, "authz.forbidden")
 		writeErr(w, 403, "no tienes permisos para esta acción")
 		return 0, 0, "", false
 	}

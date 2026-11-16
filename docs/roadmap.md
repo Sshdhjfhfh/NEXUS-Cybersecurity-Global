@@ -97,6 +97,31 @@ Estado al 2026-11-02: base `d218b3b`. Diagnóstico en
   - Los estados y las severidades también se traducen (por ejemplo "Riesgo aceptado" o "[CRÍTICA]").
   - Tests: `TestParseLang`, `TestCatalogComplete` (ningún texto vacío en ningún idioma), `TestExportLang` y `TestFindingsExportFollowsLang`.
 
+## Privacidad y protección de datos (servidor grande en producción)
+
+Análisis completo: [security/privacy-readiness.md](security/privacy-readiness.md).
+NEXUS procesa datos muy sensibles de clientes (hallazgos, evidencia, cuentas),
+así que esto bloquea cobrar a clientes reales. Ya existe: cifrado de secretos
+2FA/SSO, export+borrado GDPR, auditoría encadenada, TLS+HSTS, scrub de secretos
+en comandos de agente, aislamiento multi-tenant. Falta:
+
+- [ ] **P0** Controlar y minimizar el **egress a LLM**: bandera `ai_local_only` por
+  organización, redacción de PII/secretos antes del prompt, procedencia de qué se
+  envió y a quién, y acuerdo de subencargo con cada proveedor LLM.
+- [ ] **P0** **Cifrado en reposo** de la base de datos y del almacén de evidencia
+  (cifrado de volumen/disco o TDE; clave fuera del volumen).
+- [ ] **P0** Cerrar **R13** (ver Fase 1): sin el contenedor, un agente alcanza la BD
+  y archivos del host — también es fuga de privacidad entre clientes.
+- [ ] **P1** **DPA** (acuerdo de tratamiento de datos) + política de privacidad
+  real (no borrador) + lista de subencargados.
+- [ ] **P1** **Retención y eliminación automatizadas** por encargo (no solo el
+  export/erasure manual que ya existe).
+- [ ] **P1** Gestión de claves con **KMS/gestor de secretos** y rotación (hoy todo
+  deriva de un único `jwtKey` en un archivo).
+- [ ] **P1** **Residencia de datos**: decidir y documentar dónde vive el servidor.
+- [ ] **P2** Redacción de PII en hallazgos/evidencia antes de mostrar/exportar/LLM;
+  emergency stop del cliente; política de divulgación publicada.
+
 ## Fase 2: Cyber Range, benchmarks y evaluador independiente
 
 - [ ] **P1** Cyber Range local aislado (red interna sin salida, objetivos vulnerables conocidos, reinicio reproducible).
@@ -129,6 +154,7 @@ Estado al 2026-11-02: base `d218b3b`. Diagnóstico en
 
 - [ ] **P1** Backups cifrados off-site, ensayo de restauración y RPO/RTO definidos.
 - [ ] **P1** Pentest externo independiente.
+- [~] **P2** Detección y bloqueo **automático** de mal uso por un miembro ya autenticado. **Hecho en modo sombra (commit 08119dd):** `portal_abuse.go` puntúa señales por usuario en ventana deslizante de 15 min (pesos: `authz.forbidden` 2, `scope.blocked` 3, `auth.ip_blocked` 1, `export.excessive` 3; umbral 6); al cruzarlo, con `NEXUS_ABUSE_AUTOSUSPEND` activo desactiva al miembro + revoca sus sesiones + audita + alerta a `NEXUS_OPS_EMAIL`; por defecto (sombra) solo audita `security.abuse_detected` y alerta, sin suspender, para afinar umbrales. Nunca suspende a un owner; nunca por fallos de login (evita DoS a la víctima). Cableado en `portalRequireRole` y `enforceOrgPolicy`. Núcleo `abuseRecord` puro y testeado. **Pendiente:** hook de `scope.blocked` desde el motor (hoy solo señales a nivel portal) y `export.excessive`; panel para el operador; afinar pesos con tráfico real antes de activar la suspensión.
 - [ ] **P2** HA (2 instancias más la BD gestionada) y `docs/operations/runbooks.md`.
 - [ ] `docs/security/threat-model.md` (STRIDE por componente).
 

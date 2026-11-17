@@ -1,3 +1,4 @@
+import { SeverityBadge } from "@/components/severity-badge";
 import { cn } from "@/lib/utils";
 import {
   statusMeta,
@@ -18,6 +19,18 @@ export function StatusBadge({
   dot?: boolean;
   className?: string;
 }) {
+  // Severity is rendered by the shared SeverityBadge so the Console and the
+  // Portal show the exact same ramp (color + letter + label) — the one signal a
+  // security tool must never render two different ways.
+  if (domain === "severity") {
+    return (
+      <SeverityBadge
+        severity={value}
+        label={statusMeta("severity", value).label}
+        className={className}
+      />
+    );
+  }
   const meta = statusMeta(domain, value);
   return (
     <span

@@ -46,9 +46,15 @@ marca (azul/cian/violeta/naranja/verde), con variantes más brillantes en oscuro
 
 - **`SeverityBadge`** (`src/components/severity-badge.tsx`) — HECHO. Compartido
   por portal y consola. `normalizeSeverity()` mapea los strings del backend (es/en).
-- Próximos: `DataState` (loading/error/empty con reintento — hoy "error" se ve
-  igual que "sin datos"), `StatCard`, `DataTable`, `ClassificationTag`,
-  `PageHeader`, selector de organización + búsqueda `Ctrl+K`.
+  La consola lo usa vía `StatusBadge` (`domain="severity"` delega en él), así que
+  portal y consola muestran la MISMA rampa.
+- **`DataState`** (`src/components/data-state.tsx`) — HECHO. loading / error /
+  empty / content en un solo envoltorio; el estado de **error** es visualmente
+  distinto del **vacío** (borde destructivo + botón de reintentar) y se anuncia a
+  lectores de pantalla. Resuelve el riesgo de que un fallo de carga se vea como
+  "sin datos".
+- Próximos: `StatCard`, `DataTable`, `ClassificationTag`, `PageHeader`, selector
+  de organización + búsqueda `Ctrl+K`, y cablear `DataState` en las pantallas.
 
 ## 4. Tipografía
 

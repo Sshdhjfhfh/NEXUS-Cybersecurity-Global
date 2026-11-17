@@ -40,6 +40,19 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  /* NEXUS design system — brand + severity (one source for console + portal) */
+  --color-brand-cyan: var(--brand-cyan);
+  --color-brand-blue: var(--brand-blue);
+  --color-sev-critical: var(--sev-critical);
+  --color-sev-critical-foreground: var(--sev-critical-foreground);
+  --color-sev-high: var(--sev-high);
+  --color-sev-high-foreground: var(--sev-high-foreground);
+  --color-sev-medium: var(--sev-medium);
+  --color-sev-medium-foreground: var(--sev-medium-foreground);
+  --color-sev-low: var(--sev-low);
+  --color-sev-low-foreground: var(--sev-low-foreground);
+  --color-sev-info: var(--sev-info);
+  --color-sev-info-foreground: var(--sev-info-foreground);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -72,11 +85,28 @@ These serve as the fallback; there is no separate default.css file. */
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* Categorical chart palette — brand-derived, replaces the grayscale default. */
+  --chart-1: #2563eb;
+  --chart-2: #0e7490;
+  --chart-3: #7c3aed;
+  --chart-4: #c2410c;
+  --chart-5: #15803d;
+  /* NEXUS brand + severity ramp — one source consumed by console AND portal.
+     Severity is theme-independent: a Critical is the same red everywhere, as a
+     solid badge with its *-foreground text (AA on both light and dark cards). */
+  --brand-cyan: #0e7490;
+  --brand-blue: #2563eb;
+  --brand-navy: #060b18;
+  --sev-critical: #b91c1c;
+  --sev-critical-foreground: #ffffff;
+  --sev-high: #c2410c;
+  --sev-high-foreground: #ffffff;
+  --sev-medium: #a16207;
+  --sev-medium-foreground: #ffffff;
+  --sev-low: #1d4ed8;
+  --sev-low-foreground: #ffffff;
+  --sev-info: #475569;
+  --sev-info-foreground: #ffffff;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -112,11 +142,13 @@ These serve as the fallback; there is no separate default.css file. */
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* Brighter categorical palette for dark surfaces. Severity tokens are inherited
+     from :root (a Critical is red in both themes). */
+  --chart-1: #60a5fa;
+  --chart-2: #22d3ee;
+  --chart-3: #a78bfa;
+  --chart-4: #fb923c;
+  --chart-5: #4ade80;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);

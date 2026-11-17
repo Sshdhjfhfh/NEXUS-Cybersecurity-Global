@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { type PortalDict, usePortalI18n } from "./i18n";
+import { SeverityBadge } from "@/components/severity-badge";
 import { type Me, type OverviewResponse, portalApi, type SeverityBucket, type ViewProfile } from "./portal";
 
 // Client dashboard overview. Two perspectives on the SAME server-computed data:
@@ -26,14 +27,6 @@ import { type Me, type OverviewResponse, portalApi, type SeverityBucket, type Vi
 
 const SEVERITIES = ["critical", "high", "medium", "low", "unrated"] as const;
 type Sev = (typeof SEVERITIES)[number];
-
-const SEV_TONE: Record<Sev, string> = {
-  critical: "border-rose-200 bg-rose-50 text-rose-700",
-  high: "border-orange-200 bg-orange-50 text-orange-700",
-  medium: "border-amber-200 bg-amber-50 text-amber-800",
-  low: "border-sky-200 bg-sky-50 text-sky-700",
-  unrated: "border-slate-200 bg-slate-100 text-slate-600",
-};
 
 const EXPOSURE_TONE: Record<Sev | "none", { card: string; icon: string }> = {
   critical: { card: "border-rose-200 bg-gradient-to-br from-rose-50 to-white", icon: "bg-rose-100 text-rose-700" },
@@ -58,13 +51,9 @@ function sevLabel(t: PortalDict, sev: string): string {
 export function SevBadge({ sev }: { sev: string }) {
   const { t } = usePortalI18n();
   const key = (SEVERITIES as readonly string[]).includes(sev) ? (sev as Sev) : "unrated";
-  return (
-    <span
-      className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${SEV_TONE[key]}`}
-    >
-      {sevLabel(t, key)}
-    </span>
-  );
+  // Delegates to the shared SeverityBadge so the Portal and the Console show the
+  // exact same severity colors and shape, with a non-color (letter) encoding.
+  return <SeverityBadge severity={key === "unrated" ? "info" : key} label={sevLabel(t, key)} />;
 }
 
 function daysSince(iso: string): number {

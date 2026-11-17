@@ -71,6 +71,12 @@ jerarquía clara.
 ## 6. Reglas
 
 - Nada de colores Tailwind crudos (`bg-red-500`) para semántica: usar tokens.
+- **Fechas y tiempo relativo: siempre vía `src/lib/datetime.ts`** (`formatDateTime`,
+  `formatDate`, `relativeTime`) con el locale del usuario. **Prohibido** `zh-CN` y
+  construir strings de tiempo relativo a mano (causaba fechas en chino en las
+  evidencias y textos rotos como "5hace s"). Migrados ya los componentes
+  compartidos de evidencia/tráfico; las pantallas de `(main)` migran igual al
+  commitearse.
 - Datos de ejemplo siempre etiquetados "Datos de ejemplo". Sin inventar clientes,
   cifras ni certificaciones.
 - Cada pantalla se revisa en claro/oscuro y móvil, y pasa a11y + crítica de diseño.

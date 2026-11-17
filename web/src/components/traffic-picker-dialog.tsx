@@ -1,6 +1,7 @@
 "use client";
 
 import { t } from '@/lib/i18n';
+import { formatDateTime } from "@/lib/datetime";
 
 import * as React from "react";
 
@@ -218,7 +219,7 @@ export function TrafficPickerDialog({
                       {alreadyBound.has(e.id) ? <Badge variant="secondary">{t("ui.bfe1df5580a0f59e")}</Badge> : null}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-xs">
-                      {new Date(e.ts).toLocaleString("zh-CN")}
+                      {formatDateTime(e.ts)}
                     </TableCell>
                     <TableCell>{e.status}</TableCell>
                     <TableCell>

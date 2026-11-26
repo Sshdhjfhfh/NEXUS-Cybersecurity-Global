@@ -1,0 +1,1341 @@
+{
+  "runs": [
+    {
+      "id": 1,
+      "at": "2026-11-26T02:51:42.409415555Z",
+      "secured": false,
+      "target": "http://127.0.0.1:32651",
+      "logical_asset": "10.77.0.2",
+      "observations": [
+        {
+          "id": "run-1-http-1",
+          "path": "/",
+          "status": 200,
+          "body": "{\"organization\":\"Organización de demostración\",\"synthetic\":true}",
+          "sha256": "134e5ec75855ff0bce61955b197144538d7eaaab1e3ee7151dc53031045d9021",
+          "expected_attack": false,
+          "succeeded": false,
+          "at": "2026-11-26T02:51:42.411754514Z"
+        },
+        {
+          "id": "run-1-http-2",
+          "path": "/api/records/1",
+          "status": 200,
+          "body": "{\"id\":1,\"owner\":\"visitor\",\"data\":\"Registro público ficticio\"}",
+          "sha256": "f7e600b33d5a0c79f272275da091a848d8eea5eb63cac4a983a35f719ba000db",
+          "expected_attack": false,
+          "succeeded": false,
+          "at": "2026-11-26T02:51:42.413789017Z"
+        },
+        {
+          "id": "run-1-http-3",
+          "path": "/.env",
+          "status": 200,
+          "body": "DEMO_ONLY=true\nTOKEN=FICTICIO_SIN_VALOR\n",
+          "sha256": "db064dcf234c595c9d73c03631b7cc9b2a376601746cd90b5c38667ca81ab38b",
+          "expected_attack": true,
+          "succeeded": true,
+          "at": "2026-11-26T02:51:42.415140278Z"
+        },
+        {
+          "id": "run-1-http-4",
+          "path": "/api/records/2",
+          "status": 200,
+          "body": "{\"id\":2,\"owner\":\"admin\",\"data\":\"Registro privado FICTICIO: presupuesto de laboratorio\"}",
+          "sha256": "b156af78893972bcc6c9d30e3e6200b1326a24dbe85cd118e1847422c1279ec9",
+          "expected_attack": true,
+          "succeeded": true,
+          "at": "2026-11-26T02:51:42.41760613Z"
+        }
+      ],
+      "findings": [
+        {
+          "id": "F-CONFIG",
+          "title": "Archivo de configuración expuesto",
+          "severity": "alta",
+          "evidence_id": "run-1-http-3",
+          "remediation": "Excluir archivos de configuración del contenido servido por HTTP."
+        },
+        {
+          "id": "F-IDOR",
+          "title": "Acceso a registro de otro usuario",
+          "severity": "alta",
+          "evidence_id": "run-1-http-4",
+          "remediation": "Comprobar en el servidor la autorización sobre cada registro."
+        }
+      ],
+      "detection": {
+        "input_events": 4,
+        "unique_events": 4,
+        "duplicate_events": 0,
+        "matched_events": 2,
+        "evidence_digest": "cce8c78e0954a7f35aeae3f209686c4dd96004d32456c9a5ca7d9f7fe6a9098a",
+        "elapsed_ns": 257422,
+        "alerts": [
+          {
+            "tenant_id": "nexus-fair",
+            "task_id": "1",
+            "asset": "10.77.0.2",
+            "rule_id": "fair.config-probe",
+            "title": "Intento de acceso a configuración",
+            "severity": "high",
+            "author": "NEXUS exhibition module",
+            "license": "AGPL-3.0",
+            "techniques": [],
+            "first_seen": "2026-11-26T02:51:42.415140278Z",
+            "last_seen": "2026-11-26T02:51:42.415140278Z",
+            "evidence_ids": [
+              "run-1-http-3"
+            ]
+          },
+          {
+            "tenant_id": "nexus-fair",
+            "task_id": "1",
+            "asset": "10.77.0.2",
+            "rule_id": "fair.record-probe",
+            "title": "Acceso al registro reservado del escenario",
+            "severity": "high",
+            "author": "NEXUS exhibition module",
+            "license": "AGPL-3.0",
+            "techniques": [],
+            "first_seen": "2026-11-26T02:51:42.41760613Z",
+            "last_seen": "2026-11-26T02:51:42.41760613Z",
+            "evidence_ids": [
+              "run-1-http-4"
+            ]
+          }
+        ]
+      },
+      "metrics": {
+        "true_positive": 2,
+        "false_positive": 0,
+        "true_negative": 2,
+        "false_negative": 0
+      },
+      "elapsed_ms": 8
+    },
+    {
+      "id": 2,
+      "at": "2026-11-26T02:51:42.417906365Z",
+      "secured": true,
+      "target": "http://127.0.0.1:32651",
+      "logical_asset": "10.77.0.2",
+      "observations": [
+        {
+          "id": "run-2-http-1",
+          "path": "/",
+          "status": 200,
+          "body": "{\"organization\":\"Organización de demostración\",\"synthetic\":true}",
+          "sha256": "134e5ec75855ff0bce61955b197144538d7eaaab1e3ee7151dc53031045d9021",
+          "expected_attack": false,
+          "succeeded": false,
+          "at": "2026-11-26T02:51:42.419301332Z"
+        },
+        {
+          "id": "run-2-http-2",
+          "path": "/api/records/1",
+          "status": 200,
+          "body": "{\"id\":1,\"owner\":\"visitor\",\"data\":\"Registro público ficticio\"}",
+          "sha256": "f7e600b33d5a0c79f272275da091a848d8eea5eb63cac4a983a35f719ba000db",
+          "expected_attack": false,
+          "succeeded": false,
+          "at": "2026-11-26T02:51:42.420598517Z"
+        },
+        {
+          "id": "run-2-http-3",
+          "path": "/.env",
+          "status": 404,
+          "body": "404 page not found\n",
+          "sha256": "b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793",
+          "expected_attack": true,
+          "succeeded": false,
+          "at": "2026-11-26T02:51:42.421948236Z"
+        },
+        {
+          "id": "run-2-http-4",
+          "path": "/api/records/2",
+          "status": 403,
+          "body": "Acceso denegado: el registro pertenece a otro usuario\n",
+          "sha256": "4b20d9a3cc9c1dba0b44a9bd1158931253a82e25fc7ccfc812493cfc754cb2d9",
+          "expected_attack": true,
+          "succeeded": false,
+          "at": "2026-11-26T02:51:42.422894749Z"
+        }
+      ],
+      "findings": [],
+      "detection": {
+        "input_events": 4,
+        "unique_events": 4,
+        "duplicate_events": 0,
+        "matched_events": 2,
+        "evidence_digest": "b8fb1b3b86ce6f4563a7bd4e04730b60ee32393412346463bf0da091cc13719a",
+        "elapsed_ns": 146994,
+        "alerts": [
+          {
+            "tenant_id": "nexus-fair",
+            "task_id": "2",
+            "asset": "10.77.0.2",
+            "rule_id": "fair.config-probe",
+            "title": "Intento de acceso a configuración",
+            "severity": "high",
+            "author": "NEXUS exhibition module",
+            "license": "AGPL-3.0",
+            "techniques": [],
+            "first_seen": "2026-11-26T02:51:42.421948236Z",
+            "last_seen": "2026-11-26T02:51:42.421948236Z",
+            "evidence_ids": [
+              "run-2-http-3"
+            ]
+          },
+          {
+            "tenant_id": "nexus-fair",
+            "task_id": "2",
+            "asset": "10.77.0.2",
+            "rule_id": "fair.record-probe",
+            "title": "Acceso al registro reservado del escenario",
+            "severity": "high",
+            "author": "NEXUS exhibition module",
+            "license": "AGPL-3.0",
+            "techniques": [],
+            "first_seen": "2026-11-26T02:51:42.422894749Z",
+            "last_seen": "2026-11-26T02:51:42.422894749Z",
+            "evidence_ids": [
+              "run-2-http-4"
+            ]
+          }
+        ]
+      },
+      "metrics": {
+        "true_positive": 2,
+        "false_positive": 0,
+        "true_negative": 2,
+        "false_negative": 0
+      },
+      "elapsed_ms": 5
+    }
+  ],
+  "evaluation": {
+    "improvement": {
+      "dataset": "837cc2918172bc5a752b651f98e9c607f930332ce001f655484f17a1e83056ec",
+      "evaluator": "detectbench/2",
+      "contract": "0d3b9994099a42cd8d9094494cd2792225effac3a11aa5bfee20e5698db5856c",
+      "at": "2026-11-26T02:51:42.423504778Z",
+      "before": "v1",
+      "active": "v2",
+      "candidate": "v2",
+      "decision": "promoted",
+      "reason": "paired_holdout_improvement",
+      "train": {
+        "cases": 10,
+        "baseline_passed": 4,
+        "candidate_passed": 10,
+        "wins": 6,
+        "losses": 0,
+        "gain": 0.6,
+        "p_value": 0.015625,
+        "cost_ratio": 1,
+        "critical_failure": false
+      },
+      "holdout": {
+        "cases": 10,
+        "baseline_passed": 4,
+        "candidate_passed": 10,
+        "wins": 6,
+        "losses": 0,
+        "gain": 0.6,
+        "p_value": 0.015625,
+        "cost_ratio": 1,
+        "critical_failure": false
+      },
+      "trials": [
+        {
+          "case": {
+            "id": "g0-train-benign-0",
+            "input_digest": "ceb70aa5d813241fa42aa7beb00201eeeb2a6c3d36c029d0e79a8af98732271c",
+            "group": "g0-train-benign-0",
+            "split": "train",
+            "critical": true
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "0e7d11d5b0f9d90dec75e8517c5f604e00e51cdd638c9855be414481b09cebde"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-benign-1",
+            "input_digest": "12998e833298341acbea5a99200afa99bbe6d74f814ea4793d55df23ef684306",
+            "group": "g0-train-benign-1",
+            "split": "train",
+            "critical": true
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "21c64ff84ff714b0fd482687d963aa1790a8b820dec34debb957d5edda759299"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-0",
+            "input_digest": "af7b45f61736b671ea4f6f8302693c07c5b782cc4a1fba920ede16ba758dbc36",
+            "group": "g0-train-gitleak-0",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "972f284476ebbcb500fb536a410ba42a486d2859075f98ea5618b2a43428f097"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-1",
+            "input_digest": "41da5070976a78da9c77638cc77d5ba0f1d152035ea01acf9faf768a915cc7ab",
+            "group": "g0-train-gitleak-1",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "383f2fea2838c584166578965aaa86bb320e434fc89a5ca0f6c4d1ad1089072a"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-2",
+            "input_digest": "2c9500ac5f4dcb1a2cbec545d8e6041a29c3cb5f7861b0a6200df3f702ff9f42",
+            "group": "g0-train-gitleak-2",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "afe564be05ea89149f6dd26a572ce04e7d720be580dc1968e628bdbc7805581c"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-3",
+            "input_digest": "6eaa397d9f4e5fb6581b6f065fe50f538aeb58318dae222dc0fdf2d6a0e7c2ab",
+            "group": "g0-train-gitleak-3",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "ff624812badb7366475e0c1de46bb71d65841a9dd481d8b0e123251b674e99fe"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-4",
+            "input_digest": "971f7d2359d420b81065d4c287820eb2694bbfd8319c784998a87c9846b227a8",
+            "group": "g0-train-gitleak-4",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "1fcb34d741579827be73704a6188f31aba22c42b1db2739b7d4a0614be3f8a9d"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-5",
+            "input_digest": "dde1a88bb40590ed85cac0687f6b68e0f480bbcd6a79ade81a854f2ae7475e88",
+            "group": "g0-train-gitleak-5",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "6c671e3aeab08374c6c36829983a1f9fb0c88892f5120d189bf987123f4c367f"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-webshell-0",
+            "input_digest": "e80e11d8db3059ede0e3b3bb9426e36760bd46d785fcc9151c5ee7a8a8394436",
+            "group": "g0-train-webshell-0",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "2f4e4627282301ea77f9b1ebef818f136c0342b0e4619fec13443e874b2ce84c"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-webshell-1",
+            "input_digest": "e24ea7c8176233579abb3b03df4e6dc5a740a0647be8fc9d71ed9045fa8bb60e",
+            "group": "g0-train-webshell-1",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "9fd08d1de33e180f235cc8fe8f19d4af2920e74dfb23f1600749faaa56dc4fa0"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-benign-0",
+            "input_digest": "54f28c7caf8f1e880dca5560c54a95e23ee31b7ddd98d4f0f3ae12ac32ddc090",
+            "group": "g0-holdout-benign-0",
+            "split": "holdout",
+            "critical": true
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "534ddcc079662d0b055695d573e5e5bf9eccd6fc5c32a93530bfce4007215610"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-benign-1",
+            "input_digest": "b2268bf454520f4a592124028450782ca6b688d069d308ed0a4613b691abff3f",
+            "group": "g0-holdout-benign-1",
+            "split": "holdout",
+            "critical": true
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "6aafe8e83d1252aacddfe59ba02d4d1236f03801ebd16042fa06acc0cb1f47ad"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-0",
+            "input_digest": "6da016ebe1435f5546ef76cc33bcc5ad49f75f8dea05c31755a09e783533291c",
+            "group": "g0-holdout-gitleak-0",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "7de4ed7a497ef1287f2a29dff57f3d5ff5d6cbc4d9f9193e6f2ff251173a851b"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-1",
+            "input_digest": "f23e89382f2de781e859b6847b80fea693db9b538686516b93b08cd76b0d51f1",
+            "group": "g0-holdout-gitleak-1",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "c2811aaafdebb33004b953ea093748cf4c6cb1d6df2b1fcf7fec6cfdace19a12"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-2",
+            "input_digest": "a8ab8d4400209463be3f7fdabe89b58ec9660129f4a206261e8b2e7c6454eb92",
+            "group": "g0-holdout-gitleak-2",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "8a83f31f7adc9e4f3f9fc3c3dc1cce64499a92cf8d342a7e086e0d8ed191fa09"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-3",
+            "input_digest": "a83f84c4ca13cfa6c6e3754251399576ba9cdab16dd136f261e1199ba0864797",
+            "group": "g0-holdout-gitleak-3",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "7a4d18ec01896d6f4e6c7f04c6fbd5ee7ed35eaef64fc8276925bbbc9cd3fdab"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-4",
+            "input_digest": "decc2c55827dfabcd4fa1f788930ad6e95170569911293bf7112a3e58210adee",
+            "group": "g0-holdout-gitleak-4",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "020029cc5a67780e39169f02c1826a4e29629927bf1d1eab033dd6326e61f2f2"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-5",
+            "input_digest": "fdb5b7e8c0e52c6b9d7666375a488df50fb04c332de461b5713132826037cf33",
+            "group": "g0-holdout-gitleak-5",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "d546095872352c65d056a6cf875f6d62f52aef059d9b9f237ca30293d13d3dea"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-webshell-0",
+            "input_digest": "a29698ce90526a14f819b3607764a4a2ba6b21e64753f7f05f5c9b3a02027f34",
+            "group": "g0-holdout-webshell-0",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "4367427e8a9bb7b51b84ab5059ebbb8aedecdbb2e3cc0a6a1e69deea8bd51280"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-webshell-1",
+            "input_digest": "b5f731de826b18f0b23402bbb51db5d7081940880c5fae1eebfc9b36a6d0019a",
+            "group": "g0-holdout-webshell-1",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "a8475d5e9280e1df4ae08937c93bcfcb2c17dd858aa0c28b3e205944403319c3"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-benign-0",
+            "input_digest": "ceb70aa5d813241fa42aa7beb00201eeeb2a6c3d36c029d0e79a8af98732271c",
+            "group": "g0-train-benign-0",
+            "split": "train",
+            "critical": true
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "9bd04a19b508a500c703f81f93fb823d26fbf476310991690db3712fdfb37a65"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-benign-1",
+            "input_digest": "12998e833298341acbea5a99200afa99bbe6d74f814ea4793d55df23ef684306",
+            "group": "g0-train-benign-1",
+            "split": "train",
+            "critical": true
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "3df98569a89ace2883adb29b607dc8f6be330426d706ff438fc67f528e9ce9ee"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-0",
+            "input_digest": "af7b45f61736b671ea4f6f8302693c07c5b782cc4a1fba920ede16ba758dbc36",
+            "group": "g0-train-gitleak-0",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "7c95d613ef727c04a96eeabeb296412874154c6804ee7df85dd7ec89e1619053"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-1",
+            "input_digest": "41da5070976a78da9c77638cc77d5ba0f1d152035ea01acf9faf768a915cc7ab",
+            "group": "g0-train-gitleak-1",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "3efb958b08ee32260779671eb20ff38b1b882c9519f8081aa45e1e0f81eb91c6"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-2",
+            "input_digest": "2c9500ac5f4dcb1a2cbec545d8e6041a29c3cb5f7861b0a6200df3f702ff9f42",
+            "group": "g0-train-gitleak-2",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "f1e1128dc990fa63e131380cb010741108612da61004a12b13fe46fbac1617b5"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-3",
+            "input_digest": "6eaa397d9f4e5fb6581b6f065fe50f538aeb58318dae222dc0fdf2d6a0e7c2ab",
+            "group": "g0-train-gitleak-3",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "6d6af49adcf7b41f16606b4f17ce898a0fe3403f0e008e5ab7f60808972885d6"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-4",
+            "input_digest": "971f7d2359d420b81065d4c287820eb2694bbfd8319c784998a87c9846b227a8",
+            "group": "g0-train-gitleak-4",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "1eba4b251cb5ddb1c4077e7184f530829fe55ef27db630f9e07941f8f1c30de3"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-5",
+            "input_digest": "dde1a88bb40590ed85cac0687f6b68e0f480bbcd6a79ade81a854f2ae7475e88",
+            "group": "g0-train-gitleak-5",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "4aaf2068965b158062e3cbd96f341d526ef84988409fc5a9d0ae6ee285513a72"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-webshell-0",
+            "input_digest": "e80e11d8db3059ede0e3b3bb9426e36760bd46d785fcc9151c5ee7a8a8394436",
+            "group": "g0-train-webshell-0",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "b657d0a216cf90b5fc95cf0ded6d34f3e9a75bba83afe21dad1bd72990b029d8"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-webshell-1",
+            "input_digest": "e24ea7c8176233579abb3b03df4e6dc5a740a0647be8fc9d71ed9045fa8bb60e",
+            "group": "g0-train-webshell-1",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "7454f783b349987e3e4b7750ac89083a53b06daec7afdccc6d7d19149be10467"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-benign-0",
+            "input_digest": "54f28c7caf8f1e880dca5560c54a95e23ee31b7ddd98d4f0f3ae12ac32ddc090",
+            "group": "g0-holdout-benign-0",
+            "split": "holdout",
+            "critical": true
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "314de201ce1bec97b2c70cbcdce12b8461b54ab3bdaad32fdeb86b92492c4319"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-benign-1",
+            "input_digest": "b2268bf454520f4a592124028450782ca6b688d069d308ed0a4613b691abff3f",
+            "group": "g0-holdout-benign-1",
+            "split": "holdout",
+            "critical": true
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "36be3f31106257edb0d3b2c5813f9e46e75622a5d3f01becf32c6017bf02a6d0"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-0",
+            "input_digest": "6da016ebe1435f5546ef76cc33bcc5ad49f75f8dea05c31755a09e783533291c",
+            "group": "g0-holdout-gitleak-0",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "87fe6d06a00ebc40ce73e405cbd59d09288f847fdf8342444b1f73571e7d7caa"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-1",
+            "input_digest": "f23e89382f2de781e859b6847b80fea693db9b538686516b93b08cd76b0d51f1",
+            "group": "g0-holdout-gitleak-1",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "c93ea4e19ba8f42ae2eae3b7af559aeccd8c99852116f897619e6071710c7eff"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-2",
+            "input_digest": "a8ab8d4400209463be3f7fdabe89b58ec9660129f4a206261e8b2e7c6454eb92",
+            "group": "g0-holdout-gitleak-2",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "37827dcd59d5a06046df68b7fbe505fcc60c33766fd6a2766ed679205107dc84"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-3",
+            "input_digest": "a83f84c4ca13cfa6c6e3754251399576ba9cdab16dd136f261e1199ba0864797",
+            "group": "g0-holdout-gitleak-3",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "4e5d5bc738089768fa5208cf8d51bbf881b5a972136463df495aeb70fed4707e"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-4",
+            "input_digest": "decc2c55827dfabcd4fa1f788930ad6e95170569911293bf7112a3e58210adee",
+            "group": "g0-holdout-gitleak-4",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "cb9e0bb7f67964146c746b7a06a60e424073caefdf4eb0bc5ea8a40ed4c4f6a5"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-5",
+            "input_digest": "fdb5b7e8c0e52c6b9d7666375a488df50fb04c332de461b5713132826037cf33",
+            "group": "g0-holdout-gitleak-5",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "01009047cbe691c06484e2328a5f213fdc9257a58e16cfa66fbb187a61a69719"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-webshell-0",
+            "input_digest": "a29698ce90526a14f819b3607764a4a2ba6b21e64753f7f05f5c9b3a02027f34",
+            "group": "g0-holdout-webshell-0",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "00eac891697ef53e8955732bff94ff55c831fdedf216c950eeca903fcdc02a16"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-webshell-1",
+            "input_digest": "b5f731de826b18f0b23402bbb51db5d7081940880c5fae1eebfc9b36a6d0019a",
+            "group": "g0-holdout-webshell-1",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v2",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "4c88e26f441db2fd0040cb7a73fcb30f28d7fab5633ec73f99aedb368e09cdf1"
+          }
+        }
+      ]
+    },
+    "noisy": {
+      "dataset": "837cc2918172bc5a752b651f98e9c607f930332ce001f655484f17a1e83056ec",
+      "evaluator": "detectbench/2",
+      "contract": "8dee46ad0b4c51c766f3d3d988c15b1df98d72cd311989748c0679c46e2786a1",
+      "at": "2026-11-26T02:51:42.423567979Z",
+      "before": "v1",
+      "active": "v1",
+      "decision": "kept",
+      "reason": "no_validated_improvement",
+      "train": {
+        "cases": 0,
+        "baseline_passed": 0,
+        "candidate_passed": 0,
+        "wins": 0,
+        "losses": 0,
+        "gain": 0,
+        "p_value": 0,
+        "cost_ratio": 0,
+        "critical_failure": false
+      },
+      "holdout": {
+        "cases": 0,
+        "baseline_passed": 0,
+        "candidate_passed": 0,
+        "wins": 0,
+        "losses": 0,
+        "gain": 0,
+        "p_value": 0,
+        "cost_ratio": 0,
+        "critical_failure": false
+      },
+      "trials": [
+        {
+          "case": {
+            "id": "g0-train-benign-0",
+            "input_digest": "ceb70aa5d813241fa42aa7beb00201eeeb2a6c3d36c029d0e79a8af98732271c",
+            "group": "g0-train-benign-0",
+            "split": "train",
+            "critical": true
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "0e7d11d5b0f9d90dec75e8517c5f604e00e51cdd638c9855be414481b09cebde"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-benign-1",
+            "input_digest": "12998e833298341acbea5a99200afa99bbe6d74f814ea4793d55df23ef684306",
+            "group": "g0-train-benign-1",
+            "split": "train",
+            "critical": true
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "21c64ff84ff714b0fd482687d963aa1790a8b820dec34debb957d5edda759299"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-0",
+            "input_digest": "af7b45f61736b671ea4f6f8302693c07c5b782cc4a1fba920ede16ba758dbc36",
+            "group": "g0-train-gitleak-0",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "972f284476ebbcb500fb536a410ba42a486d2859075f98ea5618b2a43428f097"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-1",
+            "input_digest": "41da5070976a78da9c77638cc77d5ba0f1d152035ea01acf9faf768a915cc7ab",
+            "group": "g0-train-gitleak-1",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "383f2fea2838c584166578965aaa86bb320e434fc89a5ca0f6c4d1ad1089072a"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-2",
+            "input_digest": "2c9500ac5f4dcb1a2cbec545d8e6041a29c3cb5f7861b0a6200df3f702ff9f42",
+            "group": "g0-train-gitleak-2",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "afe564be05ea89149f6dd26a572ce04e7d720be580dc1968e628bdbc7805581c"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-3",
+            "input_digest": "6eaa397d9f4e5fb6581b6f065fe50f538aeb58318dae222dc0fdf2d6a0e7c2ab",
+            "group": "g0-train-gitleak-3",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "ff624812badb7366475e0c1de46bb71d65841a9dd481d8b0e123251b674e99fe"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-4",
+            "input_digest": "971f7d2359d420b81065d4c287820eb2694bbfd8319c784998a87c9846b227a8",
+            "group": "g0-train-gitleak-4",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "1fcb34d741579827be73704a6188f31aba22c42b1db2739b7d4a0614be3f8a9d"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-5",
+            "input_digest": "dde1a88bb40590ed85cac0687f6b68e0f480bbcd6a79ade81a854f2ae7475e88",
+            "group": "g0-train-gitleak-5",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "6c671e3aeab08374c6c36829983a1f9fb0c88892f5120d189bf987123f4c367f"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-webshell-0",
+            "input_digest": "e80e11d8db3059ede0e3b3bb9426e36760bd46d785fcc9151c5ee7a8a8394436",
+            "group": "g0-train-webshell-0",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "2f4e4627282301ea77f9b1ebef818f136c0342b0e4619fec13443e874b2ce84c"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-webshell-1",
+            "input_digest": "e24ea7c8176233579abb3b03df4e6dc5a740a0647be8fc9d71ed9045fa8bb60e",
+            "group": "g0-train-webshell-1",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "9fd08d1de33e180f235cc8fe8f19d4af2920e74dfb23f1600749faaa56dc4fa0"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-benign-0",
+            "input_digest": "54f28c7caf8f1e880dca5560c54a95e23ee31b7ddd98d4f0f3ae12ac32ddc090",
+            "group": "g0-holdout-benign-0",
+            "split": "holdout",
+            "critical": true
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "534ddcc079662d0b055695d573e5e5bf9eccd6fc5c32a93530bfce4007215610"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-benign-1",
+            "input_digest": "b2268bf454520f4a592124028450782ca6b688d069d308ed0a4613b691abff3f",
+            "group": "g0-holdout-benign-1",
+            "split": "holdout",
+            "critical": true
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "6aafe8e83d1252aacddfe59ba02d4d1236f03801ebd16042fa06acc0cb1f47ad"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-0",
+            "input_digest": "6da016ebe1435f5546ef76cc33bcc5ad49f75f8dea05c31755a09e783533291c",
+            "group": "g0-holdout-gitleak-0",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "7de4ed7a497ef1287f2a29dff57f3d5ff5d6cbc4d9f9193e6f2ff251173a851b"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-1",
+            "input_digest": "f23e89382f2de781e859b6847b80fea693db9b538686516b93b08cd76b0d51f1",
+            "group": "g0-holdout-gitleak-1",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "c2811aaafdebb33004b953ea093748cf4c6cb1d6df2b1fcf7fec6cfdace19a12"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-2",
+            "input_digest": "a8ab8d4400209463be3f7fdabe89b58ec9660129f4a206261e8b2e7c6454eb92",
+            "group": "g0-holdout-gitleak-2",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "8a83f31f7adc9e4f3f9fc3c3dc1cce64499a92cf8d342a7e086e0d8ed191fa09"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-3",
+            "input_digest": "a83f84c4ca13cfa6c6e3754251399576ba9cdab16dd136f261e1199ba0864797",
+            "group": "g0-holdout-gitleak-3",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "7a4d18ec01896d6f4e6c7f04c6fbd5ee7ed35eaef64fc8276925bbbc9cd3fdab"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-4",
+            "input_digest": "decc2c55827dfabcd4fa1f788930ad6e95170569911293bf7112a3e58210adee",
+            "group": "g0-holdout-gitleak-4",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "020029cc5a67780e39169f02c1826a4e29629927bf1d1eab033dd6326e61f2f2"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-gitleak-5",
+            "input_digest": "fdb5b7e8c0e52c6b9d7666375a488df50fb04c332de461b5713132826037cf33",
+            "group": "g0-holdout-gitleak-5",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "d546095872352c65d056a6cf875f6d62f52aef059d9b9f237ca30293d13d3dea"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-webshell-0",
+            "input_digest": "a29698ce90526a14f819b3607764a4a2ba6b21e64753f7f05f5c9b3a02027f34",
+            "group": "g0-holdout-webshell-0",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "4367427e8a9bb7b51b84ab5059ebbb8aedecdbb2e3cc0a6a1e69deea8bd51280"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-holdout-webshell-1",
+            "input_digest": "b5f731de826b18f0b23402bbb51db5d7081940880c5fae1eebfc9b36a6d0019a",
+            "group": "g0-holdout-webshell-1",
+            "split": "holdout",
+            "critical": false
+          },
+          "strategy": "v1",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "a8475d5e9280e1df4ae08937c93bcfcb2c17dd858aa0c28b3e205944403319c3"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-benign-0",
+            "input_digest": "ceb70aa5d813241fa42aa7beb00201eeeb2a6c3d36c029d0e79a8af98732271c",
+            "group": "g0-train-benign-0",
+            "split": "train",
+            "critical": true
+          },
+          "strategy": "noisy",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "98ced1362dad016bca6a7c452b66b31ff1fabd790d3bab355f1e4c84398bbf3f"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-benign-1",
+            "input_digest": "12998e833298341acbea5a99200afa99bbe6d74f814ea4793d55df23ef684306",
+            "group": "g0-train-benign-1",
+            "split": "train",
+            "critical": true
+          },
+          "strategy": "noisy",
+          "outcome": {
+            "passed": false,
+            "cost": 1,
+            "evidence_digest": "c75ad571befa74316447e67e1c42424b0ee705da4e024deacef8887c8882af2e"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-0",
+            "input_digest": "af7b45f61736b671ea4f6f8302693c07c5b782cc4a1fba920ede16ba758dbc36",
+            "group": "g0-train-gitleak-0",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "noisy",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "f30632de0d65c2337bba4185912a9043e971c7c66fc710b813581348c590eeff"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-1",
+            "input_digest": "41da5070976a78da9c77638cc77d5ba0f1d152035ea01acf9faf768a915cc7ab",
+            "group": "g0-train-gitleak-1",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "noisy",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "929bf2014a6a6200d7c180cbe74dbf000881cde101bbf8acc95759e2fa707411"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-2",
+            "input_digest": "2c9500ac5f4dcb1a2cbec545d8e6041a29c3cb5f7861b0a6200df3f702ff9f42",
+            "group": "g0-train-gitleak-2",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "noisy",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "cf78a864f45198d726322fe43f4c9a12a95430143751bf42f808fd5e0b7b6333"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-3",
+            "input_digest": "6eaa397d9f4e5fb6581b6f065fe50f538aeb58318dae222dc0fdf2d6a0e7c2ab",
+            "group": "g0-train-gitleak-3",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "noisy",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "27bddc3571b2cbf6b863d2fab00ad788a56f0628ef817fc2f5e0e5035afc27e8"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-4",
+            "input_digest": "971f7d2359d420b81065d4c287820eb2694bbfd8319c784998a87c9846b227a8",
+            "group": "g0-train-gitleak-4",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "noisy",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "88b081cabca18657d23b5275433166c290b3686fb5953b9f602d670be49172d6"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-gitleak-5",
+            "input_digest": "dde1a88bb40590ed85cac0687f6b68e0f480bbcd6a79ade81a854f2ae7475e88",
+            "group": "g0-train-gitleak-5",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "noisy",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "da8174ec5f80dbe8a375505f89d0ca39e7b5ad4203493d7223756f732d7293f6"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-webshell-0",
+            "input_digest": "e80e11d8db3059ede0e3b3bb9426e36760bd46d785fcc9151c5ee7a8a8394436",
+            "group": "g0-train-webshell-0",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "noisy",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "695a8810cc56970130c104f87a52d20f63b8f34fdb5686ef818b63632d766995"
+          }
+        },
+        {
+          "case": {
+            "id": "g0-train-webshell-1",
+            "input_digest": "e24ea7c8176233579abb3b03df4e6dc5a740a0647be8fc9d71ed9045fa8bb60e",
+            "group": "g0-train-webshell-1",
+            "split": "train",
+            "critical": false
+          },
+          "strategy": "noisy",
+          "outcome": {
+            "passed": true,
+            "cost": 1,
+            "evidence_digest": "ca2aaca9a2266a26b9138d52eef4c431ad61e268a45decb33961db91b8968dee"
+          }
+        }
+      ]
+    },
+    "limitation": "Experimento independiente con eventos sintéticos y estrategias predefinidas. No reentrena una IA, no modifica las reglas de la prueba HTTP ni mide precisión en organizaciones reales."
+  },
+  "target": "http://127.0.0.1:32651",
+  "secured": true
+}

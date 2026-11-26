@@ -94,7 +94,7 @@ func (s *Scanner) HTTPX(ctx context.Context, taskID string, targets []string) ([
 	if err != nil {
 		return nil, fmt.Errorf("httpx not found on PATH: %w", err)
 	}
-	cmd := exec.CommandContext(ctx, bin, "-silent", "-json", "-status-code", "-title", "-tech-detect", "-no-color")
+	cmd := exec.CommandContext(ctx, bin, "-silent", "-json", "-status-code", "-title", "-tech-detect", "-no-color", "-disable-update-check", "-no-fallback-scheme", "-rate-limit", "2", "-threads", "1", "-timeout", "5")
 	cmd.Stdin = strings.NewReader(strings.Join(targets, "\n"))
 	var out, errb bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errb
@@ -176,7 +176,7 @@ func (s *Scanner) NucleiTargets(ctx context.Context, taskID string, targets []st
 		return nil, err
 	}
 	listFile.Close()
-	args := []string{"-jsonl", "-silent", "-no-color", "-disable-update-check", "-l", listFile.Name()}
+	args := []string{"-jsonl", "-silent", "-no-color", "-disable-update-check", "-no-interactsh", "-rate-limit", "2", "-concurrency", "1", "-timeout", "5", "-l", listFile.Name()}
 	if len(opt.Severities) > 0 {
 		args = append(args, "-severity", strings.Join(opt.Severities, ","))
 	}

@@ -85,3 +85,6 @@ manager-keys.json
 
 # Laboratory run artifacts include local authentication sessions.
 lab/benchmark/artifacts/
+
+# Local builds, private review database, keys and session queues
+/build/
